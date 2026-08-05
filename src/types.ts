@@ -55,6 +55,8 @@ export interface LumaEntityItem extends LumaCondition {
 export interface LumaBannerConfig extends LumaEntityItem {
   label?: string;
   state_label?: string;
+  secondary_label?: string;
+  secondary_action?: LumaAction;
 }
 
 export type LumaIncidentTone = "warning" | "error";
