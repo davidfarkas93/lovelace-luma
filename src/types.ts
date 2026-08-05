@@ -57,6 +57,21 @@ export interface LumaBannerConfig extends LumaEntityItem {
   state_label?: string;
 }
 
+export type LumaIncidentTone = "warning" | "error";
+
+export interface LumaIncidentRule extends LumaCondition {
+  entity?: string;
+  entity_pattern?: string;
+  related_suffix?: { from: string; to: string };
+  device_classes?: string[];
+  message: string;
+  tone?: LumaIncidentTone;
+  navigation_path?: string;
+  for_minutes?: number;
+  aggregate?: boolean;
+  dismissible?: boolean;
+}
+
 export interface LovelaceCard extends HTMLElement {
   hass?: HomeAssistant;
   setConfig(config: unknown): void;

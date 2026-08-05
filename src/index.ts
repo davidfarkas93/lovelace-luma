@@ -1,7 +1,13 @@
 import "./cards/luma-hero-card";
+import "./cards/luma-home-hero-card";
 import "./cards/luma-status-card";
 
 const cards = [
+  {
+    type: "luma-home-hero-card",
+    name: "Luma Home Hero",
+    description: "A weather-aware home hero with incident acknowledgement and contextual banners.",
+  },
   {
     type: "luma-hero-card",
     name: "Luma Hero",
@@ -26,7 +32,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.1.0 ",
+  "%c LUMA %c 0.2.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

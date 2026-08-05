@@ -8,6 +8,9 @@ heroes, status cards, contextual actions, and live system feedback.
 
 ## Current components
 
+- `custom:luma-home-hero-card` — weather-aware home hero with a dynamic
+  greeting, lightweight weather effects, configurable incident aggregation,
+  per-incident acknowledgement, alarm status, and contextual banners.
 - `custom:luma-hero-card` — responsive hero with an optional entity, badge,
   chips, conditional banners, and native Home Assistant actions.
 - `custom:luma-status-card` — compact entity or attribute status card.
@@ -74,6 +77,57 @@ banners:
       action: navigate
       navigation_path: /dashboard-irrigation/overview
 ```
+
+## Home hero example
+
+```yaml
+type: custom:luma-home-hero-card
+name: David
+weather_entity: weather.home
+alarm_entity: alarm_control_panel.home
+acknowledgements_entity: input_text.acknowledged_home_warnings
+wind_threshold: 8
+tap_action:
+  action: navigate
+  navigation_path: /lovelace/weather
+incidents:
+  - entity: binary_sensor.irrigation_controller
+    state_not: "on"
+    message: Irrigation controller offline
+    tone: error
+    dismissible: false
+    navigation_path: /dashboard-irrigation/overview
+  - entity_pattern: sensor.*_monitored_url
+    related_suffix:
+      from: _monitored_url
+      to: _status
+    state_not: Up
+    message: "{count} monitored services unavailable"
+    tone: error
+    aggregate: true
+    navigation_path: /dashboard-homelab/overview
+  - device_classes:
+      - smoke
+      - moisture
+      - gas
+      - carbon_monoxide
+    state: "on"
+    message: "{name} requires attention"
+    tone: error
+irrigation_entity: sensor.active_irrigation_program
+irrigation_path: /dashboard-irrigation/overview
+waste_entity: sensor.waste_days
+waste_ack_entity: input_boolean.waste_taken_out
+waste_path: /lovelace/waste
+waste_days: 2
+```
+
+Incident rules support an exact `entity`, an `entity_pattern` glob, or a list
+of `device_classes`. Rules can use `state`, `state_not`, `above`, `below`, and
+`for_minutes`. Use `{name}` for per-entity messages and `{count}` with
+`aggregate: true`. Non-critical incidents can be hidden for 7 or 30 days when
+an `acknowledgements_entity` input text helper is configured; error incidents
+remain visible.
 
 ## Status example
 
