@@ -90,6 +90,9 @@ alarm_entity: alarm_control_panel.home
 active_action:
   action: navigate
   navigation_path: "#frequent"
+active_exclude:
+  - light.all_lights
+  - media_player.*_cast
 acknowledgements_entity: input_text.acknowledged_home_warnings
 wind_threshold: 8
 tap_action:
