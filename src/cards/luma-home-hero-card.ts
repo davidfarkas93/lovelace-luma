@@ -26,6 +26,7 @@ interface LumaHomeHeroConfig {
   waste_path?: string;
   waste_days?: number;
   wind_threshold?: number;
+  active_path?: string;
   incidents?: LumaIncidentRule[];
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
@@ -83,22 +84,25 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   @state() private detailsOpen = false;
 
   static styles = [lumaTokens, css`
-    .hero { position:relative; isolation:isolate; min-height:176px; padding:25px; overflow:hidden;
+    .hero { position:relative; isolation:isolate; min-height:176px; padding:26px; overflow:hidden;
       border:1px solid color-mix(in srgb,var(--luma-accent) 20%,transparent); border-radius:var(--luma-radius-hero);
       background:linear-gradient(135deg,color-mix(in srgb,var(--luma-accent) 16%,var(--luma-surface)),color-mix(in srgb,var(--luma-accent) 3%,var(--luma-surface)) 68%);
-      box-shadow:0 18px 50px rgba(0,0,0,.08); }
+      box-shadow:0 18px 50px rgba(0,0,0,.08); transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
+    .hero.interactive:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--luma-accent) 30%,transparent); box-shadow:0 23px 58px rgba(0,0,0,.11); }
     .content { position:relative; z-index:2; }
-    .top { display:grid; grid-template-columns:58px minmax(0,1fr) auto; grid-template-areas:"icon title badge" "icon subtitle badge"; align-items:center; gap:0 17px; }
+    .top { display:grid; grid-template-columns:58px minmax(0,1fr) minmax(280px,420px); grid-template-areas:"icon title status" "icon subtitle status"; align-items:center; gap:0 17px; }
     .weather-icon { grid-area:icon; display:grid; place-items:center; width:58px; height:58px; border-radius:19px; color:var(--luma-accent); background:color-mix(in srgb,var(--luma-accent) 15%,transparent); }
     .weather-icon ha-icon { --mdc-icon-size:31px; }
     h2 { grid-area:title; align-self:end; margin:0; font-size:clamp(20px,4vw,27px); line-height:1.12; font-weight:730; }
     .subtitle { grid-area:subtitle; align-self:start; margin-top:5px; color:var(--luma-muted); font-size:13px; line-height:1.35; }
     button { font:inherit; }
-    .alarm,.attention { display:inline-flex; align-items:center; gap:6px; border:0; border-radius:999px; font-size:11px; font-weight:720; }
-    .alarm { grid-area:badge; padding:7px 11px; color:var(--alarm-color); background:color-mix(in srgb,var(--alarm-color) 13%,transparent); }
+    .status { grid-area:status; display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:7px; min-width:0; }
+    .alarm,.attention,.active { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:8px 14px; border:0; border-radius:999px; font-size:13px; font-weight:600; transition:transform .16s ease,background .16s ease; }
+    .alarm:hover,.attention:hover,.active:hover { transform:translateY(-1px); filter:saturate(1.08); }
+    .alarm { color:var(--alarm-color); background:color-mix(in srgb,var(--alarm-color) 12%,transparent); }
     .alarm ha-icon,.attention ha-icon { --mdc-icon-size:16px; }
-    .chips { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:7px; margin-top:16px; }
-    .attention { min-height:34px; padding:7px 11px; color:var(--attention-color); background:color-mix(in srgb,var(--attention-color) 11%,transparent); }
+    .attention { color:var(--attention-color); background:color-mix(in srgb,var(--attention-color) 12%,transparent); }
+    .active { color:var(--active-color); background:color-mix(in srgb,var(--active-color) 12%,transparent); }
     .panel { display:grid; gap:7px; margin-top:12px; padding:10px; border-radius:16px; background:color-mix(in srgb,var(--primary-text-color) 3%,transparent); }
     .issue { display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:8px; min-height:38px; padding:6px 8px; border-radius:12px; color:var(--issue-color); background:color-mix(in srgb,var(--issue-color) 8%,transparent); }
     .issue ha-icon { --mdc-icon-size:17px; }
@@ -106,22 +110,23 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     .issue-actions { display:flex; gap:5px; }
     .issue-actions button { min-height:27px; padding:4px 8px; border:0; border-radius:999px; color:var(--issue-color); background:color-mix(in srgb,var(--issue-color) 12%,transparent); font-size:9px; font-weight:780; }
     .banners { display:grid; gap:8px; margin-top:13px; }
-    .banner { display:grid; grid-template-columns:22px auto minmax(0,1fr) auto; align-items:center; gap:8px; width:100%; min-height:42px; padding:8px 11px; border:1px solid color-mix(in srgb,var(--item-color) 17%,transparent); border-radius:14px; color:var(--item-color); background:color-mix(in srgb,var(--item-color) 10%,transparent); text-align:left; }
+    .banner { display:grid; grid-template-columns:22px auto minmax(0,1fr) auto; align-items:center; gap:8px; width:100%; min-height:42px; padding:8px 11px; border:1px solid color-mix(in srgb,var(--item-color) 17%,transparent); border-radius:14px; color:var(--item-color); background:color-mix(in srgb,var(--item-color) 10%,transparent); text-align:left; transition:background .18s ease,border-color .18s ease,transform .18s ease; }
+    .banner:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--item-color) 25%,transparent); background:color-mix(in srgb,var(--item-color) 15%,transparent); }
     .banner ha-icon { --mdc-icon-size:18px; } .banner-label { font-size:11px; font-weight:720; } .banner-state { overflow:hidden; color:var(--primary-text-color); font-size:11px; font-weight:620; text-overflow:ellipsis; white-space:nowrap; }
     .banner-action { padding:5px 8px; border:0; border-radius:999px; color:var(--item-color); background:color-mix(in srgb,var(--item-color) 14%,transparent); font-size:9px; font-weight:800; letter-spacing:.05em; }
-    .sky { position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.34; }
-    .sun,.moon { position:absolute; right:8%; top:-22px; width:104px; height:104px; border-radius:50%; }
-    .sun { background:radial-gradient(circle,#ffd86b 0 32%,rgba(255,216,107,.28) 34% 51%,transparent 53%); animation:breathe 8s ease-in-out infinite; }
-    .moon { background:radial-gradient(circle at 38% 38%,#eef2ff 0 38%,rgba(180,193,244,.22) 40% 58%,transparent 60%); }
-    .cloud { position:absolute; right:6%; top:22px; width:125px; height:34px; border-radius:99px; background:color-mix(in srgb,var(--primary-text-color) 12%,transparent); }
+    .sky { position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.58; }
+    .sun,.moon { position:absolute; right:23%; top:-45px; width:160px; height:160px; border-radius:50%; }
+    .sun { background:radial-gradient(circle,color-mix(in srgb,#ffd36a 75%,transparent),transparent 68%); animation:breathe 6s ease-in-out infinite; }
+    .moon { width:120px;height:120px;top:-24px;right:24%;background:transparent;box-shadow:-25px 18px 0 color-mix(in srgb,#aab6ff 32%,transparent); }
+    .cloud { position:absolute; right:20%; top:30px; width:125px; height:40px; border-radius:99px; background:color-mix(in srgb,var(--primary-text-color) 13%,transparent); animation:drift 9s ease-in-out infinite; }
     .cloud::before,.cloud::after { content:""; position:absolute; bottom:0; border-radius:50%; background:inherit; } .cloud::before{left:18px;width:54px;height:54px}.cloud::after{right:18px;width:42px;height:42px}
-    .wind { position:absolute; right:8%; bottom:-15px; width:105px; height:145px; transform:translateZ(0); opacity:.32; }
+    .wind { position:absolute; right:43%; bottom:-8px; width:105px; height:145px; transform:translateZ(0); opacity:.29; }
     .mast { position:absolute; left:51px; top:53px; width:3px; height:94px; border-radius:3px; background:currentColor; transform:translateZ(0); }
     .rotor { position:absolute; left:13px; top:8px; width:80px; height:80px; transform-origin:50% 50%; animation:spin var(--wind-duration,8s) linear infinite; will-change:transform; }
     .blade { position:absolute; left:37px; top:0; width:7px; height:38px; border-radius:99px 99px 8px 8px; background:currentColor; transform-origin:50% 40px; } .blade:nth-child(2){transform:rotate(120deg)} .blade:nth-child(3){transform:rotate(240deg)}
     .hub { position:absolute; left:34px; top:34px; width:13px; height:13px; border-radius:50%; background:currentColor; }
-    @keyframes spin { to { transform:rotate(360deg) translateZ(0); } } @keyframes breathe { 50% { transform:scale(1.05); opacity:.82; } }
-    @media(max-width:599px){ .hero{min-height:164px;padding:18px}.top{grid-template-columns:46px minmax(0,1fr) auto;gap:0 12px}.weather-icon{width:46px;height:46px;border-radius:15px}.weather-icon ha-icon{--mdc-icon-size:25px}.subtitle{font-size:12px}.chips{justify-content:flex-start;margin-top:12px}.wind{right:2%;bottom:auto;top:-12px;opacity:.2}.banner{grid-template-columns:20px minmax(0,1fr) auto}.banner-label{display:none}.issue{grid-template-columns:18px minmax(0,1fr)}.issue-actions{grid-column:2;justify-content:flex-start} }
+    @keyframes spin { to { transform:rotate(360deg) translateZ(0); } } @keyframes breathe { 50% { transform:scale(1.12); opacity:.48; } } @keyframes drift { 0%,100%{transform:translateX(-8px)}50%{transform:translateX(10px)} }
+    @media(max-width:599px){ .hero{min-height:164px;padding:18px}.top{grid-template-columns:46px minmax(0,1fr);grid-template-areas:"icon title" "icon subtitle" "status status";gap:0 12px}.weather-icon{width:46px;height:46px;border-radius:15px}.weather-icon ha-icon{--mdc-icon-size:25px}.subtitle{font-size:12px}.status{justify-content:flex-start;margin-top:10px}.alarm,.attention,.active{min-height:34px;padding:7px 11px;font-size:11px}.sun,.cloud,.moon{right:-25px;opacity:.4}.wind{right:-6px;bottom:auto;top:-18px;opacity:.17}.banner{grid-template-columns:20px minmax(0,1fr) auto}.banner-label{display:none}.issue{grid-template-columns:18px minmax(0,1fr)}.issue-actions{grid-column:2;justify-content:flex-start} }
   `];
 
   setConfig(config: LumaHomeHeroConfig): void {
@@ -149,6 +154,28 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   private greeting(): string {
     const h=new Date().getHours(), name=this.config?.name ? `, ${this.config.name}` : "";
     return `${h>=18?"Jó estét":h>=12?"Szép délutánt":h>=5?"Jó reggelt":"Szia"}${name}!`;
+  }
+
+  private activeCount(): number {
+    if(!this.hass)return 0;
+    return Object.values(this.hass.states).filter(entity=>{
+      const domain=entity.entity_id.split(".")[0];
+      if(domain==="light")return entity.state==="on";
+      if(domain==="media_player")return !["off","idle","standby","unknown","unavailable"].includes(entity.state);
+      if(domain==="climate")return ["heating","cooling","drying","fan"].includes(String(entity.attributes.hvac_action||""));
+      return false;
+    }).length;
+  }
+
+  private accent(state:string,temperature:number,issues:Incident[]):string {
+    if(issues.some(issue=>issue.tone==="error"))return "var(--error-color)";
+    if(issues.length)return "var(--warning-color)";
+    if(["lightning","lightning-rainy","pouring"].includes(state))return "var(--error-color)";
+    if(["rainy","snowy","snowy-rainy","fog"].includes(state))return "var(--info-color, var(--primary-color))";
+    if(Number.isFinite(temperature)&&temperature>=35)return "#e27d35";
+    if(state==="sunny")return "#e6a126";
+    if(state==="clear-night"||new Date().getHours()<6||new Date().getHours()>=20)return "#6d78c5";
+    return "var(--primary-color)";
   }
 
   private ackMap(): Record<string,number> {
@@ -201,12 +228,12 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   render(){
     if(!this.hass||!this.config)return nothing;
     const weather=this.hass.states[this.config.weather_entity],state=weather?.state||"unknown",a=weather?.attributes||{},wind=Number(a.wind_speed)||0;
-    const issues=this.incidents(),critical=issues.some(x=>x.tone==="error"),attentionColor=critical?"var(--error-color)":issues.length?"var(--warning-color)":"var(--success-color)";
+    const issues=this.incidents(),critical=issues.some(x=>x.tone==="error"),attentionColor=critical?"var(--error-color)":issues.length?"var(--warning-color)":"var(--success-color)",active=this.activeCount(),accent=this.accent(state,Number(a.temperature),issues);
     const subtitle=[weatherLabels[state]||state,a.temperature!=null?`${a.temperature} ${a.temperature_unit||"°C"}`:"",wind?`szél ${wind} ${a.wind_speed_unit||"km/h"}`:"",issues.length?`${issues.length} figyelmeztetés`:"minden rendszer rendben"].filter(Boolean).join(" • ");
     const alarm=this.config.alarm_entity?this.hass.states[this.config.alarm_entity]:undefined,armed=alarm&&!['disarmed','unknown','unavailable'].includes(alarm.state),alarmColor=armed?"var(--warning-color)":"var(--success-color)";
     const banners=[...(this.config.banners||[])];
     if(this.config.irrigation_entity)banners.push({entity:this.config.irrigation_entity,label:"Aktív öntözés",name:"MEGNYITÁS",icon:"mdi:sprinkler-variant",color:"var(--info-color, var(--primary-color))",state_not:["Nincs","none","unknown","unavailable",""],tap_action:{action:"navigate",navigation_path:this.config.irrigation_path||"/dashboard-irrigation/irrigation"}});
     if(this.config.waste_entity&&this.hass.states[this.config.waste_ack_entity||""]?.state!=="on")banners.push({entity:this.config.waste_entity,label:"Hulladék",name:"MEGNYITÁS",icon:"mdi:trash-can-outline",color:"var(--warning-color)",below:(this.config.waste_days||2)+.01,tap_action:{action:"navigate",navigation_path:this.config.waste_path||"/lovelace/waste"},secondary_label:"KÉSZ",secondary_action:this.config.waste_ack_entity?{action:"perform-action",perform_action:"input_boolean.turn_on",target:{entity_id:this.config.waste_ack_entity}}:undefined});
-    return html`<ha-card class=${`hero ${this.config.tap_action?"interactive":""}`} style="--luma-accent:var(--primary-color)" @click=${()=>runAction(this,this.hass!,this.config?.tap_action||{action:"navigate",navigation_path:"/lovelace/weather"},this.config?.weather_entity)}>${this.renderWeatherFx(state,wind)}<div class="content"><div class="top"><div class="weather-icon"><ha-icon icon=${weatherIcons[state]||"mdi:home-heart"}></ha-icon></div><h2>${this.greeting()}</h2><div class="subtitle">${subtitle}</div>${alarm?html`<button class="alarm interactive" style=${`--alarm-color:${alarmColor}`} @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,{action:"more-info"},this.config?.alarm_entity)}}><ha-icon icon="mdi:shield-home-outline"></ha-icon><span>${entityState(this.hass,alarm)}</span></button>`:nothing}</div><div class="chips"><button class="attention interactive" style=${`--attention-color:${attentionColor}`} @click=${(e:Event)=>{e.stopPropagation();this.detailsOpen=!this.detailsOpen}}><ha-icon icon=${critical?"mdi:alert-octagon":issues.length?"mdi:alert-circle-outline":"mdi:check-circle-outline"}></ha-icon><span>${issues.length?`${issues.length} jelzés`:"Rendben"}</span></button></div>${this.detailsOpen&&issues.length?html`<div class="panel">${issues.map(issue=>html`<div class="issue" style=${`--issue-color:${issue.tone==="error"?"var(--error-color)":"var(--warning-color)"}`}><ha-icon icon=${issue.tone==="error"?"mdi:alert-octagon-outline":"mdi:alert-outline"}></ha-icon><span class="issue-text" @click=${()=>issue.path&&runAction(this,this.hass!,{action:"navigate",navigation_path:issue.path})}>${issue.message}</span>${issue.dismissible&&issue.tone!=="error"?html`<span class="issue-actions"><button @click=${(e:Event)=>this.dismiss(issue,7,e)}>7 nap</button><button @click=${(e:Event)=>this.dismiss(issue,30,e)}>30 nap</button></span>`:nothing}</div>`)}</div>`:nothing}${banners.some(b=>itemIsVisible(this.hass!,b))?html`<div class="banners">${banners.map(b=>this.renderBanner(b))}</div>`:nothing}</div></ha-card>`;
+    return html`<ha-card class=${`hero ${this.config.tap_action?"interactive":""}`} style=${`--luma-accent:${accent}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action||{action:"navigate",navigation_path:"/lovelace/weather"},this.config?.weather_entity)}>${this.renderWeatherFx(state,wind)}<div class="content"><div class="top"><div class="weather-icon"><ha-icon icon=${weatherIcons[state]||"mdi:home-heart"}></ha-icon></div><h2>${this.greeting()}</h2><div class="subtitle">${subtitle}</div><div class="status"><button class="active interactive" style="--active-color:var(--primary-color)" @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,{action:"navigate",navigation_path:this.config?.active_path||"/lovelace/overview#active"})}}><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span>Aktív · ${active}</span></button>${alarm?html`<button class="alarm interactive" style=${`--alarm-color:${alarmColor}`} @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,{action:"more-info"},this.config?.alarm_entity)}}><ha-icon icon="mdi:shield-home-outline"></ha-icon><span>${entityState(this.hass,alarm)}</span></button>`:nothing}<button class="attention interactive" style=${`--attention-color:${attentionColor}`} @click=${(e:Event)=>{e.stopPropagation();this.detailsOpen=!this.detailsOpen}}><ha-icon icon=${critical?"mdi:alert-octagon":issues.length?"mdi:alert-circle-outline":"mdi:check-circle-outline"}></ha-icon><span>${issues.length?`${issues.length} jelzés`:"Rendben"}</span></button></div></div>${this.detailsOpen&&issues.length?html`<div class="panel">${issues.map(issue=>html`<div class="issue" style=${`--issue-color:${issue.tone==="error"?"var(--error-color)":"var(--warning-color)"}`}><ha-icon icon=${issue.tone==="error"?"mdi:alert-octagon-outline":"mdi:alert-outline"}></ha-icon><span class="issue-text" @click=${()=>issue.path&&runAction(this,this.hass!,{action:"navigate",navigation_path:issue.path})}>${issue.message}</span>${issue.dismissible&&issue.tone!=="error"?html`<span class="issue-actions"><button @click=${(e:Event)=>this.dismiss(issue,7,e)}>7 nap</button><button @click=${(e:Event)=>this.dismiss(issue,30,e)}>30 nap</button></span>`:nothing}</div>`)}</div>`:nothing}${banners.some(b=>itemIsVisible(this.hass!,b))?html`<div class="banners">${banners.map(b=>this.renderBanner(b))}</div>`:nothing}</div></ha-card>`;
   }
 }
