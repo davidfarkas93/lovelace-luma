@@ -4,9 +4,13 @@ import "./cards/luma-control-card";
 import "./cards/luma-control-group-card";
 import "./cards/luma-metric-card";
 import "./cards/luma-room-card";
+import "./cards/luma-comfort-card";
 import "./cards/luma-status-card";
 
 const cards = [
+  {
+    type:"luma-comfort-card",name:"Luma Comfort",description:"A responsive indoor comfort summary with contextual air-quality effects.",
+  },
   {
     type:"luma-room-card",name:"Luma Room",description:"A contextual room card with environment and quick controls.",
   },
@@ -52,7 +56,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.7.0 ",
+  "%c LUMA %c 0.8.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
