@@ -69,8 +69,12 @@ export const runAction = async (
   if (!action || action.action === "none") return;
 
   if (action.action === "navigate") {
+    const oldURL = window.location.href;
     history.pushState(null, "", action.navigation_path);
     window.dispatchEvent(new Event("location-changed"));
+    if (new URL(oldURL).hash !== window.location.hash) {
+      window.dispatchEvent(new HashChangeEvent("hashchange", { oldURL, newURL: window.location.href }));
+    }
     return;
   }
 

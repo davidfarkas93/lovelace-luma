@@ -85,6 +85,9 @@ type: custom:luma-home-hero-card
 name: David
 weather_entity: weather.home
 alarm_entity: alarm_control_panel.home
+active_action:
+  action: navigate
+  navigation_path: "#frequent"
 acknowledgements_entity: input_text.acknowledged_home_warnings
 wind_threshold: 8
 tap_action:
