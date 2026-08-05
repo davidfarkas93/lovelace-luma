@@ -157,3 +157,5 @@ the legacy `call-service` action name.
 ## License
 
 [MIT](LICENSE)
+- `custom:luma-control-card` — responsive entity control with mapped states,
+  contextual active styling, and configurable tap/hold actions.
