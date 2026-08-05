@@ -1,9 +1,15 @@
 import "./cards/luma-hero-card";
 import "./cards/luma-home-hero-card";
 import "./cards/luma-control-card";
+import "./cards/luma-control-group-card";
 import "./cards/luma-status-card";
 
 const cards = [
+  {
+    type: "luma-control-group-card",
+    name: "Luma Control Group",
+    description: "A compact one-row group of responsive entity controls.",
+  },
   {
     type: "luma-control-card",
     name: "Luma Control",
@@ -38,7 +44,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.4.0 ",
+  "%c LUMA %c 0.5.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
