@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title description">
+  <title id="title">Luma Home Hero preview</title>
+  <desc id="description">A warm, weather-aware Home Assistant hero with status chips.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f7f6fd"/>
+      <stop offset="1" stop-color="#eeeff8"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f8ebd5"/>
+      <stop offset="0.68" stop-color="#f4f2f2"/>
+      <stop offset="1" stop-color="#f0eff8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" fill="url(#page)"/>
+  <rect x="70" y="70" width="1060" height="280" rx="32" fill="url(#card)" stroke="#e7bd72" stroke-opacity="0.55" filter="url(#shadow)"/>
+  <circle cx="910" cy="90" r="88" fill="#f4ca70" opacity="0.2"/>
+  <circle cx="910" cy="90" r="43" fill="#e9ad35" opacity="0.68"/>
+  <rect x="112" y="112" width="72" height="72" rx="23" fill="#e9ad35" opacity="0.16"/>
+  <circle cx="148" cy="148" r="14" fill="#e9ad35"/>
+  <g stroke="#e9ad35" stroke-width="4" stroke-linecap="round">
+    <path d="M148 122v-8M148 182v-8M122 148h-8M182 148h-8M130 130l-6-6M172 172l-6-6M166 130l6-6M124 172l6-6"/>
+  </g>
+  <text x="212" y="143" fill="#24242d" font-family="Inter,system-ui,sans-serif" font-size="34" font-weight="750">Good morning, David!</text>
+  <text x="212" y="177" fill="#686976" font-family="Inter,system-ui,sans-serif" font-size="17">Sunny · 25 °C · wind 8 km/h · everything is running smoothly</text>
+  <g font-family="Inter,system-ui,sans-serif" font-size="15" font-weight="650">
+    <rect x="665" y="130" width="126" height="44" rx="22" fill="#6878c5" opacity="0.12"/>
+    <text x="688" y="158" fill="#5264b0">⚡ Active · 3</text>
+    <rect x="801" y="130" width="132" height="44" rx="22" fill="#4aa865" opacity="0.13"/>
+    <text x="822" y="158" fill="#369151">⌾ Disarmed</text>
+    <rect x="943" y="130" width="120" height="44" rx="22" fill="#4aa865" opacity="0.13"/>
+    <text x="967" y="158" fill="#369151">✓ Ready</text>
+  </g>
+  <rect x="112" y="236" width="976" height="62" rx="18" fill="#4d8fc9" opacity="0.1" stroke="#4d8fc9" stroke-opacity="0.32"/>
+  <text x="142" y="274" fill="#3e7caf" font-family="Inter,system-ui,sans-serif" font-size="16" font-weight="700">IRRIGATION RUNNING</text>
+  <text x="345" y="274" fill="#3a3b45" font-family="Inter,system-ui,sans-serif" font-size="16">Morning garden program</text>
+  <rect x="992" y="250" width="72" height="34" rx="17" fill="#4d8fc9" opacity="0.15"/>
+  <text x="1010" y="273" fill="#3e7caf" font-family="Inter,system-ui,sans-serif" font-size="13" font-weight="750">LIVE</text>
+</svg>

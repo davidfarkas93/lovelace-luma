@@ -2,6 +2,8 @@
 
 A vibrant, context-aware dashboard suite for Home Assistant.
 
+![Luma Home Hero preview](docs/luma-home-hero.svg)
+
 Luma turns deeply nested dashboard configurations into focused, reusable
 Lovelace components. It provides a shared visual language for responsive
 heroes, status cards, contextual actions, and live system feedback.
