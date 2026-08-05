@@ -2,9 +2,55 @@ import type {
   HassEntity,
   HomeAssistant,
   LumaAction,
+  LumaActiveConfig,
+  LumaActiveEntity,
+  LumaActiveRule,
   LumaCondition,
   LumaEntityItem,
 } from "./types";
+
+export const glob = (pattern: string, value: string): boolean => {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`).test(value);
+};
+
+const activeValue = (entity: HassEntity, rule: LumaActiveRule): string =>
+  String(rule.attribute ? entity.attributes[rule.attribute] ?? "" : entity.state);
+
+export const activeEntities = (
+  hass: HomeAssistant,
+  config: LumaActiveConfig | undefined,
+  legacyExclude: string[] = [],
+): LumaActiveEntity[] => {
+  const include = config?.include?.length
+    ? config.include
+    : [
+        { domain: "light", state: "on", exclude_groups: true },
+        { domain: "media_player", state_not: ["off", "idle", "standby", "unknown", "unavailable"] },
+        { domain: "climate", attribute: "hvac_action", state: ["heating", "cooling", "drying", "fan"] },
+      ];
+  const exclude = [...legacyExclude, ...(config?.exclude || [])];
+  const found = new Map<string, LumaActiveEntity>();
+  for (const rule of include) {
+    for (const entity of Object.values(hass.states)) {
+      if (rule.entity && entity.entity_id !== rule.entity) continue;
+      if (rule.entity_pattern && !glob(rule.entity_pattern, entity.entity_id)) continue;
+      if (rule.domain && entity.entity_id.split(".")[0] !== rule.domain) continue;
+      if (!rule.entity && !rule.entity_pattern && !rule.domain) continue;
+      if (exclude.some((pattern) => glob(pattern, entity.entity_id))) continue;
+      const members = entity.attributes.entity_id || entity.attributes.group_entities;
+      if (rule.exclude_groups && Array.isArray(members) && members.length) continue;
+      const value = activeValue(entity, rule);
+      if (rule.state !== undefined && !includesState(rule.state, value)) continue;
+      if (rule.state_not !== undefined && includesState(rule.state_not, value)) continue;
+      const numeric = Number(value);
+      if (rule.above !== undefined && (!Number.isFinite(numeric) || numeric <= rule.above)) continue;
+      if (rule.below !== undefined && (!Number.isFinite(numeric) || numeric >= rule.below)) continue;
+      found.set(entity.entity_id, { entity, rule });
+    }
+  }
+  return [...found.values()];
+};
 
 export const entityName = (entity: HassEntity | undefined, fallback = "Unknown"): string =>
   entity?.attributes.friendly_name || fallback;

@@ -1,11 +1,12 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { entityState, itemIsVisible, runAction } from "../helpers";
+import { activeEntities, entityState, itemIsVisible, runAction } from "../helpers";
 import { lumaTokens } from "../styles";
 import type {
   HassEntity,
   HomeAssistant,
   LumaAction,
+  LumaActiveConfig,
   LumaBannerConfig,
   LumaIncidentRule,
   LumaIncidentTone,
@@ -28,6 +29,7 @@ interface LumaHomeHeroConfig {
   wind_threshold?: number;
   active_action?: LumaAction;
   active_exclude?: string[];
+  active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
@@ -160,20 +162,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private activeCount(): number {
-    if(!this.hass)return 0;
-    const excluded=this.config?.active_exclude||[];
-    return Object.values(this.hass.states).filter(entity=>{
-      if(excluded.some(pattern=>glob(pattern,entity.entity_id)))return false;
-      const domain=entity.entity_id.split(".")[0];
-      if(domain==="light"){
-        const members=entity.attributes.entity_id||entity.attributes.group_entities;
-        if(Array.isArray(members)&&members.length)return false;
-        return entity.state==="on";
-      }
-      if(domain==="media_player")return !["off","idle","standby","unknown","unavailable"].includes(entity.state);
-      if(domain==="climate")return ["heating","cooling","drying","fan"].includes(String(entity.attributes.hvac_action||""));
-      return false;
-    }).length;
+    return this.hass ? activeEntities(this.hass,this.config?.active,this.config?.active_exclude).length : 0;
   }
 
   private accent(state:string,temperature:number,issues:Incident[]):string {

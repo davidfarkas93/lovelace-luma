@@ -42,6 +42,25 @@ export interface LumaCondition {
   below?: number;
 }
 
+export interface LumaActiveRule extends LumaCondition {
+  entity?: string;
+  entity_pattern?: string;
+  domain?: string;
+  attribute?: string;
+  exclude_groups?: boolean;
+  tap_action?: LumaAction;
+}
+
+export interface LumaActiveConfig {
+  include?: LumaActiveRule[];
+  exclude?: string[];
+}
+
+export interface LumaActiveEntity {
+  entity: HassEntity;
+  rule: LumaActiveRule;
+}
+
 export interface LumaEntityItem extends LumaCondition {
   entity: string;
   name?: string;
