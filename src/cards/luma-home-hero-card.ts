@@ -59,7 +59,11 @@ const glob = (pattern: string, value: string): boolean => {
 };
 
 const listed = (expected: string | string[] | undefined, actual: string): boolean =>
-  expected === undefined ? false : (Array.isArray(expected) ? expected : [expected]).includes(actual);
+  expected === undefined
+    ? false
+    : (Array.isArray(expected) ? expected : [expected])
+        .map((value) => value.toLocaleLowerCase())
+        .includes(actual.toLocaleLowerCase());
 
 const matchesRule = (entity: HassEntity | undefined, rule: LumaIncidentRule): boolean => {
   if (!entity) return false;
