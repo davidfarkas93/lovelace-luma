@@ -31,7 +31,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
     .card.interactive:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tone) 22%,transparent);box-shadow:0 17px 40px rgba(0,0,0,.085)}
     .icon{grid-area:icon;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}
     .icon ha-icon{--mdc-icon-size:23px}.name{grid-area:name;align-self:end;min-width:0;font-size:14px;font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.subtitle{grid-area:subtitle;align-self:start;min-width:0;color:var(--luma-muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .value{grid-area:value;padding:5px 9px;border-radius:999px;background:color-mix(in srgb,var(--primary-text-color) 6%,transparent);font-size:11px;font-weight:650;white-space:nowrap}.action{grid-area:action;justify-self:end;color:var(--luma-accent);font-size:10px;font-weight:650;white-space:nowrap}
+    .value{grid-area:value;display:inline-flex;align-items:center;justify-content:center;justify-self:end;min-width:38px;padding:5px 9px;border-radius:999px;background:color-mix(in srgb,var(--primary-text-color) 6%,transparent);font-size:11px;font-weight:650;line-height:1;text-align:center;white-space:nowrap}.action{grid-area:action;justify-self:end;color:var(--luma-accent);font-size:10px;font-weight:650;white-space:nowrap}
     @media(max-width:599px){.card{grid-template-columns:40px minmax(0,1fr) auto;grid-template-areas:"icon name value" "icon subtitle value";padding:14px}.icon{width:40px;height:40px;border-radius:13px}.action{display:none}}
   `];
 

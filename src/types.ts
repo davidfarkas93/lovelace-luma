@@ -82,6 +82,9 @@ export interface LovelaceCard extends HTMLElement {
 
 declare global {
   interface Window {
+    loadCardHelpers?: () => Promise<{
+      createCardElement: (config: Record<string, unknown>) => HTMLElement;
+    }>;
     customCards?: Array<{
       type: string;
       name: string;
