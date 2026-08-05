@@ -165,7 +165,11 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     return Object.values(this.hass.states).filter(entity=>{
       if(excluded.some(pattern=>glob(pattern,entity.entity_id)))return false;
       const domain=entity.entity_id.split(".")[0];
-      if(domain==="light")return entity.state==="on";
+      if(domain==="light"){
+        const members=entity.attributes.entity_id||entity.attributes.group_entities;
+        if(Array.isArray(members)&&members.length)return false;
+        return entity.state==="on";
+      }
       if(domain==="media_player")return !["off","idle","standby","unknown","unavailable"].includes(entity.state);
       if(domain==="climate")return ["heating","cooling","drying","fan"].includes(String(entity.attributes.hvac_action||""));
       return false;
