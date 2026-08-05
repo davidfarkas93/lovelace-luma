@@ -150,7 +150,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     const patterns = (this.config.incidents || []).filter(r=>r.entity_pattern);
     const dynamic = Object.keys(this.hass.states).filter(id=>patterns.some(r=>glob(r.entity_pattern!,id)));
     const related = dynamic.map(id=>{const r=patterns.find(x=>glob(x.entity_pattern!,id));return r?.related_suffix?id.replace(r.related_suffix.from,r.related_suffix.to):id;});
-    return [...new Set([...fixed.filter(Boolean) as string[],...dynamic,...related,...(this.config.banners||[]).map(b=>b.entity)])];
+    const active = Object.keys(this.hass.states).filter(id=>["light","media_player","climate"].includes(id.split(".")[0]));
+    return [...new Set([...fixed.filter(Boolean) as string[],...dynamic,...related,...active,...(this.config.banners||[]).map(b=>b.entity)])];
   }
 
   private greeting(): string {
