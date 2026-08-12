@@ -86,7 +86,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.17.0 ",
+  "%c LUMA %c 0.17.1 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
