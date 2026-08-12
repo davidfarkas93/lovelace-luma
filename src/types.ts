@@ -13,11 +13,15 @@ export interface HassEntity {
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
   entities?: Record<string, {
+    area_id?: string | null;
+    device_id?: string | null;
     hidden?: boolean;
     hidden_by?: string | null;
     disabled?: boolean;
     disabled_by?: string | null;
   }>;
+  devices?: Record<string, { area_id?: string | null }>;
+  areas?: Record<string, { name?: string }>;
   user?: { id?: string; name?: string; is_admin?: boolean };
   editMode?: boolean;
   locale?: { language?: string };

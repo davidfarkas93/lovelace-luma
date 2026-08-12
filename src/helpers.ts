@@ -63,6 +63,12 @@ export const entityName = (entity: HassEntity | undefined, fallback = "Unknown")
 export const entityIcon = (entity: HassEntity | undefined, fallback = "mdi:circle-outline"): string =>
   entity?.attributes.icon || fallback;
 
+export const entityAreaName = (hass: HomeAssistant, entityId: string): string | undefined => {
+  const registry = hass.entities?.[entityId];
+  const areaId = registry?.area_id || (registry?.device_id ? hass.devices?.[registry.device_id]?.area_id : undefined);
+  return areaId ? hass.areas?.[areaId]?.name : undefined;
+};
+
 export const entityState = (
   hass: HomeAssistant,
   entity: HassEntity | undefined,
