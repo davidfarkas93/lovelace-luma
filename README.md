@@ -27,6 +27,9 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-popup-card` | Hash-driven, draggable Material-style bottom sheet |
 | `custom:luma-alarm-card` | Alarm status and arming controls |
 | `custom:luma-status-card` | Small entity or attribute status card |
+| `custom:luma-sensor-grid-card` | Responsive, grouped sensor values without `entities` or `card-mod` |
+| `custom:luma-remote-card` | Compact Android TV remote with navigation, playback and app shortcuts |
+| `custom:luma-gate-card` | Gate and garage controls with an inline second-tap confirmation |
 
 ## Installation
 

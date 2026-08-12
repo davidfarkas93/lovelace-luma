@@ -12,8 +12,14 @@ import "./cards/luma-popup-card";
 import "./cards/luma-alarm-card";
 import "./cards/luma-status-card";
 import "./cards/luma-heading-card";
+import "./cards/luma-sensor-grid-card";
+import "./cards/luma-remote-card";
+import "./cards/luma-gate-card";
 
 const cards = [
+  { type:"luma-gate-card", name:"Luma Gate", description:"A confirmed gate and garage controller." },
+  { type:"luma-remote-card", name:"Luma Remote", description:"A compact Android TV remote controller." },
+  { type:"luma-sensor-grid-card", name:"Luma Sensor Grid", description:"A responsive grouped sensor summary." },
   { type:"luma-heading-card", name:"Luma Heading", description:"A compact, consistent section heading." },
   {
     type:"luma-alarm-card",name:"Luma Alarm",description:"A contextual alarm status and arming-mode controller.",
@@ -78,7 +84,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.15.0 ",
+  "%c LUMA %c 0.16.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
