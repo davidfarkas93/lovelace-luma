@@ -10,6 +10,13 @@ export const lumaTokens = css`
     --luma-border: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
     --luma-shadow: 0 14px 38px rgba(0, 0, 0, 0.06);
     --luma-muted: var(--secondary-text-color);
+    --luma-text-xs: 10px;
+    --luma-text-sm: 12px;
+    --luma-text-md: 14px;
+    --luma-text-lg: 18px;
+    --luma-weight-medium: 560;
+    --luma-weight-strong: 680;
+    --luma-weight-title: 720;
     display: block;
   }
 

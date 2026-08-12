@@ -30,9 +30,14 @@ export const activeEntities = (
         { domain: "climate", attribute: "hvac_action", state: ["heating", "cooling", "drying", "fan"] },
       ];
   const exclude = [...legacyExclude, ...(config?.exclude || [])];
+  const excludeHidden = config?.exclude_hidden ?? true;
+  const excludeDisabled = config?.exclude_disabled ?? true;
   const found = new Map<string, LumaActiveEntity>();
   for (const rule of include) {
     for (const entity of Object.values(hass.states)) {
+      const registry = hass.entities?.[entity.entity_id];
+      if (excludeHidden && (registry?.hidden === true || Boolean(registry?.hidden_by))) continue;
+      if (excludeDisabled && (registry?.disabled === true || Boolean(registry?.disabled_by))) continue;
       if (rule.entity && entity.entity_id !== rule.entity) continue;
       if (rule.entity_pattern && !glob(rule.entity_pattern, entity.entity_id)) continue;
       if (rule.domain && entity.entity_id.split(".")[0] !== rule.domain) continue;

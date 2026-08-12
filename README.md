@@ -1,26 +1,40 @@
 # Luma
 
-A vibrant, context-aware dashboard suite for Home Assistant.
+A polished, context-aware Lovelace card suite for Home Assistant.
 
-![Luma Home Hero preview](docs/luma-home-hero.svg)
+![Luma home hero](docs/luma-home-hero.svg)
 
-Luma turns deeply nested dashboard configurations into focused, reusable
-Lovelace components. It provides a shared visual language for responsive
-heroes, status cards, contextual actions, and live system feedback.
+Luma replaces deeply nested `button-card` and `card-mod` configurations with
+small, reusable web components. It shares one responsive visual language across
+heroes, room summaries, controls, live status, tabs, and Material-inspired
+bottom sheets while keeping actions and entity selection configurable at runtime.
 
-## Current components
+## Cards
 
-- `custom:luma-home-hero-card` — weather-aware home hero with a dynamic
-  greeting, lightweight weather effects, configurable incident aggregation,
-  per-incident acknowledgement, alarm status, and contextual banners.
-- `custom:luma-hero-card` — responsive hero with an optional entity, badge,
-  chips, conditional banners, and native Home Assistant actions.
-- `custom:luma-status-card` — compact entity or attribute status card.
+| Card | Purpose |
+| --- | --- |
+| `custom:luma-home-hero-card` | Weather-aware home hero, dynamic greeting, incidents, acknowledgements, alarm, waste and irrigation context |
+| `custom:luma-hero-card` | General-purpose responsive hero with chips, badge and banners |
+| `custom:luma-heading-card` | Compact, consistently weighted section heading |
+| `custom:luma-control-card` | Entity action with mapped state and contextual styling |
+| `custom:luma-control-group-card` | Dense, responsive row of controls |
+| `custom:luma-metric-card` | Primary and secondary live metrics |
+| `custom:luma-room-card` | Room summary with environment and quick actions |
+| `custom:luma-comfort-card` | Indoor comfort and air-quality summary |
+| `custom:luma-climate-card` | Compact climate controller |
+| `custom:luma-tab-card` | Responsive tab container for any Lovelace cards |
+| `custom:luma-active-card` | Runtime-filtered list of active entities |
+| `custom:luma-popup-card` | Hash-driven, draggable Material-style bottom sheet |
+| `custom:luma-alarm-card` | Alarm status and arming controls |
+| `custom:luma-status-card` | Small entity or attribute status card |
 
-This is an early development release. More components and graphical editors
-will follow.
+## Installation
 
-## Development
+Add this repository to HACS as a custom **Dashboard** repository and install
+Luma. HACS registers `/hacsfiles/lovelace-luma/lovelace-luma.js` as a module;
+refresh the browser after an update.
+
+For local development:
 
 ```bash
 npm install
@@ -30,134 +44,116 @@ npm run build
 
 The HACS-compatible bundle is written to `dist/lovelace-luma.js`.
 
-## Installation during development
+## Active entity filtering
 
-1. Build the project.
-2. Copy `dist/lovelace-luma.js` to Home Assistant's `config/www` directory.
-3. Add `/local/lovelace-luma.js` as a JavaScript module under
-   **Settings → Dashboards → Resources**.
-4. Hard-refresh the Home Assistant frontend.
-
-Once the repository has a GitHub release, it can be installed as a custom HACS
-Dashboard repository.
-
-## Hero example
+The home hero and active card use the same runtime filter language. Rules are
+evaluated against the current Home Assistant state and entity registry, so no
+rebuild is needed when the dashboard configuration changes.
 
 ```yaml
-type: custom:luma-hero-card
-entity: weather.home
-name: Home
-icon: mdi:home-heart
-accent_color: var(--primary-color)
-tap_action:
-  action: navigate
-  navigation_path: /lovelace/weather
-badge:
-  entity: alarm_control_panel.home
-  name: Security
-  icon: mdi:shield-home
-  color: var(--success-color)
-  show_state: true
-chips:
-  - entity: light.all_lights
-    name: Lights
-    icon: mdi:lightbulb-group
-    state: "on"
-    tap_action:
-      action: more-info
-banners:
-  - entity: sensor.active_irrigation_program
-    label: Irrigation running
-    name: OPEN
-    icon: mdi:sprinkler-variant
-    color: var(--info-color)
-    state_not:
-      - None
-      - unavailable
-      - unknown
-    tap_action:
-      action: navigate
-      navigation_path: /dashboard-irrigation/overview
+active:
+  # Both default to true. Hidden or disabled registry entries are ignored.
+  exclude_hidden: true
+  exclude_disabled: true
+  include:
+    # Keep useful light groups as one item.
+    - entity: light.sofa_lights
+      state: "on"
+      tap_action:
+        action: toggle
+
+    # Then add individual lights, without duplicating groups.
+    - domain: light
+      state: "on"
+      exclude_groups: true
+
+    - domain: media_player
+      state_not: ["off", "idle", "standby", "unknown", "unavailable"]
+
+    - domain: climate
+      attribute: hvac_action
+      state: ["heating", "cooling", "drying", "fan"]
+
+    - entity_pattern: sensor.*_power
+      above: 10
+  exclude:
+    - light.all_lights
+    - light.*_bulb_*
 ```
+
+An include rule accepts `entity`, `entity_pattern`, or `domain`, plus `state`,
+`state_not`, `above`, `below`, `attribute`, `exclude_groups`, and an optional
+`tap_action`. `exclude` accepts entity-id globs. Earlier matching rules win the
+display order and duplicate entity IDs are collapsed.
+
+Use the same block under `custom:luma-active-card`:
+
+```yaml
+type: custom:luma-active-card
+name: Active now
+active:
+  exclude_hidden: true
+  include:
+    - domain: light
+      state: "on"
+      exclude_groups: true
+```
+
+## Popup example
+
+```yaml
+type: custom:luma-popup-card
+hash: "#active"
+title: Active devices
+icon: mdi:lightning-bolt-outline
+max_width: 720
+cards:
+  - type: custom:luma-active-card
+```
+
+The popup has a scrim, a draggable dismiss handle, and an edit-mode preview so
+it remains selectable in the Lovelace editor.
 
 ## Home hero example
 
 ```yaml
 type: custom:luma-home-hero-card
-name: David
 weather_entity: weather.home
 alarm_entity: alarm_control_panel.home
-active_action:
-  action: navigate
-  navigation_path: "#frequent"
-active_exclude:
-  - light.all_lights
-  - media_player.*_cast
-acknowledgements_entity: input_text.acknowledged_home_warnings
-wind_threshold: 8
 tap_action:
   action: navigate
   navigation_path: /lovelace/weather
+active_action:
+  action: navigate
+  navigation_path: "#active"
+alarm_action:
+  action: navigate
+  navigation_path: "#alarm"
+waste_items:
+  - entity: sensor.general_waste
+    name: General
+  - entity: sensor.plastic_waste
+    name: Plastic
 incidents:
-  - entity: binary_sensor.irrigation_controller
-    state_not: "on"
-    message: Irrigation controller offline
-    tone: error
-    dismissible: false
-    navigation_path: /dashboard-irrigation/overview
   - entity_pattern: sensor.*_monitored_url
-    related_suffix:
-      from: _monitored_url
-      to: _status
     state_not: Up
     message: "{count} monitored services unavailable"
     tone: error
     aggregate: true
     navigation_path: /dashboard-homelab/overview
-  - device_classes:
-      - smoke
-      - moisture
-      - gas
-      - carbon_monoxide
-    state: "on"
-    message: "{name} requires attention"
-    tone: error
-irrigation_entity: sensor.active_irrigation_program
-irrigation_path: /dashboard-irrigation/overview
-waste_entity: sensor.waste_days
-waste_ack_entity: input_boolean.waste_taken_out
-waste_path: /lovelace/waste
-waste_days: 2
 ```
 
-Incident rules support an exact `entity`, an `entity_pattern` glob, or a list
-of `device_classes`. Rules can use `state`, `state_not`, `above`, `below`, and
-`for_minutes`. Use `{name}` for per-entity messages and `{count}` with
-`aggregate: true`. Non-critical incidents can be hidden for 7 or 30 days when
-an `acknowledgements_entity` input text helper is configured; error incidents
-remain visible.
-
-## Status example
-
-```yaml
-type: custom:luma-status-card
-entity: sensor.living_room_temperature
-name: Living room
-icon: mdi:sofa
-accent_color: var(--warning-color)
-tap_action:
-  action: more-info
-```
+Incident rules accept an exact `entity`, an `entity_pattern` glob, or
+`device_classes`, together with `state`, `state_not`, `above`, `below`, and
+`for_minutes`. `{name}` expands per entity and `{count}` works with
+`aggregate: true`. Configuring an input-text acknowledgement entity enables
+per-incident 7- or 30-day dismissal; error incidents remain visible.
 
 ## Actions
 
-Luma supports `none`, `navigate`, `more-info`, `toggle`, `perform-action`, and
-the legacy `call-service` action name.
+Cards support `none`, `navigate`, `more-info`, `toggle`, `perform-action`, and
+the legacy `call-service` action spelling.
 
 ## License
 
 [MIT](LICENSE)
-- `custom:luma-control-card` — responsive entity control with mapped states,
-  contextual active styling, and configurable tap/hold actions.
-- `custom:luma-control-group-card` — compact one-row control group for mobile
-  layouts and dense dashboard sections.

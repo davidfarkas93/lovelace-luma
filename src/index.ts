@@ -11,8 +11,10 @@ import "./cards/luma-active-card";
 import "./cards/luma-popup-card";
 import "./cards/luma-alarm-card";
 import "./cards/luma-status-card";
+import "./cards/luma-heading-card";
 
 const cards = [
+  { type:"luma-heading-card", name:"Luma Heading", description:"A compact, consistent section heading." },
   {
     type:"luma-alarm-card",name:"Luma Alarm",description:"A contextual alarm status and arming-mode controller.",
   },
@@ -76,7 +78,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.14.0 ",
+  "%c LUMA %c 0.15.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
