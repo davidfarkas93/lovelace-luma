@@ -18,6 +18,7 @@ interface LumaHomeHeroConfig {
   name?: string;
   weather_entity: string;
   alarm_entity?: string;
+  alarm_action?: LumaAction;
   notifications_entity?: string;
   acknowledgements_entity?: string;
   irrigation_entity?: string;
@@ -26,6 +27,7 @@ interface LumaHomeHeroConfig {
   waste_ack_entity?: string;
   waste_path?: string;
   waste_days?: number;
+  waste_items?: Array<{entity:string;name:string}>;
   wind_threshold?: number;
   active_action?: LumaAction;
   active_exclude?: string[];
@@ -148,7 +150,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   private get watchedIds(): string[] {
     if (!this.hass || !this.config) return [];
-    const fixed = [this.config.weather_entity,this.config.alarm_entity,this.config.notifications_entity,this.config.acknowledgements_entity,this.config.irrigation_entity,this.config.waste_entity,this.config.waste_ack_entity];
+    const fixed = [this.config.weather_entity,this.config.alarm_entity,this.config.notifications_entity,this.config.acknowledgements_entity,this.config.irrigation_entity,this.config.waste_entity,this.config.waste_ack_entity,...(this.config.waste_items||[]).map(item=>item.entity)];
     const patterns = (this.config.incidents || []).filter(r=>r.entity_pattern);
     const dynamic = Object.keys(this.hass.states).filter(id=>patterns.some(r=>glob(r.entity_pattern!,id)));
     const related = dynamic.map(id=>{const r=patterns.find(x=>glob(x.entity_pattern!,id));return r?.related_suffix?id.replace(r.related_suffix.from,r.related_suffix.to):id;});
@@ -157,8 +159,15 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private greeting(): string {
-    const h=new Date().getHours(), name=this.config?.name ? `, ${this.config.name}` : "";
+    const h=new Date().getHours(), user=this.config?.name||this.hass?.user?.name||"",first=user.trim().split(/\s+/)[0],name=first ? `, ${first}` : "";
     return `${h>=18?"Jó estét":h>=12?"Szép délutánt":h>=5?"Jó reggelt":"Szia"}${name}!`;
+  }
+  private wasteSummary():string {
+    if(!this.hass||!this.config)return "";
+    const items=(this.config.waste_items||[]).map(item=>({name:item.name,days:Number(this.hass!.states[item.entity]?.attributes.daysTo)})).filter(item=>Number.isFinite(item.days)).sort((a,b)=>a.days-b.days);
+    if(!items.length)return "";
+    const days=items[0].days,names=items.filter(item=>item.days===days).map(item=>item.name).join(" + "),when=days===0?"Ma":days===1?"Holnap":`${days} nap múlva`;
+    return `${when} · ${names}`;
   }
 
   private activeCount(): number {
@@ -231,7 +240,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     const alarm=this.config.alarm_entity?this.hass.states[this.config.alarm_entity]:undefined,armed=alarm&&!['disarmed','unknown','unavailable'].includes(alarm.state),alarmColor=armed?"var(--warning-color)":"var(--success-color)";
     const banners=[...(this.config.banners||[])];
     if(this.config.irrigation_entity)banners.push({entity:this.config.irrigation_entity,label:"Aktív öntözés",name:"MEGNYITÁS",icon:"mdi:sprinkler-variant",color:"var(--info-color, var(--primary-color))",state_not:["Nincs","none","unknown","unavailable",""],tap_action:{action:"navigate",navigation_path:this.config.irrigation_path||"/dashboard-irrigation/irrigation"}});
-    if(this.config.waste_entity&&this.hass.states[this.config.waste_ack_entity||""]?.state!=="on")banners.push({entity:this.config.waste_entity,label:"Hulladék",name:"MEGNYITÁS",icon:"mdi:trash-can-outline",color:"var(--warning-color)",below:(this.config.waste_days||2)+.01,tap_action:{action:"navigate",navigation_path:this.config.waste_path||"/lovelace/waste"},secondary_label:"KÉSZ",secondary_action:this.config.waste_ack_entity?{action:"perform-action",perform_action:"input_boolean.turn_on",target:{entity_id:this.config.waste_ack_entity}}:undefined});
-    return html`<ha-card class=${`hero ${this.config.tap_action?"interactive":""}`} style=${`--luma-accent:${accent}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action||{action:"navigate",navigation_path:"/lovelace/weather"},this.config?.weather_entity)}>${this.renderWeatherFx(state,wind)}<div class="content"><div class="top"><div class="weather-icon"><ha-icon icon=${weatherIcons[state]||"mdi:home-heart"}></ha-icon></div><h2>${this.greeting()}</h2><div class="subtitle">${subtitle}</div><div class="status"><button class="active interactive" style="--active-color:var(--primary-color)" @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,this.config?.active_action)}}><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span>Aktív</span>${active>0?html`<span class="active-badge">${active}</span>`:nothing}</button>${alarm?html`<button class="alarm interactive" style=${`--alarm-color:${alarmColor}`} @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,{action:"more-info"},this.config?.alarm_entity)}}><ha-icon icon="mdi:shield-home-outline"></ha-icon><span>${entityState(this.hass,alarm)}</span></button>`:nothing}<button class="attention interactive" style=${`--attention-color:${attentionColor}`} @click=${(e:Event)=>{e.stopPropagation();this.detailsOpen=!this.detailsOpen}}><ha-icon icon=${critical?"mdi:alert-octagon":issues.length?"mdi:alert-circle-outline":"mdi:check-circle-outline"}></ha-icon><span>${issues.length?`${issues.length} jelzés`:"Rendben"}</span></button></div></div>${this.detailsOpen&&issues.length?html`<div class="panel">${issues.map(issue=>html`<div class="issue" style=${`--issue-color:${issue.tone==="error"?"var(--error-color)":"var(--warning-color)"}`}><ha-icon icon=${issue.tone==="error"?"mdi:alert-octagon-outline":"mdi:alert-outline"}></ha-icon><span class="issue-text" @click=${()=>issue.path&&runAction(this,this.hass!,{action:"navigate",navigation_path:issue.path})}>${issue.message}</span>${issue.dismissible&&issue.tone!=="error"?html`<span class="issue-actions"><button @click=${(e:Event)=>this.dismiss(issue,7,e)}>7 nap</button><button @click=${(e:Event)=>this.dismiss(issue,30,e)}>30 nap</button></span>`:nothing}</div>`)}</div>`:nothing}${banners.some(b=>itemIsVisible(this.hass!,b))?html`<div class="banners">${banners.map(b=>this.renderBanner(b))}</div>`:nothing}</div></ha-card>`;
+    if(this.config.waste_entity&&this.hass.states[this.config.waste_ack_entity||""]?.state!=="on")banners.push({entity:this.config.waste_entity,label:"Hulladék",state_label:this.wasteSummary()||undefined,name:"MEGNYITÁS",icon:"mdi:trash-can-outline",color:"var(--warning-color)",below:(this.config.waste_days||2)+.01,tap_action:{action:"navigate",navigation_path:this.config.waste_path||"/lovelace/waste"},secondary_label:"KÉSZ",secondary_action:this.config.waste_ack_entity?{action:"perform-action",perform_action:"input_boolean.turn_on",target:{entity_id:this.config.waste_ack_entity}}:undefined});
+    return html`<ha-card class=${`hero ${this.config.tap_action?"interactive":""}`} style=${`--luma-accent:${accent}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action||{action:"navigate",navigation_path:"/lovelace/weather"},this.config?.weather_entity)}>${this.renderWeatherFx(state,wind)}<div class="content"><div class="top"><div class="weather-icon"><ha-icon icon=${weatherIcons[state]||"mdi:home-heart"}></ha-icon></div><h2>${this.greeting()}</h2><div class="subtitle">${subtitle}</div><div class="status"><button class="active interactive" style="--active-color:var(--primary-color)" @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,this.config?.active_action)}}><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span>Aktív</span>${active>0?html`<span class="active-badge">${active}</span>`:nothing}</button>${alarm?html`<button class="alarm interactive" style=${`--alarm-color:${alarmColor}`} @click=${(e:Event)=>{e.stopPropagation();void runAction(this,this.hass!,this.config?.alarm_action||{action:"more-info"},this.config?.alarm_entity)}}><ha-icon icon="mdi:shield-home-outline"></ha-icon><span>${entityState(this.hass,alarm)}</span></button>`:nothing}<button class="attention interactive" style=${`--attention-color:${attentionColor}`} @click=${(e:Event)=>{e.stopPropagation();this.detailsOpen=!this.detailsOpen}}><ha-icon icon=${critical?"mdi:alert-octagon":issues.length?"mdi:alert-circle-outline":"mdi:check-circle-outline"}></ha-icon><span>${issues.length?`${issues.length} jelzés`:"Rendben"}</span></button></div></div>${this.detailsOpen&&issues.length?html`<div class="panel">${issues.map(issue=>html`<div class="issue" style=${`--issue-color:${issue.tone==="error"?"var(--error-color)":"var(--warning-color)"}`}><ha-icon icon=${issue.tone==="error"?"mdi:alert-octagon-outline":"mdi:alert-outline"}></ha-icon><span class="issue-text" @click=${()=>issue.path&&runAction(this,this.hass!,{action:"navigate",navigation_path:issue.path})}>${issue.message}</span>${issue.dismissible&&issue.tone!=="error"?html`<span class="issue-actions"><button @click=${(e:Event)=>this.dismiss(issue,7,e)}>7 nap</button><button @click=${(e:Event)=>this.dismiss(issue,30,e)}>30 nap</button></span>`:nothing}</div>`)}</div>`:nothing}${banners.some(b=>itemIsVisible(this.hass!,b))?html`<div class="banners">${banners.map(b=>this.renderBanner(b))}</div>`:nothing}</div></ha-card>`;
   }
 }

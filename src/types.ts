@@ -12,6 +12,8 @@ export interface HassEntity {
 
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
+  user?: { id?: string; name?: string; is_admin?: boolean };
+  editMode?: boolean;
   locale?: { language?: string };
   formatEntityState?: (state: HassEntity) => string;
   callService: (

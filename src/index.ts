@@ -9,9 +9,13 @@ import "./cards/luma-climate-card";
 import "./cards/luma-tab-card";
 import "./cards/luma-active-card";
 import "./cards/luma-popup-card";
+import "./cards/luma-alarm-card";
 import "./cards/luma-status-card";
 
 const cards = [
+  {
+    type:"luma-alarm-card",name:"Luma Alarm",description:"A contextual alarm status and arming-mode controller.",
+  },
   {
     type:"luma-popup-card",name:"Luma Popup",description:"A responsive Material 3 inspired hash-driven bottom sheet.",
   },
@@ -72,7 +76,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.13.1 ",
+  "%c LUMA %c 0.14.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
