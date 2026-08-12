@@ -30,6 +30,11 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-sensor-grid-card` | Responsive, grouped sensor values without `entities` or `card-mod` |
 | `custom:luma-remote-card` | Compact Android TV remote with navigation, playback and app shortcuts |
 | `custom:luma-gate-card` | Gate and garage controls with an inline second-tap confirmation |
+| `custom:luma-cover-card` | Cover position, motion state, progress bar and open/stop/close controls |
+
+`luma-control-card` automatically recognizes active lights and media players.
+Lights receive a warm accent and brightness subtitle; media players receive a
+distinct media accent and show the current title or application when available.
 
 ## Installation
 
