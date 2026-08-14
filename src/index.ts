@@ -21,8 +21,12 @@ import "./cards/luma-disclosure-card";
 import "./cards/luma-energy-flow-card";
 import "./cards/luma-navigation-card";
 import "./cards/luma-history-card";
+import "./cards/luma-homelab-hero-card";
+import "./cards/luma-rack-cooling-card";
 
 const cards = [
+  { type:"luma-rack-cooling-card", name:"Luma Rack Cooling", description:"A responsive rack thermal and fan controller summary." },
+  { type:"luma-homelab-hero-card", name:"Luma Homelab Hero", description:"A dynamic Homelab health hero aggregating Kuma, Komodo and infrastructure incidents." },
   { type:"luma-history-card", name:"Luma History", description:"Responsive recorder history chart with gradients and touch inspection." },
   { type:"luma-energy-flow-card", name:"Luma Energy Flow", description:"Live solar, home and grid power flow." },
   { type:"luma-navigation-card", name:"Luma Navigation", description:"A polished contextual navigation card." },
@@ -96,7 +100,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.22.4 ",
+  "%c LUMA %c 0.23.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

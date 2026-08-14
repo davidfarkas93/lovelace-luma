@@ -10,7 +10,9 @@ interface Config { type:string; entity:string; name?:string; subtitle?:string; i
 export class LumaControlCard extends LitElement implements LovelaceCard {
   @property({attribute:false}) hass?:HomeAssistant;
   @state() private config?:Config;
+  @state() private pending=false;
   private holdTimer?:number;
+  private confirmTimer?:number;
   private held=false;
   static styles=[lumaTokens,css`
     .card{display:grid;grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"icon name value" "icon subtitle action";align-items:center;gap:3px 12px;padding:16px;border:1px solid color-mix(in srgb,var(--tone) var(--border-mix),transparent);border-radius:var(--luma-radius-card);background:linear-gradient(145deg,color-mix(in srgb,var(--tone) var(--mix),var(--luma-surface)),color-mix(in srgb,var(--tone) 2%,var(--luma-surface)) 72%);box-shadow:0 13px 34px color-mix(in srgb,var(--tone) var(--shadow-mix),transparent);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
@@ -26,6 +28,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;return !old||old.states[this.config?.entity||""]!==this.hass?.states[this.config?.entity||""]}
   private startHold(){this.held=false;this.holdTimer=window.setTimeout(()=>{this.held=true;void runAction(this,this.hass!,this.config?.hold_action,this.config?.entity)},500)}
   private cancelHold(){if(this.holdTimer)clearTimeout(this.holdTimer)}
+  private activate(){const action=this.config?.tap_action;if(action&&"confirmation" in action&&action.confirmation){if(!this.pending){this.pending=true;clearTimeout(this.confirmTimer);this.confirmTimer=window.setTimeout(()=>this.pending=false,3500);return}this.pending=false}void runAction(this,this.hass!,action,this.config?.entity)}
   render(){
     if(!this.hass||!this.config)return nothing;
     const e=this.hass.states[this.config.entity],domain=this.config.entity.split(".")[0];
@@ -37,6 +40,6 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
     const area=domain==="light"?entityAreaName(this.hass,this.config.entity):undefined;
     const subtitle=this.config.subtitle||(domain==="light"?(area||"Nincs helyiséghez rendelve"):domain==="media_player"&&active&&media?media:entityName(e,"Állapot"));
     const vars=`--tone:${tone};--mix:${active?"13%":"1.5%"};--border-mix:${active?"22%":"7%"};--icon-mix:${active?"21%":"6%"};--pill-mix:${active?"16%":"5%"};--shadow-mix:${active?"12%":"2%"};--value-color:${active?tone:"var(--luma-muted)"}`;
-    return html`<ha-card class=${`card ${domain} ${this.config.tap_action?"interactive":""}`} style=${vars} role=${this.config.tap_action?"button":"presentation"} tabindex=${this.config.tap_action?"0":"-1"} @pointerdown=${()=>this.startHold()} @pointerup=${()=>this.cancelHold()} @pointerleave=${()=>this.cancelHold()} @click=${()=>{if(!this.held)void runAction(this,this.hass!,this.config?.tap_action,this.config?.entity)}}><div class="icon"><ha-icon icon=${this.config.icon||entityIcon(e)}></ha-icon></div><div class="name">${this.config.name||entityName(e,this.config.entity)}</div><div class="subtitle">${subtitle}</div><div class="value">${entityState(this.hass,e,this.config.state_map)}</div>${this.config.action_label?html`<div class="action">${this.config.action_label}</div>`:nothing}</ha-card>`;
+    return html`<ha-card class=${`card ${domain} ${this.config.tap_action?"interactive":""}`} style=${vars} role=${this.config.tap_action?"button":"presentation"} tabindex=${this.config.tap_action?"0":"-1"} @pointerdown=${()=>this.startHold()} @pointerup=${()=>this.cancelHold()} @pointerleave=${()=>this.cancelHold()} @click=${()=>{if(!this.held)this.activate()}}><div class="icon"><ha-icon icon=${this.pending?"mdi:check":this.config.icon||entityIcon(e)}></ha-icon></div><div class="name">${this.pending?"Megerősítés":this.config.name||entityName(e,this.config.entity)}</div><div class="subtitle">${this.pending?(this.config.tap_action&&"confirmation" in this.config.tap_action?this.config.tap_action.confirmation?.text||"Kattints újra a végrehajtáshoz":"Kattints újra"):subtitle}</div><div class="value">${entityState(this.hass,e,this.config.state_map)}</div>${this.config.action_label?html`<div class="action">${this.pending?"Megerősít →":this.config.action_label}</div>`:nothing}</ha-card>`;
   }
 }

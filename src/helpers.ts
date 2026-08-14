@@ -135,6 +135,11 @@ export const runAction = async (
     return;
   }
 
+  if (action.action === "url") {
+    window.open(action.url_path, "_blank", "noopener,noreferrer");
+    return;
+  }
+
   if (action.action === "more-info") {
     const entityId = action.entity || defaultEntity;
     if (entityId) fire(node, "hass-more-info", { entityId });

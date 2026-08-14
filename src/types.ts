@@ -38,14 +38,16 @@ export interface HomeAssistant {
 export type LumaAction =
   | { action: "none" }
   | { action: "navigate"; navigation_path: string }
+  | { action: "url"; url_path: string }
   | { action: "more-info"; entity?: string }
-  | { action: "toggle"; entity?: string }
+  | { action: "toggle"; entity?: string; confirmation?: { text?: string } }
   | {
       action: "perform-action" | "call-service";
       perform_action?: string;
       service?: string;
       data?: Record<string, unknown>;
       target?: Record<string, unknown>;
+      confirmation?: { text?: string };
     };
 
 export interface LumaCondition {

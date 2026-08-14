@@ -36,8 +36,11 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
 | `custom:luma-history-card` | Recorder-backed canvas history chart with signed ranges, gradients and touch inspection |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
+| `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
+| `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
 
-`luma-control-card` automatically recognizes active lights and media players.
+`luma-control-card` automatically recognizes active lights and media players,
+and actions with `confirmation` use an inline second-tap confirmation state.
 Lights receive a warm accent and brightness subtitle; media players receive a
 distinct media accent and show the current title or application when available.
 
