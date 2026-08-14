@@ -26,6 +26,7 @@ interface LumaHeroConfig {
   accent_color?: string;
   badge?: LumaEntityItem;
   chips?: LumaEntityItem[];
+  chips_inline?: boolean;
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
 }
@@ -118,6 +119,22 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         margin-top: 16px;
       }
 
+      .hero.chips-inline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 22px;
+      }
+
+      .hero.chips-inline .chips {
+        justify-content: flex-end;
+        margin-top: 0;
+      }
+
+      .hero.chips-inline .banners {
+        grid-column: 1 / -1;
+      }
+
       .chip {
         display: inline-flex;
         align-items: center;
@@ -191,6 +208,10 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
       @media (max-width: 599px) {
         .hero {
           padding: 18px;
+        }
+
+        .hero.chips-inline {
+          display: block;
         }
 
         .top {
@@ -319,7 +340,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
 
     return html`
       <ha-card
-        class=${`hero ${this.config.tap_action ? "interactive" : ""}`}
+        class=${`hero ${this.config.chips_inline ? "chips-inline" : ""} ${this.config.tap_action ? "interactive" : ""}`}
         style=${`--luma-accent:${accent}`}
         tabindex=${this.config.tap_action ? "0" : "-1"}
         @click=${() => runAction(this, this.hass!, this.config?.tap_action, this.config?.entity)}
