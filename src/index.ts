@@ -18,8 +18,12 @@ import "./cards/luma-gate-card";
 import "./cards/luma-cover-card";
 import "./cards/luma-temperature-card";
 import "./cards/luma-disclosure-card";
+import "./cards/luma-energy-flow-card";
+import "./cards/luma-navigation-card";
 
 const cards = [
+  { type:"luma-energy-flow-card", name:"Luma Energy Flow", description:"Live solar, home and grid power flow." },
+  { type:"luma-navigation-card", name:"Luma Navigation", description:"A polished contextual navigation card." },
   { type:"luma-disclosure-card", name:"Luma Disclosure", description:"A compact expandable container for related controls." },
   { type:"luma-temperature-card", name:"Luma Temperature", description:"A visual room-temperature comparison with comfort-aware color and scale." },
   { type:"luma-cover-card", name:"Luma Cover", description:"A responsive cover controller with position, motion state, progress and confirmation." },
@@ -90,7 +94,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.19.0 ",
+  "%c LUMA %c 0.20.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

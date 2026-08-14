@@ -33,6 +33,8 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-cover-card` | Cover position, motion state, progress bar and open/stop/close controls |
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
+| `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
+| `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 
 `luma-control-card` automatically recognizes active lights and media players.
 Lights receive a warm accent and brightness subtitle; media players receive a
