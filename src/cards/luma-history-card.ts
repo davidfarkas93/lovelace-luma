@@ -108,7 +108,10 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     const end = Date.now();
     const start = end - (this.config?.hours_to_show || 24) * 3600000;
     const values = [...this.data.values()].flat().map((point) => point.value);
-    return { start, end, max: Math.max(1, ...values) * 1.08 };
+    const rawMin = Math.min(0, ...values);
+    const rawMax = Math.max(1, ...values);
+    const padding = rawMin < 0 ? (rawMax - rawMin) * .06 : 0;
+    return { start, end, min: rawMin - padding, max: rawMax * 1.08 + padding };
   }
   private draw() {
     const canvas = this.renderRoot.querySelector("canvas");
@@ -130,7 +133,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     for (let index = 0; index <= 4; index++) {
       const fraction = index / 4, y = top + fraction * plotHeight;
       context.beginPath(); context.moveTo(left, y); context.lineTo(width - right, y); context.stroke();
-      context.textAlign = "right"; context.fillText(String(Math.round(bounds.max * (1 - fraction))), left - 6, y + 3);
+      context.textAlign = "right"; context.fillText(String(Math.round(bounds.max - (bounds.max - bounds.min) * fraction)), left - 6, y + 3);
       const time = bounds.start + fraction * (bounds.end - bounds.start);
       context.textAlign = index === 0 ? "left" : index === 4 ? "right" : "center";
       context.fillText(new Date(time).toLocaleTimeString(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit", hour12: false }), left + fraction * plotWidth, height - 5);
@@ -138,7 +141,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     this.config.series.forEach((series, index) => {
       const points = this.data.get(series.entity) || [];
       if (!points.length) return;
-      const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (1 - point.value / bounds.max) * plotHeight }));
+      const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (bounds.max - point.value) / (bounds.max - bounds.min) * plotHeight }));
       const gradient = context.createLinearGradient(0, top, 0, top + plotHeight);
       gradient.addColorStop(0, `${this.color(series, index)}44`); gradient.addColorStop(1, `${this.color(series, index)}00`);
       context.beginPath(); coordinates.forEach((point, i) => i ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));

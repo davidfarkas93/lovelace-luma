@@ -34,7 +34,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
 | `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
-| `custom:luma-history-card` | Recorder-backed SVG history chart with gradients and touch inspection |
+| `custom:luma-history-card` | Recorder-backed canvas history chart with signed ranges, gradients and touch inspection |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 
 `luma-control-card` automatically recognizes active lights and media players.
