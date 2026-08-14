@@ -32,6 +32,7 @@ export interface HomeAssistant {
     data?: Record<string, unknown>,
     target?: Record<string, unknown>,
   ) => Promise<unknown>;
+  callWS?: <T = unknown>(message: Record<string, unknown>) => Promise<T>;
 }
 
 export type LumaAction =
