@@ -88,7 +88,9 @@ irrigation_zone_entities:
 attribute from a sensor and expects each item to provide `timestamp`, `type`,
 `snapshot`, and `url`; this keeps integrations responsible for fetching events
 while Luma owns presentation. The attribute name, visible item count, column
-count, and excluded event types remain configurable at runtime.
+count, and excluded event types remain configurable at runtime. Snapshot tiles
+show a tone-aware shimmer while authenticated images load and a clear fallback
+when an image is missing or unavailable.
 
 ```yaml
 type: custom:luma-timeline-card
