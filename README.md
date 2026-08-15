@@ -38,6 +38,10 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
+| `custom:luma-irrigation-hero-card` | Context-aware irrigation system status hero |
+| `custom:luma-irrigation-schedule-card` | Schedule controller with equal-width weekday buttons |
+| `custom:luma-irrigation-zone-card` | Confirmed zone start/stop with live progress |
+| `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.

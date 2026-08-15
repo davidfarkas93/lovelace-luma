@@ -23,8 +23,16 @@ import "./cards/luma-navigation-card";
 import "./cards/luma-history-card";
 import "./cards/luma-homelab-hero-card";
 import "./cards/luma-rack-cooling-card";
+import "./cards/luma-irrigation-hero-card";
+import "./cards/luma-irrigation-schedule-card";
+import "./cards/luma-irrigation-zone-card";
+import "./cards/luma-irrigation-program-card";
 
 const cards = [
+  { type:"luma-irrigation-program-card", name:"Luma Irrigation Program", description:"A confirmed irrigation program launcher with live progress." },
+  { type:"luma-irrigation-zone-card", name:"Luma Irrigation Zone", description:"A confirmed zone controller with duration and live progress." },
+  { type:"luma-irrigation-schedule-card", name:"Luma Irrigation Schedule", description:"An even-width weekday and start-time schedule controller." },
+  { type:"luma-irrigation-hero-card", name:"Luma Irrigation Hero", description:"A contextual irrigation system header." },
   { type:"luma-rack-cooling-card", name:"Luma Rack Cooling", description:"A responsive rack thermal and fan controller summary." },
   { type:"luma-homelab-hero-card", name:"Luma Homelab Hero", description:"A dynamic Homelab health hero aggregating Kuma, Komodo and infrastructure incidents." },
   { type:"luma-history-card", name:"Luma History", description:"Responsive recorder history chart with gradients and touch inspection." },
