@@ -76,6 +76,12 @@ export const entityState = (
 ): string => {
   if (!entity) return "Unavailable";
   if (stateMap?.[entity.state]) return stateMap[entity.state];
+  const numeric = Number(entity.state);
+  if (Number.isFinite(numeric) && entity.state.includes(".")) {
+    const value = new Intl.NumberFormat(hass.locale?.language || undefined, { maximumFractionDigits: 2 }).format(numeric);
+    const unit = entity.attributes.unit_of_measurement;
+    return unit ? `${value} ${unit}` : value;
+  }
   return hass.formatEntityState?.(entity) || entity.state;
 };
 
