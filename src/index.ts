@@ -36,7 +36,7 @@ const cards = [
   { type:"luma-update-card", name:"Luma Update", description:"An update installer with confirmation and live installation progress." },
   { type:"luma-logbook-card", name:"Luma Logbook", description:"A recorder-backed, grouped and collapsible event timeline." },
   { type:"luma-irrigation-program-card", name:"Luma Irrigation Program", description:"A confirmed irrigation program launcher with live progress." },
-  { type:"luma-irrigation-zone-card", name:"Luma Irrigation Zone", description:"A confirmed zone controller with duration and live progress." },
+  { type:"luma-irrigation-zone-card", name:"Luma Irrigation Zone", description:"An adjustable timed zone controller with confirmation and live progress." },
   { type:"luma-irrigation-schedule-card", name:"Luma Irrigation Schedule", description:"An even-width weekday and start-time schedule controller." },
   { type:"luma-irrigation-hero-card", name:"Luma Irrigation Hero", description:"A contextual irrigation system header." },
   { type:"luma-rack-cooling-card", name:"Luma Rack Cooling", description:"A responsive rack thermal and fan controller summary." },
@@ -114,7 +114,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.25.2 ",
+  "%c LUMA %c 0.26.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

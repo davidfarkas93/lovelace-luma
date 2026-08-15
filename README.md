@@ -40,7 +40,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
 | `custom:luma-irrigation-hero-card` | Context-aware irrigation system status hero |
 | `custom:luma-irrigation-schedule-card` | Schedule controller with equal-width weekday buttons |
-| `custom:luma-irrigation-zone-card` | Confirmed zone start/stop with live progress |
+| `custom:luma-irrigation-zone-card` | Adjustable timed zone start/stop with confirmation and live progress |
 | `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
 | `custom:luma-logbook-card` | Recorder-backed event history grouped by day |
 | `custom:luma-update-card` | Confirmed update installation with live progress |
@@ -54,6 +54,35 @@ distinct media accent and show the current title or application when available.
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual
 shutter controls. Destructive group actions can use inline second-tap confirmation.
+
+`luma-irrigation-zone-card` can use a shared duration number and dedicated
+start/stop button entities while remaining compatible with direct switch
+toggle configurations. Its compact minus/plus controls respect the number
+entity's minimum, maximum, and step values.
+
+```yaml
+type: custom:luma-irrigation-zone-card
+entity: switch.garden_zone
+name: Garden
+duration_entity: number.custom_zone_duration
+start_entity: button.start_garden_custom_duration
+stop_entity: button.stop_irrigation
+progress_entity: sensor.active_zone_progress
+remaining_entity: sensor.active_zone_remaining
+```
+
+The home hero accepts `irrigation_zone_entities` in addition to
+`irrigation_entity`, so manually or ad-hoc started zones also produce the
+irrigation banner. Entries may be entity IDs or objects with a shorter display
+name.
+
+```yaml
+irrigation_entity: sensor.active_irrigation_program
+irrigation_zone_entities:
+  - entity: switch.garden_zone
+    name: Garden
+  - switch.drip_zone
+```
 
 `luma-timeline-card` is intentionally data-source agnostic. It reads an `events`
 attribute from a sensor and expects each item to provide `timestamp`, `type`,
