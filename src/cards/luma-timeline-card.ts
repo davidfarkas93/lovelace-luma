@@ -37,6 +37,8 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config?: TimelineConfig;
   @state() private selected?: TimelineEvent;
+  @state() private signedUrls: Record<string, string> = {};
+  private signingKey = "";
 
   static styles = [lumaTokens, css`
     :host{container-type:inline-size}
@@ -51,6 +53,7 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
   setConfig(config: TimelineConfig): void {
     if (!config?.entity) throw new Error("Luma timeline requires an entity.");
     this.config = { events_attribute: "events", max_items: 24, columns: 2, exclude_types: ["lowMemory"], ...config };
+    this.signingKey = "";
   }
 
   getCardSize(): number { return 5; }
@@ -60,6 +63,51 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
     const previous = changed.get("hass") as HomeAssistant | undefined;
     const id = this.config?.entity;
     return !previous || !id || previous.states[id] !== this.hass?.states[id];
+  }
+
+  protected updated(changed: PropertyValues<this>): void {
+    if (changed.has("hass")) void this.signThumbnails();
+  }
+
+  private events(): TimelineEvent[] {
+    if (!this.hass || !this.config) return [];
+    const entity = this.hass.states[this.config.entity];
+    const raw = entity?.attributes[this.config.events_attribute || "events"];
+    const excluded = new Set(this.config.exclude_types || []);
+    return (Array.isArray(raw) ? raw as TimelineEvent[] : [])
+      .filter((event) => !excluded.has(event.type || ""))
+      .slice(0, this.config.max_items);
+  }
+
+  private async signPath(path?: string, expires = 3600): Promise<string | undefined> {
+    if (!path || !this.hass?.callWS) return path;
+    if (!path.startsWith("/api/")) return path;
+    try {
+      const result = await this.hass.callWS<{ path?: string } | string>({ type: "auth/sign_path", path, expires });
+      return typeof result === "string" ? result : result.path || path;
+    } catch {
+      return path;
+    }
+  }
+
+  private async signThumbnails(): Promise<void> {
+    const events = this.events();
+    const key = events.map((event) => `${event.id || ""}:${event.snapshot || ""}`).join("|");
+    if (!key || key === this.signingKey) return;
+    this.signingKey = key;
+    const pairs = await Promise.all(events.map(async (event) => {
+      const source = event.snapshot;
+      return source ? [source, await this.signPath(source)] as const : undefined;
+    }));
+    if (this.signingKey !== key) return;
+    this.signedUrls = Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => Boolean(pair?.[1])));
+  }
+
+  private async openEvent(event: TimelineEvent): Promise<void> {
+    if (!event.url) return;
+    const url = await this.signPath(event.url, 600);
+    const snapshot = event.snapshot ? this.signedUrls[event.snapshot] || await this.signPath(event.snapshot, 600) : undefined;
+    this.selected = { ...event, url, snapshot };
   }
 
   private meta(type = "motion") {
@@ -79,19 +127,15 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
   render() {
     if (!this.hass || !this.config) return nothing;
     const entity = this.hass.states[this.config.entity];
-    const raw = entity?.attributes[this.config.events_attribute || "events"];
-    const excluded = new Set(this.config.exclude_types || []);
-    const events = (Array.isArray(raw) ? raw as TimelineEvent[] : [])
-      .filter((event) => !excluded.has(event.type || ""))
-      .slice(0, this.config.max_items);
+    const events = this.events();
     const title = this.config.title || entity?.attributes.friendly_name || "Kamera események";
     return html`
       <ha-card>
         <div class="header"><span class="header-icon"><ha-icon icon=${this.config.icon || "mdi:camera-burst"}></ha-icon></span><div><h2>${title}</h2><div class="subtitle">UniFi Protect · legutóbbi észlelések</div></div><span class="count">${events.length} esemény</span></div>
         ${events.length ? html`<div class="timeline" style=${`--columns:${this.config.columns}`}>
           ${events.map((event) => { const meta = this.meta(event.type); return html`
-            <button class="event" style=${`--tone:${meta.color}`} @click=${() => { if (event.url) this.selected = event; }}>
-              ${event.snapshot ? html`<img class="snapshot" src=${event.snapshot} alt="" loading="lazy">` : html`<span class="snapshot"></span>`}
+            <button class="event" style=${`--tone:${meta.color}`} @click=${() => void this.openEvent(event)}>
+              ${event.snapshot ? html`<img class="snapshot" src=${this.signedUrls[event.snapshot] || ""} alt="" loading="lazy">` : html`<span class="snapshot"></span>`}
               <span class="details"><span class="type"><ha-icon icon=${meta.icon}></ha-icon>${meta.label}</span><span class="time">${this.formatTime(event.timestamp)}</span></span>
               ${event.url ? html`<span class="play"><ha-icon icon="mdi:play"></ha-icon></span>` : nothing}
             </button>`; })}
