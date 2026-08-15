@@ -28,8 +28,10 @@ import "./cards/luma-irrigation-schedule-card";
 import "./cards/luma-irrigation-zone-card";
 import "./cards/luma-irrigation-program-card";
 import "./cards/luma-logbook-card";
+import "./cards/luma-update-card";
 
 const cards = [
+  { type:"luma-update-card", name:"Luma Update", description:"An update installer with confirmation and live installation progress." },
   { type:"luma-logbook-card", name:"Luma Logbook", description:"A recorder-backed, grouped and collapsible event timeline." },
   { type:"luma-irrigation-program-card", name:"Luma Irrigation Program", description:"A confirmed irrigation program launcher with live progress." },
   { type:"luma-irrigation-zone-card", name:"Luma Irrigation Zone", description:"A confirmed zone controller with duration and live progress." },
