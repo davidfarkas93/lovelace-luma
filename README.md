@@ -44,6 +44,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
 | `custom:luma-logbook-card` | Recorder-backed event history grouped by day |
 | `custom:luma-update-card` | Confirmed update installation with live progress |
+| `custom:luma-timeline-card` | Responsive camera-event timeline with authenticated snapshots and video playback |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
@@ -53,6 +54,22 @@ distinct media accent and show the current title or application when available.
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual
 shutter controls. Destructive group actions can use inline second-tap confirmation.
+
+`luma-timeline-card` is intentionally data-source agnostic. It reads an `events`
+attribute from a sensor and expects each item to provide `timestamp`, `type`,
+`snapshot`, and `url`; this keeps integrations responsible for fetching events
+while Luma owns presentation. The attribute name, visible item count, column
+count, and excluded event types remain configurable at runtime.
+
+```yaml
+type: custom:luma-timeline-card
+entity: sensor.front_door_timeline
+title: Front door events
+max_items: 24
+columns: 2
+exclude_types:
+  - lowMemory
+```
 
 ## Installation
 
