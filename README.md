@@ -42,6 +42,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-irrigation-schedule-card` | Schedule controller with equal-width weekday buttons |
 | `custom:luma-irrigation-zone-card` | Confirmed zone start/stop with live progress |
 | `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
+| `custom:luma-logbook-card` | Recorder-backed event history grouped by day |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
