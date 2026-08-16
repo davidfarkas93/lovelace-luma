@@ -96,7 +96,13 @@ attribute from a sensor and expects each item to provide `timestamp`, `type`,
 while Luma owns presentation. The attribute name, visible item count, column
 count, and excluded event types remain configurable at runtime. Snapshot tiles
 show a tone-aware shimmer while authenticated images load and a clear fallback
-when an image is missing or unavailable.
+when an image is missing or unavailable. Set `initial_items` to keep long
+timelines compact behind an explicit expand/collapse control.
+
+Event video uses Home Assistant's chunked UniFi Protect proxy directly. The
+player requests data eagerly, starts as soon as the first playable MP4 data is
+available, and uses muted inline autoplay for mobile-browser compatibility;
+sound can be enabled from the native controls.
 
 ```yaml
 type: custom:luma-timeline-card
