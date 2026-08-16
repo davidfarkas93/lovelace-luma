@@ -49,6 +49,8 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-waste-hero-card` | Dynamic next-collection summary with urgency and acknowledgement state |
 | `custom:luma-waste-collection-card` | Next collection date and countdown for a waste schedule sensor |
 | `custom:luma-waste-ack-card` | Confirmed, state-aware bin placement acknowledgement |
+| `custom:luma-lawn-hero-card` | Contextual robot mower status, battery and progress hero |
+| `custom:luma-lawn-control-card` | Confirmed start, resume and stop controls with live task progress |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
