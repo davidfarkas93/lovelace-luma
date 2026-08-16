@@ -27,6 +27,7 @@ interface LumaHeroConfig {
   badge?: LumaEntityItem;
   chips?: LumaEntityItem[];
   chips_inline?: boolean;
+  top_spacing?: number;
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
 }
@@ -341,7 +342,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
     return html`
       <ha-card
         class=${`hero ${this.config.chips_inline ? "chips-inline" : ""} ${this.config.tap_action ? "interactive" : ""}`}
-        style=${`--luma-accent:${accent}`}
+        style=${`--luma-accent:${accent};margin-top:${this.config.top_spacing || 0}px`}
         tabindex=${this.config.tap_action ? "0" : "-1"}
         @click=${() => runAction(this, this.hass!, this.config?.tap_action, this.config?.entity)}
         @keydown=${(event: KeyboardEvent) => {

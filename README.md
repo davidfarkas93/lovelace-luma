@@ -55,6 +55,12 @@ distinct media accent and show the current title or application when available.
 the same behavior and visual language to cover whole-house, room, and individual
 shutter controls. Destructive group actions can use inline second-tap confirmation.
 
+Security-oriented layouts can use `compact_mobile: true` on
+`luma-alarm-card`, `surface: true` on `luma-sensor-grid-card`, and a numeric
+`top_spacing` on `luma-hero-card`. These options keep kiosk headers clear of
+the viewport edge and make dense alarm and zone controls more comfortable on
+small screens without changing their desktop behavior.
+
 `luma-irrigation-zone-card` can use a shared duration number and dedicated
 start/stop button entities while remaining compatible with direct switch
 toggle configurations. Its compact minus/plus controls respect the number
