@@ -61,16 +61,20 @@ Security-oriented layouts can use `compact_mobile: true` on
 the viewport edge and make dense alarm and zone controls more comfortable on
 small screens without changing their desktop behavior.
 
-`luma-irrigation-zone-card` can use a shared duration number and dedicated
-start/stop button entities while remaining compatible with direct switch
-toggle configurations. Its compact minus/plus controls respect the number
-entity's minimum, maximum, and step values.
+`luma-irrigation-zone-card` can use a shared firmware duration number and
+dedicated start/stop button entities while remaining compatible with direct
+switch toggle configurations. Each card keeps its own ad-hoc duration in
+browser storage. Its compact minus/plus controls change only that local value;
+after the second confirmation tap, the card writes the value to the shared
+number and then presses the zone start button sequentially. Minimum, maximum,
+and step values still come from the number entity.
 
 ```yaml
 type: custom:luma-irrigation-zone-card
 entity: switch.garden_zone
 name: Garden
 duration_entity: number.custom_zone_duration
+default_duration: 10
 start_entity: button.start_garden_custom_duration
 stop_entity: button.stop_irrigation
 progress_entity: sensor.active_zone_progress
