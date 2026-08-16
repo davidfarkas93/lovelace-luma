@@ -20,6 +20,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-control-group-card` | Dense, responsive row of controls |
 | `custom:luma-metric-card` | Primary and secondary live metrics |
 | `custom:luma-room-card` | Room summary with environment and quick actions |
+| `custom:luma-action-card` | Compact scene, service, or navigation action |
 | `custom:luma-comfort-card` | Indoor comfort and air-quality summary |
 | `custom:luma-climate-card` | Compact climate controller |
 | `custom:luma-tab-card` | Responsive tab container for any Lovelace cards |
