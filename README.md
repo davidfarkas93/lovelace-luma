@@ -26,7 +26,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-tab-card` | Responsive tab container for any Lovelace cards |
 | `custom:luma-active-card` | Runtime-filtered list of active entities |
 | `custom:luma-popup-card` | Hash-driven, draggable Material-style bottom sheet |
-| `custom:luma-alarm-card` | Alarm status and arming controls |
+| `custom:luma-alarm-card` | Alarm status with segmented, confirmed arming and disarming controls |
 | `custom:luma-status-card` | Small entity or attribute status card |
 | `custom:luma-sensor-grid-card` | Responsive, grouped sensor values without `entities` or `card-mod` |
 | `custom:luma-remote-card` | Compact Android TV remote with navigation, playback and app shortcuts |
