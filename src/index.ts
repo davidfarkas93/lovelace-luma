@@ -34,8 +34,12 @@ import "./cards/luma-action-card";
 import "./cards/luma-weather-hero-card";
 import "./cards/luma-weather-forecast-card";
 import "./cards/luma-iframe-card";
+import "./cards/luma-waste-card";
 
 const cards = [
+  { type:"luma-waste-hero-card", name:"Luma Waste Hero", description:"A contextual collection overview with urgency and acknowledgement state." },
+  { type:"luma-waste-collection-card", name:"Luma Waste Collection", description:"A polished next-collection card for waste schedule sensors." },
+  { type:"luma-waste-ack-card", name:"Luma Waste Acknowledgement", description:"A confirmed collection preparation acknowledgement." },
   { type:"luma-weather-hero-card", name:"Luma Weather Hero", description:"A responsive current-weather hero with contextual conditions and metrics." },
   { type:"luma-weather-forecast-card", name:"Luma Weather Forecast", description:"A responsive native Home Assistant daily forecast strip." },
   { type:"luma-iframe-card", name:"Luma Iframe", description:"A polished responsive frame for maps and embedded dashboards." },
@@ -122,7 +126,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.33.2 ",
+  "%c LUMA %c 0.34.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
