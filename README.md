@@ -191,6 +191,39 @@ active:
 
 ## Popup example
 
+## Room example
+
+```yaml
+type: custom:luma-room-card
+name: Living room
+icon: mdi:sofa-outline
+path: /dashboard-rooms/living-area
+temperature_entity: sensor.living_room_temperature
+humidity_entity: sensor.living_room_humidity
+items:
+  - entity: light.living_room
+    name: Light
+    icon: mdi:lightbulb-outline
+    tap_action:
+      action: toggle
+  - entity: media_player.living_room
+    name: TV
+    icon: mdi:television
+    tap_action:
+      action: more-info
+  - entity: cover.living_room
+    name: Shade
+    icon: mdi:window-shutter
+    tap_action:
+      action: more-info
+```
+
+The environment entities and quick items are optional. Items use the shared
+Luma condition, state mapping, color, and action fields, so the card also fits
+utility rooms, outdoor areas, and media-focused spaces.
+
+## Popup example
+
 ```yaml
 type: custom:luma-popup-card
 hash: "#active"
