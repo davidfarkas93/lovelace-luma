@@ -51,6 +51,8 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-waste-ack-card` | Confirmed, state-aware bin placement acknowledgement |
 | `custom:luma-lawn-hero-card` | Contextual robot mower status, battery and progress hero |
 | `custom:luma-lawn-control-card` | Confirmed start, resume and stop controls with live task progress |
+| `custom:luma-battery-hero-card` | Dynamic low-battery summary with critical and warning counts |
+| `custom:luma-battery-grid-card` | Runtime-discovered, sorted battery devices without template-generated cards |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.

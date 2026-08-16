@@ -36,8 +36,11 @@ import "./cards/luma-weather-forecast-card";
 import "./cards/luma-iframe-card";
 import "./cards/luma-waste-card";
 import "./cards/luma-lawn-card";
+import "./cards/luma-battery-card";
 
 const cards = [
+  { type:"luma-battery-hero-card", name:"Luma Battery Hero", description:"A dynamic low-battery overview with critical and warning counts." },
+  { type:"luma-battery-grid-card", name:"Luma Battery Grid", description:"Runtime-discovered and sorted battery entities without auto-entities templates." },
   { type:"luma-lawn-hero-card", name:"Luma Lawn Hero", description:"A contextual robot mower hero with live state, battery and progress." },
   { type:"luma-lawn-control-card", name:"Luma Lawn Control", description:"A confirmed start, resume and stop controller with live task progress." },
   { type:"luma-waste-hero-card", name:"Luma Waste Hero", description:"A contextual collection overview with urgency and acknowledgement state." },
@@ -129,7 +132,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.35.0 ",
+  "%c LUMA %c 0.36.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
