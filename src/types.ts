@@ -64,6 +64,8 @@ export interface LumaActiveRule extends LumaCondition {
   domain?: string;
   attribute?: string;
   exclude_groups?: boolean;
+  display_as?: "light" | "media_player" | "climate";
+  area_name?: string;
   tap_action?: LumaAction;
 }
 

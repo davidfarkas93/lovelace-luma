@@ -220,7 +220,10 @@ active:
 
 An include rule accepts `entity`, `entity_pattern`, or `domain`, plus `state`,
 `state_not`, `above`, `below`, `attribute`, `exclude_groups`, and an optional
-`tap_action`. `exclude` accepts entity-id globs. Earlier matching rules win the
+`tap_action`. Use `display_as: light` for a relay that should use light styling
+and behavior, and `area_name` to provide the secondary location label when an
+integration entity or group has no area in Home Assistant's registry.
+`exclude` accepts entity-id globs. Earlier matching rules win the
 display order and duplicate entity IDs are collapsed. Each `collapse` entry
 also accepts entity-id globs; if multiple listed entities are active, `prefer`
 is retained (or the first displayed match when the preferred entity is absent).
