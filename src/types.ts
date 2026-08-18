@@ -19,6 +19,7 @@ export interface HomeAssistant {
     hidden_by?: string | null;
     disabled?: boolean;
     disabled_by?: string | null;
+    platform?: string;
   }>;
   devices?: Record<string, { area_id?: string | null }>;
   areas?: Record<string, { name?: string }>;
