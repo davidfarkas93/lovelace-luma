@@ -15,7 +15,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | --- | --- |
 | `custom:luma-home-hero-card` | Weather-aware home hero, dynamic greeting, incidents, acknowledgements, alarm, waste and irrigation context |
 | `custom:luma-hero-card` | General-purpose responsive hero with chips, badge and banners |
-| `custom:luma-heading-card` | Compact, consistently weighted section heading |
+| `custom:luma-heading-card` | Compact section heading with optional navigation/action affordance |
 | `custom:luma-control-card` | Entity action with mapped state and contextual styling |
 | `custom:luma-control-group-card` | Dense, responsive row of controls |
 | `custom:luma-metric-card` | Primary and secondary live metrics |
