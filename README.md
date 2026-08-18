@@ -62,6 +62,11 @@ and actions with `confirmation` use an inline second-tap confirmation state.
 Lights receive a warm accent and brightness subtitle; media players receive a
 distinct media accent and show the current title or application when available.
 
+The home hero's alarm chip opens an anchored alarm control by default. Its
+`alarm_modes` remain runtime-configurable, each state change requires an
+explicit second confirmation tap, and `alarm_action` continues to open the
+full detailed alarm sheet. Set `alarm_popover: false` to keep the direct action.
+
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual
 shutter controls. Destructive group actions can use inline second-tap confirmation.
