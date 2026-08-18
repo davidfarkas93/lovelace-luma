@@ -11,5 +11,5 @@ type Child=HTMLElement&{hass?:HomeAssistant};
  getCardSize(){return 4}
  protected updated(changed:PropertyValues<this>){if(changed.has("config" as never))void this.mount();if(changed.has("hass"))for(const child of this.childCards)child.hass=this.hass}
  private async mount(){if(!this.config||!this.grid)return;const token=++this.token,helpers=await window.loadCardHelpers?.();if(!helpers||token!==this.token)return;this.childCards=this.config.cards.map(c=>helpers.createCardElement(c)as Child);for(const child of this.childCards)child.hass=this.hass;this.grid.replaceChildren(...this.childCards)}
- render(){if(!this.config)return nothing;return html`<div class="grid" style=${`--desktop:${this.config.columns};${this.config.desktop_template?`--desktop-template:${this.config.desktop_template};`:""}--tablet:${this.config.tablet_columns};--mobile:${this.config.mobile_columns};--gap:${this.config.gap}px`}><span></span></div>`}
+ render(){if(!this.config)return nothing;return html`<div class="grid" style=${`--desktop:${this.config.columns};--desktop-template:${this.config.desktop_template||"repeat(var(--desktop),minmax(0,1fr))"};--tablet:${this.config.tablet_columns};--mobile:${this.config.mobile_columns};--gap:${this.config.gap}px`}><span></span></div>`}
 }
