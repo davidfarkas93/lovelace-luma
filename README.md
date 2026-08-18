@@ -46,6 +46,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-logbook-card` | Recorder-backed event history grouped by day |
 | `custom:luma-update-card` | Confirmed update installation with live progress |
 | `custom:luma-timeline-card` | Responsive camera-event timeline with authenticated snapshots and video playback |
+| `custom:luma-camera-activity-card` | Latest security event with authenticated thumbnail and on-demand live camera selector |
 | `custom:luma-waste-hero-card` | Dynamic next-collection summary with urgency and acknowledgement state |
 | `custom:luma-waste-collection-card` | Next collection date and countdown for a waste schedule sensor |
 | `custom:luma-waste-ack-card` | Confirmed, state-aware bin placement acknowledgement |

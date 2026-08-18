@@ -30,6 +30,7 @@ import "./cards/luma-irrigation-program-card";
 import "./cards/luma-logbook-card";
 import "./cards/luma-update-card";
 import "./cards/luma-timeline-card";
+import "./cards/luma-camera-activity-card";
 import "./cards/luma-action-card";
 import "./cards/luma-weather-hero-card";
 import "./cards/luma-weather-forecast-card";
@@ -42,6 +43,7 @@ import "./cards/luma-appliance-card";
 import "./cards/luma-entity-grid-card";
 
 const cards = [
+  { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
   { type:"luma-appliance-card", name:"Luma Appliance", description:"A contextual appliance status card with remaining time and progress." },
   { type:"luma-entity-grid-card", name:"Luma Entity Grid", description:"A fast runtime-filtered responsive entity collection without auto-entities templates." },
