@@ -26,7 +26,12 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   setConfig(config:Config){if(!config?.entity)throw Error("Luma control requires entity.");this.config={active_states:[],action_label:"Részletek →",...config}}
   getCardSize(){return 2}
   protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;return !old||old.states[this.config?.entity||""]!==this.hass?.states[this.config?.entity||""]}
-  private startHold(){this.held=false;this.holdTimer=window.setTimeout(()=>{this.held=true;void runAction(this,this.hass!,this.config?.hold_action,this.config?.entity)},500)}
+  private startHold(){
+    this.held=false;
+    const domain=this.config?.display_as||this.config?.entity.split(".")[0];
+    const action=this.config?.hold_action||(domain==="light"?{action:"more-info"} as const:undefined);
+    this.holdTimer=window.setTimeout(()=>{this.held=true;void runAction(this,this.hass!,action,this.config?.entity)},500);
+  }
   private cancelHold(){if(this.holdTimer)clearTimeout(this.holdTimer)}
   private activate(){const action=this.config?.tap_action;if(action&&"confirmation" in action&&action.confirmation){if(!this.pending){this.pending=true;clearTimeout(this.confirmTimer);this.confirmTimer=window.setTimeout(()=>this.pending=false,3500);return}this.pending=false}void runAction(this,this.hass!,action,this.config?.entity)}
   render(){

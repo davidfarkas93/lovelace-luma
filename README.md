@@ -65,6 +65,9 @@ distinct media accent and show the current title or application when available.
 For a relay whose Home Assistant domain does not describe its physical use,
 set `display_as: light`. This changes only presentation and active-state
 styling; actions still target the entity's real domain.
+Light controls open Home Assistant's More Info dialog on long press by default,
+giving direct access to brightness, color temperature, and color controls when
+the entity supports them. An explicit `hold_action` overrides this behavior.
 
 The home hero's alarm chip opens an anchored alarm control by default. Its
 `alarm_modes` remain runtime-configurable, each state change requires an
