@@ -30,7 +30,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-status-card` | Small entity or attribute status card |
 | `custom:luma-sensor-grid-card` | Responsive, grouped sensor values without `entities` or `card-mod` |
 | `custom:luma-remote-card` | Compact Android TV remote with navigation, playback and app shortcuts |
-| `custom:luma-gate-card` | Gate and garage controls with an inline second-tap confirmation |
+| `custom:luma-gate-card` | Gate and garage controls with inline confirmation or an anchored action popover |
 | `custom:luma-cover-card` | Cover position, motion state, progress bar and open/stop/close controls |
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
@@ -65,6 +65,21 @@ distinct media accent and show the current title or application when available.
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual
 shutter controls. Destructive group actions can use inline second-tap confirmation.
+
+`luma-gate-card` defaults to permanently visible controls with second-tap
+confirmation. Set `display: popover` for compact overview cards: the first tap
+opens a control surface anchored to that card, and the labelled confirmation
+action performs the state-aware open or close command. Moving covers offer stop
+instead, and an optional pedestrian button can share the same surface.
+
+```yaml
+type: custom:luma-gate-card
+entity: cover.driveway_gate
+name: Driveway
+kind: cover
+display: popover
+pedestrian_entity: button.driveway_pedestrian_open
+```
 
 Security-oriented layouts can use `compact_mobile: true` on
 `luma-alarm-card`, `surface: true` on `luma-sensor-grid-card`, and a numeric
