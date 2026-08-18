@@ -62,6 +62,9 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 and actions with `confirmation` use an inline second-tap confirmation state.
 Lights receive a warm accent and brightness subtitle; media players receive a
 distinct media accent and show the current title or application when available.
+For a relay whose Home Assistant domain does not describe its physical use,
+set `display_as: light`. This changes only presentation and active-state
+styling; actions still target the entity's real domain.
 
 The home hero's alarm chip opens an anchored alarm control by default. Its
 `alarm_modes` remain runtime-configurable, each state change requires an

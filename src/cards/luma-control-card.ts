@@ -4,7 +4,7 @@ import { entityAreaName, entityIcon, entityName, entityState, runAction } from "
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
 
-interface Config { type:string; entity:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; tap_action?:LumaAction; hold_action?:LumaAction }
+interface Config { type:string; entity:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; display_as?:"light"|"media_player"|"switch"; tap_action?:LumaAction; hold_action?:LumaAction }
 
 @customElement("luma-control-card")
 export class LumaControlCard extends LitElement implements LovelaceCard {
@@ -31,7 +31,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   private activate(){const action=this.config?.tap_action;if(action&&"confirmation" in action&&action.confirmation){if(!this.pending){this.pending=true;clearTimeout(this.confirmTimer);this.confirmTimer=window.setTimeout(()=>this.pending=false,3500);return}this.pending=false}void runAction(this,this.hass!,action,this.config?.entity)}
   render(){
     if(!this.hass||!this.config)return nothing;
-    const e=this.hass.states[this.config.entity],domain=this.config.entity.split(".")[0];
+    const e=this.hass.states[this.config.entity],domain=this.config.display_as||this.config.entity.split(".")[0];
     const defaults=domain==="light"?["on"]:domain==="media_player"?["on","playing","paused","buffering"]:[];
     const states=this.config.active_states?.length?this.config.active_states:defaults,active=states.includes(e?.state);
     const activeTone=domain==="light"?"var(--warning-color)":domain==="media_player"?"#7c78d8":"var(--primary-color)";
