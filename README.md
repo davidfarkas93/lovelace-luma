@@ -55,6 +55,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-battery-grid-card` | Runtime-discovered, sorted battery devices without template-generated cards |
 | `custom:luma-layout-card` | Child-card grid with independent desktop, tablet and mobile column counts |
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
+| `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.

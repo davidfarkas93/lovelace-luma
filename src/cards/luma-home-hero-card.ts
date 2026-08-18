@@ -103,7 +103,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     .subtitle { grid-area:subtitle; align-self:start; margin-top:5px; color:var(--luma-muted); font-size:13px; line-height:1.35; }
     button { font:inherit; }
     .status { grid-area:status; display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:7px; min-width:0; }
-    .alarm,.attention,.active { display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:8px 14px; border:0; border-radius:999px; font-size:13px; font-weight:600; transition:transform .16s ease,background .16s ease; }
+    .alarm,.attention,.active { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:34px; padding:7px 11px; border:0; border-radius:999px; font-size:11px; font-weight:680; line-height:1; transition:transform .16s ease,background .16s ease; }
     .alarm:hover,.attention:hover,.active:hover { transform:translateY(-1px); filter:saturate(1.08); }
     .alarm { color:var(--alarm-color); background:color-mix(in srgb,var(--alarm-color) 12%,transparent); }
     .alarm ha-icon,.attention ha-icon,.active ha-icon { --mdc-icon-size:16px; }

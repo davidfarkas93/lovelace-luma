@@ -21,7 +21,7 @@ export interface HomeAssistant {
     disabled_by?: string | null;
     platform?: string;
   }>;
-  devices?: Record<string, { area_id?: string | null }>;
+  devices?: Record<string, { area_id?: string | null; name?: string; model?: string }>;
   areas?: Record<string, { name?: string }>;
   user?: { id?: string; name?: string; is_admin?: boolean };
   editMode?: boolean;
