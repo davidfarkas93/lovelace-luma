@@ -151,6 +151,14 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
   getCardSize(): number { return 4; }
 
+  protected updated(): void {
+    // Incident actions live inside the otherwise clickable weather hero.
+    // Stop their click from reaching the hero after the child action runs.
+    this.renderRoot.querySelector(".panel")?.addEventListener("click", this.stopIncidentClick);
+  }
+
+  private stopIncidentClick = (event: Event): void => event.stopPropagation();
+
   disconnectedCallback(){super.disconnectedCallback();this.detachAlarmListeners()}
 
   private toggleAlarmPopover(){this.alarmPopoverOpen=!this.alarmPopoverOpen;this.alarmPending=undefined;if(this.alarmPopoverOpen){window.addEventListener("resize",this.repositionAlarm);window.addEventListener("scroll",this.repositionAlarm,true);void this.updateComplete.then(()=>this.positionAlarmPopover())}else this.detachAlarmListeners()}
