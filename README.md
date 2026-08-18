@@ -201,12 +201,26 @@ active:
   exclude:
     - light.all_lights
     - light.*_bulb_*
+
+  # Integrations such as Zigbee may expose overlapping groups without a
+  # member list. Keep one semantic representation when several are active.
+  collapse:
+    - entities:
+        - light.terrace_lights
+        - light.outdoor_wall_lights
+        - light.terrace_relay
+      prefer: light.terrace_lights
 ```
 
 An include rule accepts `entity`, `entity_pattern`, or `domain`, plus `state`,
 `state_not`, `above`, `below`, `attribute`, `exclude_groups`, and an optional
 `tap_action`. `exclude` accepts entity-id globs. Earlier matching rules win the
-display order and duplicate entity IDs are collapsed.
+display order and duplicate entity IDs are collapsed. Each `collapse` entry
+also accepts entity-id globs; if multiple listed entities are active, `prefer`
+is retained (or the first displayed match when the preferred entity is absent).
+This is useful for integration-level groups that do not expose
+`attributes.entity_id`, where automatic member-based deduplication is not
+possible in the browser.
 
 Use the same block under `custom:luma-active-card`:
 

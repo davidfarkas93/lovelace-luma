@@ -72,6 +72,12 @@ export interface LumaActiveConfig {
   exclude?: string[];
   exclude_hidden?: boolean;
   exclude_disabled?: boolean;
+  collapse?: LumaActiveCollapse[];
+}
+
+export interface LumaActiveCollapse {
+  entities: string[];
+  prefer?: string;
 }
 
 export interface LumaActiveEntity {

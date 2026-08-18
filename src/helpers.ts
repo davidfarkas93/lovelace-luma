@@ -54,6 +54,24 @@ export const activeEntities = (
       found.set(entity.entity_id, { entity, rule });
     }
   }
+
+  // Some integrations expose overlapping logical light groups without their
+  // member list. Collapse lets the dashboard describe those aliases while
+  // still selecting the best currently-active representation at runtime.
+  for (const collapse of config?.collapse || []) {
+    if (!collapse.entities?.length) continue;
+    const matches = [...found.keys()].filter((entityId) =>
+      collapse.entities.some((pattern) => glob(pattern, entityId)),
+    );
+    if (matches.length < 2) continue;
+    const preferred = collapse.prefer
+      ? matches.find((entityId) => glob(collapse.prefer!, entityId))
+      : undefined;
+    const keep = preferred || matches[0];
+    for (const entityId of matches) {
+      if (entityId !== keep) found.delete(entityId);
+    }
+  }
   return [...found.values()];
 };
 
