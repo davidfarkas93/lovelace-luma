@@ -29,7 +29,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-alarm-card` | Alarm status with segmented, confirmed arming and disarming controls |
 | `custom:luma-status-card` | Small entity or attribute status card |
 | `custom:luma-sensor-grid-card` | Responsive, grouped sensor values without `entities` or `card-mod` |
-| `custom:luma-remote-card` | Compact Android TV remote with navigation, playback and app shortcuts |
+| `custom:luma-remote-card` | Android TV remote with a large D-pad, integrated playback rail and app shortcuts |
 | `custom:luma-gate-card` | Gate and garage controls with inline confirmation or an anchored action popover |
 | `custom:luma-cover-card` | Cover position, motion state, progress bar and open/stop/close controls |
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
@@ -57,6 +57,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-layout-card` | Child-card grid with independent desktop, tablet and mobile column counts |
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
+| `custom:luma-weather-forecast-card` | Responsive daily forecast with an hourly, data-rich per-day detail sheet |
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
