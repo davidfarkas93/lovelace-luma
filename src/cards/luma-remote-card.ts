@@ -54,7 +54,7 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     .media .play { color:var(--luma-accent); background:color-mix(in srgb,var(--luma-accent) 14%,transparent); }
     .label { padding:0 2px; color:var(--luma-muted); font-size:var(--luma-text-xs); font-weight:var(--luma-weight-strong); letter-spacing:.04em; text-transform:uppercase; }
     .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-    .app { display:flex; gap:7px; font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
+    .app { display:flex; align-items:center; justify-content:center; gap:7px; text-align:center; font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
     .app ha-icon { --mdc-icon-size:16px; }
     .app.success { color:var(--success-color); background:color-mix(in srgb,var(--success-color) 11%,transparent); }
     .app.error { color:var(--error-color); background:color-mix(in srgb,var(--error-color) 11%,transparent); }
