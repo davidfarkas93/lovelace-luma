@@ -4,7 +4,7 @@ import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
 interface App { name: string; activity: string }
-interface Config { type: string; remote_entity: string; media_entity: string; name?: string; apps?: App[] }
+interface Config { type: string; remote_entity: string; media_entity: string; name?: string; apps?: App[]; artwork?: boolean }
 
 const utilityKeys = [
   ["mdi:power", "KEYCODE_POWER", "Be/ki"],
@@ -22,9 +22,15 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
 
   static styles = [lumaTokens, css`
     .wrap { display:grid; gap:13px; }
-    .now { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:17px; background:color-mix(in srgb,var(--luma-accent) 7%,var(--luma-surface)); }
+    .now { position:relative; isolation:isolate; display:flex; align-items:center; gap:10px; min-height:42px; padding:12px 14px; overflow:hidden; border-radius:17px; background:color-mix(in srgb,var(--luma-accent) 7%,var(--luma-surface)); }
+    .now.has-art { min-height:62px; padding:11px; }
+    .backdrop { position:absolute; z-index:-2; inset:-22px; width:calc(100% + 44px); height:calc(100% + 44px); object-fit:cover; filter:blur(20px) saturate(1.15); opacity:.2; transform:scale(1.06); }
+    .now.has-art::after { content:""; position:absolute; z-index:-1; inset:0; background:linear-gradient(90deg,color-mix(in srgb,var(--luma-surface) 90%,transparent),color-mix(in srgb,var(--luma-surface) 67%,transparent)); }
+    .art { flex:0 0 auto; width:58px; height:58px; object-fit:cover; border-radius:14px; box-shadow:0 7px 18px rgba(0,0,0,.16); }
     .dot { width:8px; height:8px; border-radius:50%; background:var(--success-color); box-shadow:0 0 0 4px color-mix(in srgb,var(--success-color) 12%,transparent); }
     .meta { min-width:0; }
+    .eyebrow { display:flex; align-items:center; gap:7px; margin-bottom:3px; color:var(--luma-muted); font-size:9px; font-weight:720; letter-spacing:.055em; text-transform:uppercase; }
+    .eyebrow .dot { width:6px; height:6px; box-shadow:none; }
     .name { font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
     .state { overflow:hidden; color:var(--luma-muted); font-size:var(--luma-text-xs); text-overflow:ellipsis; white-space:nowrap; }
     button { font:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -49,6 +55,8 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     .app { font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
     @media(max-width:599px) {
       .utility { grid-template-columns:repeat(3,1fr); }
+      .now.has-art { min-height:56px; }
+      .art { width:52px; height:52px; border-radius:13px; }
       .key,.app { min-height:48px; }
       .remote-body { box-sizing:border-box; border-radius:27px; }
       .nav { grid-template-columns:repeat(3,64px); grid-template-rows:repeat(3,59px); }
@@ -71,7 +79,11 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config) return nothing;
     const entity = this.hass.states[this.config.media_entity];
     const attrs = entity?.attributes || {};
-    const detail = String(attrs.media_title || attrs.app_name || entity?.state || "Nem elérhető");
+    const mediaTitle = String(attrs.media_title || "");
+    const detail = String(attrs.media_artist || attrs.media_series_title || attrs.app_name || entity?.state || "Nem elérhető");
+    const artwork = this.config.artwork !== false
+      ? String(attrs.entity_picture_local || attrs.entity_picture || "")
+      : "";
     const apps = this.config.apps || [
       { name: "YouTube", activity: "com.google.android.youtube.tv" },
       { name: "Netflix", activity: "com.netflix.ninja" },
@@ -80,7 +92,14 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     ];
     const online = entity && !["off", "unavailable", "unknown"].includes(entity.state);
     return html`<div class="wrap">
-      <div class="now"><span class="dot" style=${online ? "" : "background:var(--luma-muted);box-shadow:none"}></span><div class="meta"><div class="name">${this.config.name || "TV"}</div><div class="state">${detail}</div></div></div>
+      <div class=${`now ${artwork ? "has-art" : ""}`}>
+        ${artwork ? html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true"><img class="art" src=${artwork} alt="">` : html`<span class="dot" style=${online ? "" : "background:var(--luma-muted);box-shadow:none"}></span>`}
+        <div class="meta">
+          ${artwork ? html`<div class="eyebrow"><span class="dot" style=${online ? "" : "background:var(--luma-muted)"}></span>${this.config.name || "TV"}</div>` : nothing}
+          <div class="name">${mediaTitle || this.config.name || "TV"}</div>
+          <div class="state">${detail}</div>
+        </div>
+      </div>
       <div class="utility">${utilityKeys.map(([icon, command, label]) => this.button(icon, command, label))}</div>
       <div class="remote-body">
         <div class="nav">

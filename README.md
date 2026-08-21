@@ -43,6 +43,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-irrigation-schedule-card` | Schedule controller with equal-width weekday buttons |
 | `custom:luma-irrigation-zone-card` | Adjustable timed zone start/stop with confirmation and live progress |
 | `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
+
 | `custom:luma-logbook-card` | Recorder-backed event history grouped by day |
 | `custom:luma-update-card` | Confirmed update installation with live progress |
 | `custom:luma-timeline-card` | Responsive camera-event timeline with authenticated snapshots and video playback |
@@ -58,6 +59,11 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
 | `custom:luma-weather-forecast-card` | Responsive daily forecast with an hourly, data-rich per-day detail sheet |
+
+`luma-remote-card` automatically adds a restrained now-playing artwork strip
+when the media player exposes `entity_picture_local` or `entity_picture`. It
+falls back to the compact text header without reserving empty space. Set
+`artwork: false` to disable it for a specific remote.
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
