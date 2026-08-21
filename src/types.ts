@@ -74,6 +74,7 @@ export interface LumaActiveConfig {
   exclude?: string[];
   exclude_hidden?: boolean;
   exclude_disabled?: boolean;
+  exclude_platforms?: string[];
   collapse?: LumaActiveCollapse[];
 }
 

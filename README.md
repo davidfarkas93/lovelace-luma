@@ -239,6 +239,10 @@ type: custom:luma-active-card
 name: Active now
 active:
   exclude_hidden: true
+  # Broad domain rules ignore switch-as-light wrappers by default. Override
+  # this list, or include a specific entity explicitly, when one is intentional.
+  exclude_platforms:
+    - switch_as_x
   include:
     - domain: light
       state: "on"
