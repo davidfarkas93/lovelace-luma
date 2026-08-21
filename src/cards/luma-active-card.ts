@@ -30,12 +30,18 @@ const labels: Record<string, string> = {
 export class LumaActiveCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config?: Config;
+  @state() private turningOff = false;
 
   static styles = [lumaTokens, css`
     .wrap { display:grid; gap:8px; }
     .heading { display:flex; align-items:center; gap:9px; padding:2px 3px; color:var(--primary-text-color); font-size:14px; font-weight:720; }
     .heading ha-icon { --mdc-icon-size:19px; color:var(--warning-color); }
+    .heading-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .count { margin-left:auto; padding:4px 8px; border-radius:999px; color:var(--warning-color); background:color-mix(in srgb,var(--warning-color) 12%,transparent); font-size:10px; }
+    .all-off { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:30px; padding:0 10px; border:0; border-radius:999px; color:var(--warning-color); background:color-mix(in srgb,var(--warning-color) 12%,transparent); font:inherit; font-size:10px; font-weight:720; cursor:pointer; transition:transform .16s ease,background .16s ease; }
+    .all-off:hover:not(:disabled) { transform:translateY(-1px); background:color-mix(in srgb,var(--warning-color) 18%,transparent); }
+    .all-off:disabled { cursor:default; opacity:.55; }
+    .all-off ha-icon { --mdc-icon-size:15px; color:inherit; }
     .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .item { display:grid; grid-template-columns:38px minmax(0,1fr); grid-template-areas:"icon name" "icon value"; align-items:center; gap:2px 10px; min-width:0; padding:10px; border:1px solid color-mix(in srgb,var(--tone) 13%,transparent); border-radius:16px; color:var(--primary-text-color); background:linear-gradient(145deg,color-mix(in srgb,var(--tone) 7%,var(--luma-surface)),var(--luma-surface)); font:inherit; text-align:left; }
     .icon { grid-area:icon; display:grid; place-items:center; width:38px; height:38px; border-radius:12px; color:var(--tone); background:color-mix(in srgb,var(--tone) 13%,transparent); }
@@ -44,6 +50,8 @@ export class LumaActiveCard extends LitElement implements LovelaceCard {
     .value { grid-area:value; align-self:start; overflow:hidden; color:var(--luma-muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
     .empty { padding:17px; border:1px dashed var(--luma-border); border-radius:16px; color:var(--luma-muted); font-size:11px; text-align:center; }
     @media(max-width:480px) {
+      .all-off { width:30px; padding:0; }
+      .all-off span { display:none; }
       .grid { gap:6px; }
       .item { grid-template-columns:32px minmax(0,1fr); gap:2px 7px; padding:8px; }
       .icon { width:32px; height:32px; border-radius:10px; }
@@ -60,11 +68,24 @@ export class LumaActiveCard extends LitElement implements LovelaceCard {
     return true;
   }
 
+  private async turnOffAll(entityIds: string[]): Promise<void> {
+    if (!this.hass || !entityIds.length || this.turningOff) return;
+    this.turningOff = true;
+    try {
+      await this.hass.callService("homeassistant", "turn_off", {}, { entity_id: entityIds });
+    } finally {
+      this.turningOff = false;
+    }
+  }
+
   render() {
     if (!this.hass || !this.config) return nothing;
     const items = activeEntities(this.hass, this.config.active);
+    const activeLights = items
+      .filter(({ entity, rule }) => (rule.display_as || entity.entity_id.split(".")[0]) === "light")
+      .map(({ entity }) => entity.entity_id);
     return html`<div class="wrap">
-      <div class="heading"><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span>${this.config.name || "Most aktív"}</span><span class="count">${items.length}</span></div>
+      <div class="heading"><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span class="heading-title">${this.config.name || "Most aktív"}</span><span class="count">${items.length}</span>${activeLights.length ? html`<button class="all-off" ?disabled=${this.turningOff} title="Minden aktív lámpa lekapcsolása" @click=${() => this.turnOffAll(activeLights)}><ha-icon icon=${this.turningOff ? "mdi:loading" : "mdi:lightbulb-group-off-outline"}></ha-icon><span>${this.turningOff ? "Kikapcsolás…" : "Lámpák le"}</span></button>` : nothing}</div>
       ${items.length ? html`<div class="grid">${items.map(({ entity, rule }) => {
         const domain = rule.display_as || entity.entity_id.split(".")[0];
         const tone = domain === "light" ? "var(--warning-color)" : domain === "climate" ? "var(--info-color, var(--primary-color))" : "var(--primary-color)";

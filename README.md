@@ -249,6 +249,10 @@ active:
       exclude_groups: true
 ```
 
+When at least one displayed light is active, the card header also shows a
+compact **Lights off** action. It turns off only entries presented as lights;
+media players and climate devices are left untouched.
+
 ## Popup example
 
 ## Room example
