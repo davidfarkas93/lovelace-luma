@@ -19,6 +19,8 @@ const utilityKeys = [
 export class LumaRemoteCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config?: Config;
+  @state() private launching?: string;
+  @state() private launchResult?: "success" | "error";
 
   static styles = [lumaTokens, css`
     .wrap { display:grid; gap:13px; }
@@ -52,7 +54,12 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     .media .play { color:var(--luma-accent); background:color-mix(in srgb,var(--luma-accent) 14%,transparent); }
     .label { padding:0 2px; color:var(--luma-muted); font-size:var(--luma-text-xs); font-weight:var(--luma-weight-strong); letter-spacing:.04em; text-transform:uppercase; }
     .apps { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-    .app { font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
+    .app { display:flex; gap:7px; font-size:var(--luma-text-sm); font-weight:var(--luma-weight-strong); }
+    .app ha-icon { --mdc-icon-size:16px; }
+    .app.success { color:var(--success-color); background:color-mix(in srgb,var(--success-color) 11%,transparent); }
+    .app.error { color:var(--error-color); background:color-mix(in srgb,var(--error-color) 11%,transparent); }
+    .app.loading ha-icon { animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
     @media(max-width:599px) {
       .utility { grid-template-columns:repeat(3,1fr); }
       .now.has-art { min-height:56px; }
@@ -70,7 +77,28 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
   }
   getCardSize() { return 6; }
   private send(command: string) { return this.hass?.callService("remote", "send_command", { command }, { entity_id: this.config!.remote_entity }); }
-  private app(activity: string) { return this.hass?.callService("remote", "turn_on", { activity }, { entity_id: this.config!.remote_entity }); }
+  private async app(activity: string) {
+    if (!this.hass || this.launching) return;
+    this.launching = activity;
+    this.launchResult = undefined;
+    try {
+      try {
+        await this.hass.callService("media_player", "play_media", {
+          media: { media_content_type: "app", media_content_id: activity },
+        }, { entity_id: this.config!.media_entity });
+      } catch {
+        await this.hass.callService("remote", "turn_on", { activity }, { entity_id: this.config!.remote_entity });
+      }
+      this.launchResult = "success";
+    } catch {
+      this.launchResult = "error";
+    } finally {
+      window.setTimeout(() => {
+        this.launching = undefined;
+        this.launchResult = undefined;
+      }, 1400);
+    }
+  }
   private button(icon: string, command: string, label: string, className = "") {
     return html`<button class=${`key ${className}`} title=${label} aria-label=${label} @click=${() => this.send(command)}><ha-icon icon=${icon}></ha-icon></button>`;
   }
@@ -118,7 +146,12 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
         </div>
       </div>
       <div class="label">Alkalmazások</div>
-      <div class="apps">${apps.map(item => html`<button class="app" @click=${() => this.app(item.activity)}>${item.name}</button>`)}</div>
+      <div class="apps">${apps.map(item => {
+        const current = this.launching === item.activity;
+        const status = current ? this.launchResult : undefined;
+        const icon = status === "success" ? "mdi:check" : status === "error" ? "mdi:alert-circle-outline" : "mdi:loading";
+        return html`<button class=${`app ${current ? status || "loading" : ""}`} ?disabled=${Boolean(this.launching)} @click=${() => this.app(item.activity)}>${current ? html`<ha-icon icon=${icon}></ha-icon>` : nothing}${item.name}</button>`;
+      })}</div>
     </div>`;
   }
 }

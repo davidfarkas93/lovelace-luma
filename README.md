@@ -64,11 +64,16 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 when the media player exposes `entity_picture_local` or `entity_picture`. It
 falls back to the compact text header without reserving empty space. Set
 `artwork: false` to disable it for a specific remote.
+Application shortcuts use `media_player.play_media` with the current `app`
+media schema and fall back to `remote.turn_on` when the media player rejects
+the request. The pressed shortcut shows loading and success/error feedback.
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.
 Lights receive a warm accent and brightness subtitle; media players receive a
 distinct media accent and show the current title or application when available.
+Active media-player controls also use their artwork as a subtle backdrop and
+thumbnail when available; set `artwork: false` to keep the icon-only variant.
 For a relay whose Home Assistant domain does not describe its physical use,
 set `display_as: light`. This changes only presentation and active-state
 styling; actions still target the entity's real domain.
