@@ -40,7 +40,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-navbar-card` | Centralized automatic route presets rendered through Navbar Card |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
-| `custom:luma-irrigation-hero-card` | Context-aware irrigation system status hero |
+| `custom:luma-irrigation-hero-card` | Context-aware irrigation status with ad-hoc/program progress and next scheduled run |
 | `custom:luma-irrigation-schedule-card` | Schedule controller with equal-width weekday buttons |
 | `custom:luma-irrigation-zone-card` | Adjustable timed zone start/stop with confirmation and live progress |
 | `custom:luma-irrigation-program-card` | Confirmed program launch with live progress |
