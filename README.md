@@ -144,6 +144,22 @@ irrigation_zone_entities:
   - switch.drip_zone
 ```
 
+Active appliances can use the same contextual banner area. Timestamp-based
+completion sensors and duration sensors with `s`, `min`, or `h` units are
+interpreted automatically.
+
+```yaml
+appliances:
+  - entity: sensor.washer_state
+    name: Washer
+    remaining_entity: sensor.washer_completion_time
+    path: /dashboard-rooms/laundry
+    state_map:
+      washing: Washing
+      rinsing: Rinsing
+      spinning: Spinning
+```
+
 `luma-timeline-card` is intentionally data-source agnostic. It reads an `events`
 attribute from a sensor and expects each item to provide `timestamp`, `type`,
 `snapshot`, and `url`; this keeps integrations responsible for fetching events
