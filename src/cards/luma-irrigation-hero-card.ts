@@ -51,7 +51,7 @@ export class LumaIrrigationHeroCard extends LitElement implements LovelaceCard {
   private scheduleLabel(item:{name:string;date:Date}){
     const now=new Date(),start=new Date(now);start.setHours(0,0,0,0);const day=Math.round((new Date(item.date).setHours(0,0,0,0)-start.getTime())/86400000);
     const when=day===0?"ma":day===1?"holnap":item.date.toLocaleDateString(this.hass?.locale?.language||"hu-HU",{weekday:"short"});
-    return `${when} ${item.date.toLocaleTimeString(this.hass?.locale?.language||"hu-HU",{hour:"2-digit",minute:"2-digit"})} · ${item.name}`;
+    return `${when} ${item.date.toLocaleTimeString(this.hass?.locale?.language||"hu-HU",{hour:"2-digit",minute:"2-digit",hour12:false})} · ${item.name}`;
   }
 
   render(){
