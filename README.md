@@ -152,6 +152,7 @@ interpreted automatically.
 appliances:
   - entity: sensor.washer_state
     name: Washer
+    active_entity: input_boolean.washer_cycle_active
     remaining_entity: sensor.washer_completion_time
     path: /dashboard-rooms/laundry
     state_map:
