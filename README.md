@@ -82,6 +82,9 @@ styling; actions still target the entity's real domain.
 Light controls open Home Assistant's More Info dialog on long press by default,
 giving direct access to brightness, color temperature, and color controls when
 the entity supports them. An explicit `hold_action` overrides this behavior.
+The active-entity list renders the same `luma-control-card` surface for each
+result, so active controls keep identical visuals, tap behavior, and long-press
+More Info access.
 
 The home hero's alarm chip opens an anchored alarm control by default. Its
 `alarm_modes` remain runtime-configurable, each state change requires an

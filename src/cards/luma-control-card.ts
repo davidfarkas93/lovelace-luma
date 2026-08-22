@@ -15,6 +15,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   private confirmTimer?:number;
   private held=false;
   static styles=[lumaTokens,css`
+    :host{display:block}
     .card{position:relative;isolation:isolate;display:grid;grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"icon name value" "icon subtitle action";align-items:center;gap:3px 12px;padding:16px;overflow:hidden;border:1px solid color-mix(in srgb,var(--tone) var(--border-mix),transparent);border-radius:var(--luma-radius-card);background:linear-gradient(145deg,color-mix(in srgb,var(--tone) var(--mix),var(--luma-surface)),color-mix(in srgb,var(--tone) 2%,var(--luma-surface)) 72%);box-shadow:0 13px 34px color-mix(in srgb,var(--tone) var(--shadow-mix),transparent);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
     .art-backdrop{position:absolute;z-index:-2;inset:-24px;width:calc(100% + 48px);height:calc(100% + 48px);object-fit:cover;filter:blur(22px) saturate(1.12);opacity:.16;transform:scale(1.06);pointer-events:none}.card.has-art::after{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--luma-surface) 90%,transparent),color-mix(in srgb,var(--luma-surface) 70%,transparent));pointer-events:none}
     .card.interactive:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tone) 28%,transparent);box-shadow:0 17px 40px color-mix(in srgb,var(--tone) 14%,transparent)}

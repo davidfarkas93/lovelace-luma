@@ -1,12 +1,9 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { ref } from "lit/directives/ref.js";
 import {
   activeEntities,
   entityAreaName,
-  entityIcon,
-  entityName,
-  entityState,
-  runAction,
 } from "../helpers";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaActiveConfig, LovelaceCard } from "../types";
@@ -17,14 +14,6 @@ interface Config {
   empty_text?: string;
   active?: LumaActiveConfig;
 }
-
-const labels: Record<string, string> = {
-  on: "Bekapcsolva",
-  playing: "Lejátszik",
-  paused: "Szünet",
-  cool: "Hűtés",
-  heat: "Fűtés",
-};
 
 @customElement("luma-active-card")
 export class LumaActiveCard extends LitElement implements LovelaceCard {
@@ -43,21 +32,12 @@ export class LumaActiveCard extends LitElement implements LovelaceCard {
     .all-off:disabled { cursor:default; opacity:.55; }
     .all-off ha-icon { --mdc-icon-size:15px; color:inherit; }
     .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-    .item { display:grid; grid-template-columns:38px minmax(0,1fr); grid-template-areas:"icon name" "icon value"; align-items:center; gap:2px 10px; min-width:0; padding:10px; border:1px solid color-mix(in srgb,var(--tone) 13%,transparent); border-radius:16px; color:var(--primary-text-color); background:linear-gradient(145deg,color-mix(in srgb,var(--tone) 7%,var(--luma-surface)),var(--luma-surface)); font:inherit; text-align:left; }
-    .icon { grid-area:icon; display:grid; place-items:center; width:38px; height:38px; border-radius:12px; color:var(--tone); background:color-mix(in srgb,var(--tone) 13%,transparent); }
-    .icon ha-icon { --mdc-icon-size:20px; }
-    .name { grid-area:name; align-self:end; overflow:hidden; font-size:12px; font-weight:680; text-overflow:ellipsis; white-space:nowrap; }
-    .value { grid-area:value; align-self:start; overflow:hidden; color:var(--luma-muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    luma-control-card { display:block; min-width:0; }
     .empty { padding:17px; border:1px dashed var(--luma-border); border-radius:16px; color:var(--luma-muted); font-size:11px; text-align:center; }
     @media(max-width:480px) {
       .all-off { width:30px; padding:0; }
       .all-off span { display:none; }
       .grid { gap:6px; }
-      .item { grid-template-columns:32px minmax(0,1fr); gap:2px 7px; padding:8px; }
-      .icon { width:32px; height:32px; border-radius:10px; }
-      .icon ha-icon { --mdc-icon-size:17px; }
-      .name { font-size:11px; }
-      .value { font-size:9px; }
     }
   `];
 
@@ -88,12 +68,9 @@ export class LumaActiveCard extends LitElement implements LovelaceCard {
       <div class="heading"><ha-icon icon="mdi:lightning-bolt-outline"></ha-icon><span class="heading-title">${this.config.name || "Most aktív"}</span><span class="count">${items.length}</span>${activeLights.length ? html`<button class="all-off" ?disabled=${this.turningOff} title="Minden aktív lámpa lekapcsolása" @click=${() => this.turnOffAll(activeLights)}><ha-icon icon=${this.turningOff ? "mdi:loading" : "mdi:lightbulb-group-off-outline"}></ha-icon><span>${this.turningOff ? "Kikapcsolás…" : "Lámpák le"}</span></button>` : nothing}</div>
       ${items.length ? html`<div class="grid">${items.map(({ entity, rule }) => {
         const domain = rule.display_as || entity.entity_id.split(".")[0];
-        const tone = domain === "light" ? "var(--warning-color)" : domain === "climate" ? "var(--info-color, var(--primary-color))" : "var(--primary-color)";
         const action = rule.tap_action || { action: domain === "light" ? "toggle" : "more-info" } as const;
-        const secondary = domain === "light"
-          ? rule.area_name || entityAreaName(this.hass!, entity.entity_id) || "Világítás"
-          : labels[entity.state] || entityState(this.hass!, entity);
-        return html`<button class="item" style=${`--tone:${tone}`} @click=${() => runAction(this, this.hass!, action, entity.entity_id)}><span class="icon"><ha-icon icon=${entityIcon(entity)}></ha-icon></span><span class="name">${entityName(entity, entity.entity_id)}</span><span class="value">${secondary}</span></button>`;
+        const childConfig={type:"custom:luma-control-card",entity:entity.entity_id,subtitle:rule.area_name||entityAreaName(this.hass!,entity.entity_id),display_as:rule.display_as,tap_action:action,hold_action:{action:"more-info"}};
+        return html`<luma-control-card ${ref((node)=>{const card=node as (HTMLElement&LovelaceCard)|undefined;if(card){card.setConfig(childConfig);card.hass=this.hass}})}></luma-control-card>`;
       })}</div>` : html`<div class="empty">${this.config.empty_text || "Nincs aktív eszköz"}</div>`}
     </div>`;
   }
