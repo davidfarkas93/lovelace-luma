@@ -55,6 +55,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-lawn-control-card` | Confirmed start, resume and stop controls with live task progress |
 | `custom:luma-battery-hero-card` | Dynamic low-battery summary with critical and warning counts |
 | `custom:luma-battery-grid-card` | Runtime-discovered, sorted battery devices without template-generated cards |
+| `custom:luma-discovery-card` | Native runtime discovery for favorite lights, Homelab incidents, infrastructure updates, and Komodo deployments |
 | `custom:luma-layout-card` | Child-card grid with independent desktop, tablet and mobile column counts |
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
