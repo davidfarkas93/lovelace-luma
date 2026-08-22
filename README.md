@@ -37,6 +37,7 @@ bottom sheets while keeping actions and entity selection configurable at runtime
 | `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
 | `custom:luma-history-card` | Recorder-backed canvas history chart with signed ranges, gradients and touch inspection |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
+| `custom:luma-navbar-card` | Centralized automatic route presets rendered through Navbar Card |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
 | `custom:luma-irrigation-hero-card` | Context-aware irrigation system status hero |
@@ -86,6 +87,16 @@ The home hero's alarm chip opens an anchored alarm control by default. Its
 `alarm_modes` remain runtime-configurable, each state change requires an
 explicit second confirmation tap, and `alarm_action` continues to open the
 full detailed alarm sheet. Set `alarm_popover: false` to keep the direct action.
+
+The home hero loads the shared `home` incident preset by default. Set
+`incident_preset: none` to disable it, or add `incidents` to append local rules.
+This keeps safety, Homelab, maintenance, certificate, backup, and energy warning
+logic in one versioned location.
+
+`luma-navbar-card` selects its route preset from the current dashboard URL. A
+minimal `type: custom:luma-navbar-card` configuration covers the main, Energy,
+Lawn, Irrigation, Homelab, and Security navigation families. Use `preset` or
+`routes` only when a dashboard intentionally needs an override.
 
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual

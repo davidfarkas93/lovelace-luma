@@ -20,6 +20,7 @@ import "./cards/luma-temperature-card";
 import "./cards/luma-disclosure-card";
 import "./cards/luma-energy-flow-card";
 import "./cards/luma-navigation-card";
+import "./cards/luma-navbar-card";
 import "./cards/luma-history-card";
 import "./cards/luma-homelab-hero-card";
 import "./cards/luma-rack-cooling-card";
@@ -45,6 +46,7 @@ import "./cards/luma-discovery-card";
 
 const cards = [
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
+  { type:"luma-navbar-card", name:"Luma Navbar", description:"Centralized route presets rendered through the installed Navbar Card." },
   { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
   { type:"luma-appliance-card", name:"Luma Appliance", description:"A contextual appliance status card with remaining time and progress." },

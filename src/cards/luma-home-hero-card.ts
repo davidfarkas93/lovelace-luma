@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { activeEntities, entityState, itemIsVisible, runAction } from "../helpers";
 import { applianceDuration, applianceFinishTime, applianceSeconds } from "../appliance";
 import { lumaTokens } from "../styles";
+import { homeIncidentPreset } from "../presets";
 import type {
   HassEntity,
   HomeAssistant,
@@ -38,6 +39,7 @@ interface LumaHomeHeroConfig {
   active_exclude?: string[];
   active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
+  incident_preset?: "home" | "none";
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
 }
@@ -149,7 +151,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   setConfig(config: LumaHomeHeroConfig): void {
     if (!config?.weather_entity) throw new Error("Luma home hero requires weather_entity.");
-    this.config = { incidents: [], banners: [], waste_days: 2, wind_threshold: 8, alarm_popover: true, alarm_modes:[{mode:"away",name:"Távol",icon:"mdi:shield-lock"},{mode:"night",name:"Éjszaka",icon:"mdi:shield-moon"},{mode:"disarm",name:"Kikapcsolás",icon:"mdi:shield-off-outline"}], ...config };
+    const preset=config.incident_preset==="none"?[]:homeIncidentPreset;
+    this.config = { banners: [], waste_days: 2, wind_threshold: 8, alarm_popover: true, alarm_modes:[{mode:"away",name:"Távol",icon:"mdi:shield-lock"},{mode:"night",name:"Éjszaka",icon:"mdi:shield-moon"},{mode:"disarm",name:"Kikapcsolás",icon:"mdi:shield-off-outline"}], ...config, incidents:[...preset,...(config.incidents||[])] };
   }
   getCardSize(): number { return 4; }
 

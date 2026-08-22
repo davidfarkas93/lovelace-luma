@@ -1,0 +1,28 @@
+import type { LumaIncidentRule } from "./types";
+
+export const homeIncidentPreset: LumaIncidentRule[] = [
+  {entity:"alarm_control_panel.partition_area_1",state:["triggered","pending"],message:"A riasztó figyelmet kér",tone:"error",dismissible:false,navigation_path:"/lovelace/overview#alarm"},
+  {device_classes:["smoke","moisture","gas","carbon_monoxide"],state:"on",message:"{name}",tone:"error",dismissible:false,navigation_path:"/lovelace/overview"},
+  {entity:"cover.garazs_kapu",state:["open","opening"],for_minutes:15,message:"{name} nyitva maradt",navigation_path:"/lovelace/overview"},
+  {entity:"cover.wbt01_63f2",state:["open","opening"],for_minutes:15,message:"{name} nyitva maradt",navigation_path:"/lovelace/overview"},
+  {entity:"binary_sensor.udvar_irrigation_controller_vezerlo_allapot",state_not:"on",message:"Öntözésvezérlő offline",tone:"error",dismissible:false,navigation_path:"/dashboard-irrigation/irrigation"},
+  {entity:"input_boolean.irrigation_message_unacknowledged",state:"on",message:"Öntözési üzenet vár ellenőrzésre",tone:"error",dismissible:false,navigation_path:"/dashboard-irrigation/irrigation"},
+  {entity:"lawn_mower.yuka_mlmewj7f",state:["error","unavailable"],message:"Yuka figyelmet kér",tone:"error",dismissible:false,navigation_path:"/lovelace/lawn"},
+  {entity_pattern:"sensor.*_felugyelt_url",related_suffix:{from:"_felugyelt_url",to:"_allapot"},state_not:"Up",message:"{count} Kuma szolgáltatás nem elérhető",tone:"error",dismissible:false,aggregate:true,navigation_path:"/dashboard-homelab/overview"},
+  {entity_pattern:"sensor.*_alerts",state_not:["","0","unknown","unavailable","none"],message:"{count} Komodo riasztás",aggregate:true,navigation_path:"/dashboard-homelab/overview"},
+  {entity:"binary_sensor.tower_array_started",state_not:"on",message:"Unraid array nem fut",tone:"error",dismissible:false,navigation_path:"/dashboard-homelab/overview"},
+  {entity:"binary_sensor.tower_parity_valid",state:"on",message:"Unraid paritáshiba",tone:"error",dismissible:false,navigation_path:"/dashboard-homelab/overview"},
+  {entity:"binary_sensor.tower_disks_missing",state:"on",message:"Unraid lemez hiányzik",tone:"error",dismissible:false,navigation_path:"/dashboard-homelab/overview"},
+  {entity_pattern:"sensor.tower_disk_*_usage",above:80,message:"{count} Unraid lemez 80% felett",aggregate:true,navigation_path:"/dashboard-homelab/overview"},
+  {entity:"sensor.tower_cpu_temperature",above:80,message:"Unraid CPU túlmelegedés",navigation_path:"/dashboard-homelab/overview"},
+  {entity:"sensor.tower_ram_usage",above:90,message:"Unraid memória 90% felett",navigation_path:"/dashboard-homelab/overview"},
+  {entity:"sensor.ups_allapot",state_not:"Online",message:"UPS nem hálózati üzemben",navigation_path:"/dashboard-homelab/overview"},
+  {entity:"sensor.infrastructure_updates_available",above:0,message:"Infrastruktúra-frissítés érhető el",tone:"warning",navigation_path:"/dashboard-homelab/operations"},
+  {entity_pattern:"sensor.*_filter_life_level",below:20,message:"{name}: szűrőcsere szükséges",tone:"warning",navigation_path:"/dashboard-rooms/rooms"},
+  {entity:"sensor.living_room_pre_filter",below:24,message:"A nappali légtisztító előszűrője tisztítást kér",tone:"warning",navigation_path:"/dashboard-rooms/living-area"},
+  {entity_pattern:"sensor.*_tanusitvany_lejarata",above:13.99,below:30,message:"{name}: hamarosan lejár",tone:"warning",navigation_path:"/dashboard-homelab/services"},
+  {entity:"binary_sensor.automatikus_mentes_elavult",state:["on","unavailable"],message:"Az automatikus Home Assistant mentés figyelmet kér",tone:"error",dismissible:false,navigation_path:"/config/backup"},
+  {entity_pattern:"sensor.*_tanusitvany_lejarata",below:14,message:"{name}: kritikusan közel a lejárat",tone:"error",dismissible:false,navigation_path:"/dashboard-homelab/services"},
+  {entity:"binary_sensor.parasito_viztartaly_ures",state:"on",message:"A nappali párásító víztartálya üres",tone:"warning",navigation_path:"/dashboard-rooms/living-area"},
+  {entity:"sensor.napelem_solcast_elteres",below:-35,message:"A napelem termelése jelentősen elmarad a Solcasttől",tone:"warning",navigation_path:"/lovelace/energy-solar"},
+];
