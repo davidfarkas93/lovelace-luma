@@ -1,0 +1,28 @@
+:root {
+  color-scheme: light;
+  --primary-color: #6574c4;
+  --accent-color: #6574c4;
+  --success-color: #4da766;
+  --warning-color: #e6a11b;
+  --error-color: #dc5361;
+  --info-color: #3d9fda;
+  --primary-text-color: #20222c;
+  --secondary-text-color: #686b78;
+  --primary-background-color: #f7f7fb;
+  --card-background-color: #ffffff;
+  --ha-card-background: #ffffff;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  color: var(--primary-text-color);
+  background: var(--primary-background-color);
+}
+
+ha-card { display: block; box-sizing: border-box; }
+ha-icon { display: inline-grid; place-items: center; width: var(--mdc-icon-size, 24px); height: var(--mdc-icon-size, 24px); font-size: calc(var(--mdc-icon-size, 24px) * .72); line-height: 1; }
+
+.docs-story {
+  background: radial-gradient(circle at 20% 0%, rgba(101, 116, 196, .09), transparent 38%), #f7f7fb;
+}

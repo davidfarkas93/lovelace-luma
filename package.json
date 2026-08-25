@@ -1,0 +1,30 @@
+{
+  "name": "lovelace-luma",
+  "version": "0.1.0",
+  "description": "A vibrant, context-aware dashboard suite for Home Assistant.",
+  "license": "MIT",
+  "author": "David Farkas",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "build:docs": "storybook build",
+    "check": "tsc --noEmit && npm run check:stories",
+    "check:stories": "node scripts/check-story-coverage.mjs",
+    "dev": "vite build --watch",
+    "docs": "storybook dev -p 6006"
+  },
+  "dependencies": {
+    "lit": "^3.3.1"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^10.5.10",
+    "@storybook/addon-docs": "^10.5.10",
+    "@storybook/web-components-vite": "^10.5.10",
+    "storybook": "^10.5.10",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  }
+}

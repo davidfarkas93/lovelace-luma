@@ -1,0 +1,295 @@
+import { LitElement, css, html, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { runAction } from "../helpers";
+import { localize, localized } from "../localize";
+import { lumaTokens } from "../styles";
+import type { HomeAssistant, LovelaceCard } from "../types";
+interface Config {
+  type: string;
+  entity: string;
+  name: string;
+  icon?: string;
+  role?: string;
+  duration_entity: string;
+  default_duration?: number;
+  storage_key?: string;
+  start_entity?: string;
+  stop_entity?: string;
+  progress_entity?: string;
+  remaining_entity?: string;
+  program_state_entity?: string;
+}
+@customElement("luma-irrigation-zone-card")
+export class LumaIrrigationZoneCard extends LitElement implements LovelaceCard {
+  @property({ attribute: false }) hass?: HomeAssistant;
+  @state() private config?: Config;
+  @state() private pending = false;
+  @state() private busy = false;
+  @state() private localDuration?: number;
+  private timer?: number;
+  static styles = [
+    lumaTokens,
+    css`
+      ha-card {
+        padding: 17px;
+        border: 1px solid color-mix(in srgb, var(--tone) 20%, transparent);
+        border-radius: 20px;
+        background: linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--tone) 10%, var(--luma-surface)),
+          var(--luma-surface) 70%
+        );
+        box-shadow: var(--luma-shadow);
+      }
+      .head {
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        align-items: center;
+        gap: 12px;
+      }
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 15px;
+        color: var(--tone);
+        background: color-mix(in srgb, var(--tone) 16%, transparent);
+      }
+      .name {
+        font-size: 16px;
+        font-weight: 730;
+      }
+      .sub {
+        margin-top: 3px;
+        color: var(--luma-muted);
+        font-size: 10px;
+      }
+      .start {
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 999px;
+        color: var(--tone);
+        background: color-mix(in srgb, var(--tone) 14%, transparent);
+        font-size: 11px;
+        font-weight: 730;
+        white-space: nowrap;
+      }
+      .start:disabled {
+        cursor: wait;
+        opacity: 0.62;
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        color: var(--luma-muted);
+        font-size: 11px;
+      }
+      .duration {
+        display: inline-grid;
+        grid-template-columns: 28px minmax(62px, auto) 28px;
+        align-items: center;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--tone) 9%, transparent);
+        overflow: hidden;
+      }
+      .duration button {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 30px;
+        padding: 0;
+        border: 0;
+        color: var(--tone);
+        background: transparent;
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .duration span {
+        text-align: center;
+        color: var(--primary-text-color);
+        font-weight: 680;
+      }
+      .track {
+        height: 7px;
+        margin-top: 8px;
+        border-radius: 99px;
+        background: color-mix(
+          in srgb,
+          var(--primary-text-color) 8%,
+          transparent
+        );
+        overflow: hidden;
+      }
+      .fill {
+        height: 100%;
+        border-radius: inherit;
+        background: var(--tone);
+        transition: width 0.4s ease;
+      }
+      .inactive .track {
+        display: none;
+      }
+      button {
+        cursor: pointer;
+      }
+    `,
+  ];
+  setConfig(c: Config) {
+    if (!c?.entity || !c.duration_entity)
+      throw Error("entity and duration_entity required");
+    this.config = c;
+    this.localDuration = this.readDuration(c);
+  }
+  getCardSize() {
+    return 2;
+  }
+  private storageKey(c = this.config!) {
+    return `luma:irrigation-duration:${c.storage_key || c.entity}`;
+  }
+  private readDuration(c: Config): number | undefined {
+    try {
+      const value = Number(localStorage.getItem(this.storageKey(c)));
+      if (Number.isFinite(value) && value > 0) return value;
+    } catch {
+      /* Storage is optional. */
+    }
+    return Number.isFinite(c.default_duration) ? c.default_duration : undefined;
+  }
+  private limits() {
+    const e = this.hass?.states[this.config!.duration_entity],
+      step = Number(e?.attributes.step) || 1,
+      min = Number(e?.attributes.min),
+      max = Number(e?.attributes.max);
+    return {
+      step,
+      min: Number.isFinite(min) ? min : 1,
+      max: Number.isFinite(max) ? max : Infinity,
+    };
+  }
+  private duration() {
+    const backend = Number(
+      this.hass?.states[this.config!.duration_entity]?.state,
+    );
+    return this.localDuration ?? (Number.isFinite(backend) ? backend : 10);
+  }
+  private changeDuration(delta: number) {
+    const { step, min, max } = this.limits(),
+      value = Math.min(max, Math.max(min, this.duration() + delta * step));
+    this.localDuration = value;
+    try {
+      localStorage.setItem(this.storageKey(), String(value));
+    } catch {
+      /* Keep the value for this card instance. */
+    }
+  }
+  private async activate() {
+    if (!this.hass || !this.config || this.busy) return;
+    const c = this.config,
+      on = this.hass.states[c.entity]?.state === "on";
+    if (!this.pending) {
+      this.pending = true;
+      clearTimeout(this.timer);
+      this.timer = window.setTimeout(() => (this.pending = false), 5000);
+      return;
+    }
+    this.pending = false;
+    this.busy = true;
+    try {
+      const button = on ? c.stop_entity : c.start_entity;
+      if (!on && button) {
+        await this.hass.callService(
+          "number",
+          "set_value",
+          { value: this.duration() },
+          { entity_id: c.duration_entity },
+        );
+        await this.hass.callService("button", "press", undefined, {
+          entity_id: button,
+        });
+        return;
+      }
+      if (button) {
+        await this.hass.callService("button", "press", undefined, {
+          entity_id: button,
+        });
+        return;
+      }
+      await runAction(
+        this,
+        this.hass,
+        { action: "toggle", entity: c.entity },
+        c.entity,
+      );
+    } finally {
+      this.busy = false;
+    }
+  }
+  render() {
+    if (!this.hass || !this.config) return nothing;
+    const c = this.config,
+      s = this.hass.states,
+      on = s[c.entity]?.state === "on",
+      duration = this.duration(),
+      p = Math.max(
+        0,
+        Math.min(100, Number(s[c.progress_entity || ""]?.state) || 0),
+      ),
+      remaining = s[c.remaining_entity || ""]?.state,
+      tone = on
+        ? "var(--info-color,var(--primary-color))"
+        : "var(--primary-color)",
+      buttonLabel = this.busy
+        ? `${localize(this.hass, "start")}…`
+        : this.pending
+          ? on
+            ? `${localize(this.hass, "stop")} · ${localize(this.hass, "confirm")}`
+            : `${duration} min · ${localize(this.hass, "start")}`
+          : on
+            ? localize(this.hass, "stop")
+            : localize(this.hass, "start");
+    return html`<ha-card class=${on ? "" : "inactive"} style=${`--tone:${tone}`}
+      ><div class="head">
+        <span class="icon"
+          ><ha-icon icon=${c.icon || "mdi:sprinkler-variant"}></ha-icon></span
+        ><span
+          ><div class="name">${c.name}</div>
+          <div class="sub">
+            ${on
+              ? remaining
+                ? localized(this.hass,`${remaining} left`,`${remaining} hátra`)
+                : localized(this.hass,"Irrigation in progress","Öntözés folyamatban")
+              : this.pending
+                ? localized(this.hass,"Set the time, then confirm","Állítsd be, majd erősítsd meg az időt")
+                : c.role || localized(this.hass,"Custom ad-hoc runtime","Saját ad-hoc futási idő")}
+          </div></span
+        ><button
+          class="start"
+          ?disabled=${this.busy}
+          @click=${() => this.activate()}
+        >
+          ${buttonLabel}
+        </button>
+      </div>
+      <div class="meta">
+        <span class="duration"
+          ><button
+            aria-label=${localized(this.hass,"Decrease time","Idő csökkentése")}
+            @click=${() => this.changeDuration(-1)}
+          >
+            −</button
+          ><span>${duration} ${localized(this.hass,"min","perc")}</span
+          ><button
+            aria-label=${localized(this.hass,"Increase time","Idő növelése")}
+            @click=${() => this.changeDuration(1)}
+          >
+            +
+          </button></span
+        >${on ? html`<span>${Math.round(p)}%</span>` : nothing}
+      </div>
+      <div class="track"><div class="fill" style=${`width:${p}%`}></div></div
+    ></ha-card>`;
+  }
+}
