@@ -14,6 +14,7 @@ interface Config {
   program_name: string;
   progress_entity?: string;
   state_entity?: string;
+  soak_remaining_entity?: string;
   runtime?: string;
 }
 @customElement("luma-irrigation-program-card")
@@ -93,9 +94,50 @@ export class LumaIrrigationProgramCard
         overflow: hidden;
       }
       .fill {
+        position: relative;
         height: 100%;
         border-radius: inherit;
         background: var(--tone);
+        overflow: hidden;
+        transition: width 0.45s ease;
+      }
+      .fill.soaking {
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--info-color, #039be5) 72%, white),
+          var(--info-color, #039be5)
+        );
+        box-shadow: 0 0 11px
+          color-mix(in srgb, var(--info-color, #039be5) 38%, transparent);
+      }
+      .fill.soaking::after {
+        position: absolute;
+        inset: 0;
+        content: "";
+        background: linear-gradient(
+          100deg,
+          transparent 12%,
+          rgb(255 255 255 / 0.52) 48%,
+          transparent 84%
+        );
+        transform: translateX(-115%);
+        animation: soak-flow 1.8s ease-in-out infinite;
+      }
+      @keyframes soak-flow {
+        55%,
+        100% {
+          transform: translateX(115%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .fill {
+          transition: none;
+        }
+        .fill.soaking::after {
+          animation: none;
+          opacity: 0.2;
+          transform: none;
+        }
       }
       button {
         cursor: pointer;
@@ -141,6 +183,12 @@ export class LumaIrrigationProgramCard
         Math.min(100, Number(s[c.progress_entity || ""]?.state) || 0),
       ),
       status = s[c.state_entity || ""]?.state,
+      normalizedStatus = String(status || "").toLocaleLowerCase(),
+      soakRemaining = Number(s[c.soak_remaining_entity || ""]?.state),
+      soaking =
+        active &&
+        (normalizedStatus.includes("beszivárg") ||
+          normalizedStatus.includes("soak")),
       tone = c.color || "var(--primary-color)";
     return html`<ha-card style=${`--tone:${tone}`}
       ><div class="row">
@@ -160,10 +208,27 @@ export class LumaIrrigationProgramCard
       ${active
         ? html`<div class="progress">
             <div class="meta">
-              <span>${localized(this.hass,"Program progress","Programfolyamat")}</span><span>${Math.round(p)}%</span>
+              <span
+                >${soaking
+                  ? Number.isFinite(soakRemaining) && soakRemaining > 0
+                    ? localized(
+                        this.hass,
+                        `Soaking · ${Math.ceil(soakRemaining / 60)} min left`,
+                        `Beszivárgás · ${Math.ceil(soakRemaining / 60)} perc hátra`,
+                      )
+                    : localized(this.hass, "Soaking", "Beszivárgás")
+                  : localized(
+                      this.hass,
+                      "Program progress",
+                      "Programfolyamat",
+                    )}</span
+              ><span>${Math.round(p)}%</span>
             </div>
             <div class="track">
-              <div class="fill" style=${`width:${p}%`}></div>
+              <div
+                class=${`fill ${soaking ? "soaking" : ""}`}
+                style=${`width:${p}%`}
+              ></div>
             </div>
           </div>`
         : nothing}</ha-card
