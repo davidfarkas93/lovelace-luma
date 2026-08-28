@@ -109,6 +109,8 @@ export const entityState = (
 };
 
 const commonMediaApps: Record<string, string> = {
+  "com.google.android.apps.tv.launcherx": "Google TV",
+  "com.google.android.tvlauncher": "Android TV",
   "com.google.android.youtube.tv": "YouTube",
   "com.netflix.ninja": "Netflix",
   "com.spotify.tv.android": "Spotify",
