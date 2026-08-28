@@ -5,7 +5,7 @@ import { localize, localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
 
-interface Config { type:string; entity:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; display_as?:"light"|"media_player"|"switch"; artwork?:boolean; embedded_details?:boolean; compact?:boolean; tap_action?:LumaAction; hold_action?:LumaAction }
+interface Config { type:string; entity:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; display_as?:"light"|"media_player"|"switch"; artwork?:boolean; artwork_entity?:string; embedded_details?:boolean; compact?:boolean; tap_action?:LumaAction; hold_action?:LumaAction }
 
 @customElement("luma-control-card")
 export class LumaControlCard extends LitElement implements LovelaceCard {
@@ -46,7 +46,8 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
     const activeTone=domain==="light"?"var(--warning-color)":domain==="media_player"?"#7c78d8":"var(--primary-color)";
     const tone=active?(this.config.active_color||activeTone):(this.config.color||"var(--secondary-text-color)");
     const media=String(e?.attributes?.media_title||e?.attributes?.app_name||"");
-    const artwork=domain==="media_player"&&active&&this.config.artwork!==false?String(e?.attributes?.entity_picture_local||e?.attributes?.entity_picture||""):"";
+    const fallbackArtwork=this.config.artwork_entity?this.hass.states[this.config.artwork_entity]?.attributes:{};
+    const artwork=domain==="media_player"&&active&&this.config.artwork!==false?String(e?.attributes?.entity_picture_local||e?.attributes?.entity_picture||fallbackArtwork?.entity_picture_local||fallbackArtwork?.entity_picture||""):"";
     const area=domain==="light"?entityAreaName(this.hass,this.config.entity):undefined;
     const subtitle=this.config.subtitle||(domain==="light"?(area||localized(this.hass,"Not assigned to an area","Nincs helyiséghez rendelve")):domain==="media_player"&&active&&media?media:entityName(e,localized(this.hass,"State","Állapot")));
     const vars=`--tone:${tone};--mix:${active?"13%":"1.5%"};--border-mix:${active?"22%":"7%"};--icon-mix:${active?"21%":"6%"};--pill-mix:${active?"16%":"5%"};--shadow-mix:${active?"12%":"2%"};--value-color:${active?tone:"var(--luma-muted)"}`;

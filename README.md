@@ -78,11 +78,32 @@ can be reviewed in either language without changing Home Assistant.
 when the media player exposes `entity_picture_local` or `entity_picture`. It
 falls back to the compact text header without reserving empty space. Set
 `artwork: false` to disable it for a specific remote.
-Application shortcuts use the Android TV remote's activity launcher first and
-fall back to `media_player.play_media` with the current `app` media schema
-when the remote rejects the request. This avoids false-positive Cast calls on
-combined media-player entities. The pressed shortcut shows loading and
-success/error feedback.
+Set `artwork_entity` to another media-player entity to use its
+`entity_picture` as a fallback when the primary entity has no artwork. This is
+useful with an Android Debug Bridge entity that exposes a periodic TV
+screenshot.
+Application shortcuts are supplied by the dashboard through `apps`; Luma does
+not include a vendor-specific default list. Each item can use an Android TV
+`activity`, or a standard Luma `tap_action` for scripts and arbitrary Home
+Assistant actions. The pressed shortcut shows loading and success/error
+feedback.
+
+```yaml
+type: custom:luma-remote-card
+remote_entity: remote.living_room_tv
+media_entity: media_player.living_room_tv
+apps:
+  - name: YouTube
+    icon: mdi:youtube
+    activity: https://www.youtube.com
+  - name: Wholphin
+    icon: mdi:jellyfish
+    tap_action:
+      action: perform-action
+      perform_action: script.turn_on
+      target:
+        entity_id: script.launch_wholphin
+```
 
 `luma-control-card` automatically recognizes active lights and media players,
 and actions with `confirmation` use an inline second-tap confirmation state.

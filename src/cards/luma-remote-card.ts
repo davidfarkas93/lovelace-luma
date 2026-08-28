@@ -1,11 +1,17 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { runAction } from "../helpers";
 import { localized } from "../localize";
 import { lumaTokens } from "../styles";
-import type { HomeAssistant, LovelaceCard } from "../types";
+import type { HomeAssistant, LovelaceCard, LumaAction } from "../types";
 
-interface App { name: string; activity: string }
-interface Config { type: string; remote_entity: string; media_entity: string; name?: string; apps?: App[]; artwork?: boolean }
+interface App {
+  name: string;
+  icon?: string;
+  activity?: string;
+  tap_action?: LumaAction;
+}
+interface Config { type: string; remote_entity: string; media_entity: string; name?: string; apps?: App[]; artwork?: boolean; artwork_entity?: string }
 
 const utilityKeys = [
   ["mdi:power", "KEYCODE_POWER", "Power", "Be/ki"],
@@ -78,18 +84,22 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
   }
   getCardSize() { return 6; }
   private send(command: string) { return this.hass?.callService("remote", "send_command", { command }, { entity_id: this.config!.remote_entity }); }
-  private async app(activity: string) {
+  private async app(item: App, key: string) {
     if (!this.hass || this.launching) return;
-    this.launching = activity;
+    this.launching = key;
     this.launchResult = undefined;
     try {
-      try {
-        await this.hass.callService("remote", "turn_on", { activity }, { entity_id: this.config!.remote_entity });
-      } catch {
-        await this.hass.callService("media_player", "play_media", {
-          media_content_type: "app",
-          media_content_id: activity,
-        }, { entity_id: this.config!.media_entity });
+      if (item.tap_action) {
+        await runAction(this, this.hass, item.tap_action);
+      } else if (item.activity) {
+        await this.hass.callService(
+          "remote",
+          "turn_on",
+          { activity: item.activity },
+          { entity_id: this.config!.remote_entity },
+        );
+      } else {
+        throw Error(`App ${item.name} requires activity or tap_action`);
       }
       this.launchResult = "success";
     } catch {
@@ -109,17 +119,15 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config) return nothing;
     const entity = this.hass.states[this.config.media_entity];
     const attrs = entity?.attributes || {};
+    const fallbackAttrs = this.config.artwork_entity
+      ? this.hass.states[this.config.artwork_entity]?.attributes || {}
+      : {};
     const mediaTitle = String(attrs.media_title || "");
     const detail = String(attrs.media_artist || attrs.media_series_title || attrs.app_name || entity?.state || localized(this.hass,"Unavailable","Nem elérhető"));
     const artwork = this.config.artwork !== false
-      ? String(attrs.entity_picture_local || attrs.entity_picture || "")
+      ? String(attrs.entity_picture_local || attrs.entity_picture || fallbackAttrs.entity_picture_local || fallbackAttrs.entity_picture || "")
       : "";
-    const apps = this.config.apps || [
-      { name: "YouTube", activity: "https://www.youtube.com" },
-      { name: "Netflix", activity: "netflix://" },
-      { name: "Spotify", activity: "spotify://" },
-      { name: "Wholphin", activity: "wholphin://search" },
-    ];
+    const apps = this.config.apps || [];
     const online = entity && !["off", "unavailable", "unknown"].includes(entity.state);
     return html`<div class="wrap">
       <div class=${`now ${artwork ? "has-art" : ""}`}>
@@ -147,13 +155,14 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
           ${this.button("mdi:fast-forward", "KEYCODE_MEDIA_FAST_FORWARD", localized(this.hass,"Fast forward","Előretekerés"))}
         </div>
       </div>
-      <div class="label">${localized(this.hass,"Apps","Alkalmazások")}</div>
-      <div class="apps">${apps.map(item => {
-        const current = this.launching === item.activity;
+      ${apps.length ? html`<div class="label">${localized(this.hass,"Apps","Alkalmazások")}</div>
+      <div class="apps">${apps.map((item, index) => {
+        const key = `${index}:${item.name}`;
+        const current = this.launching === key;
         const status = current ? this.launchResult : undefined;
         const icon = status === "success" ? "mdi:check" : status === "error" ? "mdi:alert-circle-outline" : "mdi:loading";
-        return html`<button class=${`app ${current ? status || "loading" : ""}`} ?disabled=${Boolean(this.launching)} @click=${() => this.app(item.activity)}>${current ? html`<ha-icon icon=${icon}></ha-icon>` : nothing}${item.name}</button>`;
-      })}</div>
+        return html`<button class=${`app ${current ? status || "loading" : ""}`} ?disabled=${Boolean(this.launching)} @click=${() => this.app(item, key)}><ha-icon icon=${current ? icon : item.icon || "mdi:apps"}></ha-icon>${item.name}</button>`;
+      })}</div>` : nothing}
     </div>`;
   }
 }
