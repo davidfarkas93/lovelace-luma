@@ -108,6 +108,27 @@ export const entityState = (
   return hass.formatEntityState?.(entity) || entity.state;
 };
 
+const commonMediaApps: Record<string, string> = {
+  "com.google.android.youtube.tv": "YouTube",
+  "com.netflix.ninja": "Netflix",
+  "com.spotify.tv.android": "Spotify",
+  "com.github.damontecres.wholphin": "Wholphin",
+};
+
+export const mediaAppName = (
+  entity: HassEntity | undefined,
+  overrides: Record<string, string> = {},
+): string => {
+  const raw = String(entity?.attributes.app_id || entity?.attributes.app_name || "");
+  if (!raw) return "";
+  if (overrides[raw]) return overrides[raw];
+  if (commonMediaApps[raw]) return commonMediaApps[raw];
+  if (!raw.includes(".")) return raw;
+  const ignored = new Set(["android", "tv", "app", "apps", "mobile", "client", "ninja"]);
+  const part = raw.split(".").reverse().find((value) => value && !ignored.has(value.toLowerCase())) || raw;
+  return part.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
 const includesState = (expected: string | string[] | undefined, actual: string): boolean =>
   expected === undefined
     ? false

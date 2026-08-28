@@ -140,7 +140,10 @@ logic in one versioned location.
 `luma-navbar-card` selects its route preset from the current dashboard URL. A
 minimal `type: custom:luma-navbar-card` configuration covers the main, Energy,
 Lawn, Irrigation, Homelab, and Security navigation families. Use `preset` or
-`routes` only when a dashboard intentionally needs an override.
+`routes` only when a dashboard intentionally needs an override. Active media is
+rendered by Luma as a compact artwork-aware dock instead of the underlying
+Navbar Card widget. `media_players` can replace the player list and `app_names`
+can map integration-specific package IDs to friendly labels.
 
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual

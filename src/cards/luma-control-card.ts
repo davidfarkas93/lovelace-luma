@@ -1,6 +1,6 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { entityAreaName, entityIcon, entityName, entityState, runAction } from "../helpers";
+import { entityAreaName, entityIcon, entityName, entityState, mediaAppName, runAction } from "../helpers";
 import { localize, localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
@@ -24,11 +24,12 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
     .icon ha-icon{--mdc-icon-size:23px}.icon.artwork{overflow:hidden;background:transparent}.icon.artwork img{width:100%;height:100%;object-fit:cover}.name{grid-area:name;align-self:end;min-width:0;font-size:var(--luma-text-md);font-weight:var(--luma-weight-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.subtitle{grid-area:subtitle;align-self:start;min-width:0;color:var(--luma-muted);font-size:var(--luma-text-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .value{grid-area:value;display:inline-flex;align-items:center;justify-content:center;justify-self:end;min-width:38px;padding:5px 9px;border-radius:999px;color:var(--value-color);background:color-mix(in srgb,var(--tone) var(--pill-mix),transparent);font-size:11px;font-weight:680;line-height:1;white-space:nowrap}.action{grid-area:action;justify-self:end;color:var(--tone);font-size:10px;font-weight:650;white-space:nowrap}
     .card.light,.card.compact{grid-template-columns:40px minmax(0,1fr);grid-template-areas:"icon name" "icon subtitle";gap:2px 10px;padding:13px}.card.light.with-details,.card.compact.with-details{grid-template-columns:40px minmax(0,1fr) 34px;grid-template-areas:"icon name details" "icon subtitle details"}.card.light .icon,.card.compact .icon{width:40px;height:40px;border-radius:13px}.card.light .icon ha-icon,.card.compact .icon ha-icon{--mdc-icon-size:20px}.card.light .name,.card.compact .name{white-space:normal;line-height:1.15}.card.light .value,.card.light .action,.card.compact .value,.card.compact .action{display:none}.details{display:none;grid-area:details;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;color:var(--luma-muted);background:color-mix(in srgb,var(--primary-text-color) 6%,transparent);cursor:pointer;transition:color .16s ease,background .16s ease,transform .16s ease}.card.light.with-details .details,.card.compact.with-details .details{display:grid}.details:hover{color:var(--tone);background:color-mix(in srgb,var(--tone) 12%,transparent);transform:translateY(-1px)}.details ha-icon{--mdc-icon-size:17px}
+    .card.media_player{min-height:66px;grid-template-columns:58px minmax(0,1fr) auto;padding:13px 15px}.card.media_player .icon{width:58px;height:58px;border-radius:16px}.card.media_player .icon ha-icon{--mdc-icon-size:27px}.card.media_player .name{font-size:var(--luma-text-lg)}
     @media(max-width:599px){.card{grid-template-columns:42px minmax(0,1fr) auto;grid-template-areas:"icon name value" "icon subtitle value";padding:13px}.icon{width:42px;height:42px;border-radius:14px}.action{display:none}}
   `];
   setConfig(config:Config){if(!config?.entity)throw Error("Luma control requires entity.");this.config={active_states:[],...config}}
   getCardSize(){return 2}
-  protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;return !old||old.states[this.config?.entity||""]!==this.hass?.states[this.config?.entity||""]}
+  protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;const entity=this.config?.entity||"",artwork=this.config?.artwork_entity||"";return !old||old.states[entity]!==this.hass?.states[entity]||(artwork!==""&&old.states[artwork]!==this.hass?.states[artwork])}
   private startHold(){
     this.held=false;
     const domain=this.config?.display_as||this.config?.entity.split(".")[0];
@@ -45,7 +46,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
     const states=this.config.active_states?.length?this.config.active_states:defaults,active=states.includes(e?.state);
     const activeTone=domain==="light"?"var(--warning-color)":domain==="media_player"?"#7c78d8":"var(--primary-color)";
     const tone=active?(this.config.active_color||activeTone):(this.config.color||"var(--secondary-text-color)");
-    const media=String(e?.attributes?.media_title||e?.attributes?.app_name||"");
+    const media=String(e?.attributes?.media_title||mediaAppName(e)||"");
     const fallbackArtwork=this.config.artwork_entity?this.hass.states[this.config.artwork_entity]?.attributes:{};
     const artwork=domain==="media_player"&&active&&this.config.artwork!==false?String(e?.attributes?.entity_picture_local||e?.attributes?.entity_picture||fallbackArtwork?.entity_picture_local||fallbackArtwork?.entity_picture||""):"";
     const area=domain==="light"?entityAreaName(this.hass,this.config.entity):undefined;
