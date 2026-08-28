@@ -47,6 +47,11 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
   private activeMedia(){if(!this.hass)return[];const active=["on","playing","paused","buffering"];return(this.config?.media_players||defaultMedia).filter(item=>active.includes(this.hass!.states[item.activity_entity||item.entity]?.state))}
   private open(hash:string){if(window.location.hash===hash)window.dispatchEvent(new HashChangeEvent("hashchange"));else window.location.hash=hash}
   private playPause(event:Event,entity:string){event.stopPropagation();void this.hass?.callService("media_player","media_play_pause",undefined,{entity_id:entity})}
+  private hasPlayback(entity:HomeAssistant["states"][string]|undefined){
+    if(!entity||!["playing","paused","buffering"].includes(entity.state))return false;
+    const attrs=entity.attributes;
+    return Boolean(attrs.media_title||attrs.media_series_title||Number(attrs.media_duration)>0||Number(attrs.media_position)>0);
+  }
   protected firstUpdated(){void this.mount()}
   render(){
     if(!this.config||!this.hass)return nothing;
@@ -54,7 +59,8 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
     const fallback=item?.artwork_entity?this.hass.states[item.artwork_entity]?.attributes||{}:{};
     const artwork=String(attrs.entity_picture_local||attrs.entity_picture||fallback.entity_picture_local||fallback.entity_picture||"");
     const title=String(attrs.media_title||mediaAppName(entity,this.config.app_names)||entity?.attributes.friendly_name||"Média");
-    const state=entity?.state==="playing"?"Lejátszás":entity?.state==="paused"?"Szüneteltetve":"Aktív";
-    return html`${item?html`<div class=${`media-dock ${artwork?"has-art":""}`} role="button" tabindex="0" @click=${()=>this.open(item.popup)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art">${artwork?html`<img src=${artwork} alt="">`:html`<ha-icon icon="mdi:television-play"></ha-icon>`}</div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<span class="count">+${active.length-1}</span>`:nothing}<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button></div></div>`:nothing}<div class="host"></div>`
+    const hasPlayback=this.hasPlayback(entity);
+    const state=hasPlayback?(entity?.state==="paused"?"Szüneteltetve":"Lejátszás"):"Aktív";
+    return html`${item?html`<div class=${`media-dock ${artwork?"has-art":""}`} role="button" tabindex="0" @click=${()=>this.open(item.popup)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art">${artwork?html`<img src=${artwork} alt="">`:html`<ha-icon icon="mdi:television-play"></ha-icon>`}</div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<span class="count">+${active.length-1}</span>`:nothing}${hasPlayback?html`<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button>`:nothing}</div></div>`:nothing}<div class="host"></div>`
   }
 }
