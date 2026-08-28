@@ -115,10 +115,10 @@ export class LumaRemoteCard extends LitElement implements LovelaceCard {
       ? String(attrs.entity_picture_local || attrs.entity_picture || "")
       : "";
     const apps = this.config.apps || [
-      { name: "YouTube", activity: "com.google.android.youtube.tv" },
-      { name: "Netflix", activity: "com.netflix.ninja" },
-      { name: "Spotify", activity: "com.spotify.tv.android" },
-      { name: "Wholphin", activity: "com.github.damontecres.wholphin" },
+      { name: "YouTube", activity: "https://www.youtube.com" },
+      { name: "Netflix", activity: "netflix://" },
+      { name: "Spotify", activity: "spotify://" },
+      { name: "Wholphin", activity: "wholphin://search" },
     ];
     const online = entity && !["off", "unavailable", "unknown"].includes(entity.state);
     return html`<div class="wrap">

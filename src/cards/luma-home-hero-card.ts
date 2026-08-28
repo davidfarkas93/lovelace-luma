@@ -40,6 +40,7 @@ interface LumaHomeHeroConfig {
   notifications_entity?: string;
   acknowledgements_entity?: string;
   irrigation_entity?: string;
+  irrigation_remaining_entity?: string;
   irrigation_zone_entities?: Array<string | { entity: string; name?: string }>;
   irrigation_path?: string;
   waste_entity?: string;
@@ -1208,6 +1209,16 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       alarmColor = armed ? "var(--warning-color)" : "var(--success-color)";
     const banners = [...(this.config.banners || [])];
     const irrigation = this.irrigationSummary();
+    const irrigationRemainingEntity = this.config.irrigation_remaining_entity
+        ? this.hass.states[this.config.irrigation_remaining_entity]
+        : undefined,
+      irrigationRemaining = applianceSeconds(irrigationRemainingEntity),
+      irrigationFinish = irrigationRemaining != null && irrigationRemaining > 0
+        ? new Intl.DateTimeFormat(this.hass.locale?.language || undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(Date.now() + irrigationRemaining * 1000)
+        : "";
     if (irrigation)
       banners.push({
         entity:
@@ -1218,7 +1229,15 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
               : this.config.irrigation_zone_entities?.[0]?.entity || "",
           ),
         label: localized(this.hass,"Active irrigation","Aktív öntözés"),
-        state_label: irrigation,
+        state_label: [
+          irrigation,
+          irrigationRemaining != null && irrigationRemaining > 0
+            ? `${applianceDuration(irrigationRemaining)} ${localized(this.hass,"left","hátra")}`
+            : "",
+          irrigationFinish
+            ? `${localized(this.hass,"ends","vége")} ${irrigationFinish}`
+            : "",
+        ].filter(Boolean).join(" · "),
         name: localize(this.hass, "open_item"),
         icon: "mdi:sprinkler-variant",
         color: "var(--info-color, var(--primary-color))",
