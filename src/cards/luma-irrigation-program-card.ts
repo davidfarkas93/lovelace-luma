@@ -15,6 +15,7 @@ interface Config {
   progress_entity?: string;
   state_entity?: string;
   soak_remaining_entity?: string;
+  remaining_entity?: string;
   runtime?: string;
 }
 @customElement("luma-irrigation-program-card")
@@ -72,6 +73,10 @@ export class LumaIrrigationProgramCard
         background: color-mix(in srgb, var(--tone) 15%, transparent);
         font-size: 11px;
         font-weight: 760;
+      }
+      .go[disabled] {
+        cursor: default;
+        opacity: 0.78;
       }
       .progress {
         margin-top: 14px;
@@ -139,7 +144,7 @@ export class LumaIrrigationProgramCard
           transform: none;
         }
       }
-      button {
+      button:not([disabled]) {
         cursor: pointer;
       }
     `,
@@ -153,6 +158,7 @@ export class LumaIrrigationProgramCard
     return 2;
   }
   private start() {
+    if (this.programRunning()) return;
     if (!this.pending) {
       this.pending = true;
       clearTimeout(this.timer);
@@ -171,6 +177,31 @@ export class LumaIrrigationProgramCard
       this.config!.button_entity,
     );
   }
+  private programRunning() {
+    if (!this.hass || !this.config) return false;
+    const value = String(
+      this.hass.states[this.config.active_program_entity]?.state || "",
+    ).toLocaleLowerCase();
+    return !["", "nincs", "none", "unknown", "unavailable"].includes(value);
+  }
+  private formatRemaining(value: number) {
+    if (!Number.isFinite(value) || value <= 0) return "";
+    const minutes = Math.ceil(value / 60);
+    if (minutes < 60) {
+      return localized(
+        this.hass!,
+        `${minutes} min remaining`,
+        `${minutes} perc hátra`,
+      );
+    }
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return localized(
+      this.hass!,
+      `${hours} h ${rest} min remaining`,
+      `${hours} ó ${rest} perc hátra`,
+    );
+  }
   render() {
     if (!this.hass || !this.config) return nothing;
     const c = this.config,
@@ -178,6 +209,7 @@ export class LumaIrrigationProgramCard
       active = String(s[c.active_program_entity]?.state || "")
         .toLowerCase()
         .includes(c.program_name.toLowerCase()),
+      programRunning = this.programRunning(),
       p = Math.max(
         0,
         Math.min(100, Number(s[c.progress_entity || ""]?.state) || 0),
@@ -185,6 +217,7 @@ export class LumaIrrigationProgramCard
       status = s[c.state_entity || ""]?.state,
       normalizedStatus = String(status || "").toLocaleLowerCase(),
       soakRemaining = Number(s[c.soak_remaining_entity || ""]?.state),
+      overallRemaining = Number(s[c.remaining_entity || ""]?.state),
       soaking =
         active &&
         (normalizedStatus.includes("beszivárg") ||
@@ -201,9 +234,17 @@ export class LumaIrrigationProgramCard
               ? status || localized(this.hass,"Program in progress","Program folyamatban")
               : c.runtime || localized(this.hass,"Manual program start","Kézi programindítás")}
           </div></span
-        ><button class="go" @click=${() => this.start()}>
-          ${this.pending ? localize(this.hass, "confirm") : localize(this.hass, "start")}
-        </button>
+        >${programRunning
+          ? html`<button class="go" disabled>
+              ${active
+                ? localized(this.hass, "Running", "Folyamatban")
+                : localized(this.hass, "Busy", "Foglalt")}
+            </button>`
+          : html`<button class="go" @click=${() => this.start()}>
+              ${this.pending
+                ? localize(this.hass, "confirm")
+                : localize(this.hass, "start")}
+            </button>`}
       </div>
       ${active
         ? html`<div class="progress">
@@ -222,7 +263,10 @@ export class LumaIrrigationProgramCard
                       "Program progress",
                       "Programfolyamat",
                     )}</span
-              ><span>${Math.round(p)}%</span>
+              ><span
+                >${this.formatRemaining(overallRemaining) ||
+                `${Math.round(p)}%`}</span
+              >
             </div>
             <div class="track">
               <div
