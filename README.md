@@ -139,10 +139,10 @@ logic in one versioned location.
 
 `luma-navbar-card` keeps installation-specific paths and entities outside the
 package. Pass Navbar Card-compatible `routes` explicitly, plus an optional
-`media_players` list. When multiple configured players are active, the dock's
-`1/N` control cycles the selected player; tapping the dock opens that player's
-configured popup. `app_names` can map integration-specific package IDs to
-friendly labels.
+`media_players` list. When multiple configured players are active, swipe the
+dock horizontally or tap its subtle page indicator to switch players; tapping
+the dock opens the selected player's configured popup. `app_names` can map
+integration-specific package IDs to friendly labels.
 
 ```yaml
 type: custom:luma-navbar-card
