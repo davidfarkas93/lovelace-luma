@@ -45,7 +45,7 @@ import "./cards/luma-discovery-card";
 
 const cards = [
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
-  { type:"luma-navbar-card", name:"Luma Navbar", description:"Centralized route presets rendered through the installed Navbar Card." },
+  { type:"luma-navbar-card", name:"Luma Navbar", description:"Configurable routes with an artwork-aware, switchable active-media dock." },
   { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
   { type:"luma-appliance-card", name:"Luma Appliance", description:"A contextual appliance status card with remaining time and progress." },

@@ -50,7 +50,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
 | `custom:luma-history-card` | Recorder-backed canvas history chart with signed ranges, gradients and touch inspection |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
-| `custom:luma-navbar-card` | Centralized automatic route presets rendered through Navbar Card |
+| `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
 | `custom:luma-irrigation-hero-card` | Context-aware irrigation status with ad-hoc/program progress and next scheduled run |
@@ -137,13 +137,27 @@ The home hero loads the shared `home` incident preset by default. Set
 This keeps safety, Homelab, maintenance, certificate, backup, and energy warning
 logic in one versioned location.
 
-`luma-navbar-card` selects its route preset from the current dashboard URL. A
-minimal `type: custom:luma-navbar-card` configuration covers the main, Energy,
-Lawn, Irrigation, Homelab, and Security navigation families. Use `preset` or
-`routes` only when a dashboard intentionally needs an override. Active media is
-rendered by Luma as a compact artwork-aware dock instead of the underlying
-Navbar Card widget. `media_players` can replace the player list and `app_names`
-can map integration-specific package IDs to friendly labels.
+`luma-navbar-card` keeps installation-specific paths and entities outside the
+package. Pass Navbar Card-compatible `routes` explicitly, plus an optional
+`media_players` list. When multiple configured players are active, the dock's
+`1/N` control cycles the selected player; tapping the dock opens that player's
+configured popup. `app_names` can map integration-specific package IDs to
+friendly labels.
+
+```yaml
+type: custom:luma-navbar-card
+routes:
+  - url: /lovelace/home
+    label: Home
+    icon: mdi:home
+  - url: /config?disable_km
+    label: Settings
+    icon: mdi:cog-outline
+media_players:
+  - entity: media_player.living_room
+    name: Living room
+    popup: "#living-room-remote"
+```
 
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
 the same behavior and visual language to cover whole-house, room, and individual
