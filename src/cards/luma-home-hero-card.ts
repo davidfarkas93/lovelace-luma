@@ -73,6 +73,7 @@ interface Incident {
   message: string;
   tone: LumaIncidentTone;
   path?: string;
+  entity?: string;
   dismissible: boolean;
 }
 
@@ -896,14 +897,16 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         item.remaining_entity,
       ]),
     ];
-    const patterns = (this.config.incidents || []).filter(
-      (r) => r.entity_pattern,
+    const patterns = (this.config.incidents || []).flatMap((rule) =>
+      [rule.entity_pattern, ...(rule.entity_patterns || [])]
+        .filter(Boolean)
+        .map((pattern) => ({ rule, pattern: pattern! })),
     );
     const dynamic = Object.keys(this.hass.states).filter((id) =>
-      patterns.some((r) => glob(r.entity_pattern!, id)),
+      patterns.some(({ pattern }) => glob(pattern, id)),
     );
     const related = dynamic.map((id) => {
-      const r = patterns.find((x) => glob(x.entity_pattern!, id));
+      const r = patterns.find(({ pattern }) => glob(pattern, id))?.rule;
       return r?.related_suffix
         ? id.replace(r.related_suffix.from, r.related_suffix.to)
         : id;
@@ -1037,6 +1040,10 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     for (const rule of this.config.incidents || []) {
       let ids: string[] = [];
       if (rule.entity) ids = [rule.entity];
+      else if (rule.entity_patterns)
+        ids = Object.keys(this.hass.states).filter((id) =>
+          rule.entity_patterns!.some((pattern) => glob(pattern, id)),
+        );
       else if (rule.entity_pattern)
         ids = Object.keys(this.hass.states).filter((id) =>
           glob(rule.entity_pattern!, id),
@@ -1074,6 +1081,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
             message,
             tone: rule.tone || "warning",
             path: rule.navigation_path,
+            entity: id,
             dismissible: rule.dismissible !== false,
           });
         }
@@ -1432,11 +1440,19 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                       ><span
                         class="issue-text"
                         @click=${() =>
-                          issue.path &&
-                          runAction(this, this.hass!, {
-                            action: "navigate",
-                            navigation_path: issue.path,
-                          })}
+                          issue.path
+                            ? runAction(this, this.hass!, {
+                                action: "navigate",
+                                navigation_path: issue.path,
+                              })
+                            : issue.entity
+                              ? runAction(
+                                  this,
+                                  this.hass!,
+                                  { action: "more-info" },
+                                  issue.entity,
+                                )
+                              : undefined}
                         >${issue.message}</span
                       >${issue.dismissible && issue.tone !== "error"
                         ? html`<span class="issue-actions"

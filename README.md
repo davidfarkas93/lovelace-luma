@@ -447,11 +447,13 @@ incidents:
     navigation_path: /dashboard-homelab/overview
 ```
 
-Incident rules accept an exact `entity`, an `entity_pattern` glob, or
-`device_classes`, together with `state`, `state_not`, `above`, `below`, and
-`for_minutes`. `{name}` expands per entity and `{count}` works with
-`aggregate: true`. Configuring an input-text acknowledgement entity enables
-per-incident 7- or 30-day dismissal; error incidents remain visible.
+Incident rules accept an exact `entity`, one `entity_pattern` glob, multiple
+`entity_patterns`, or `device_classes`, together with `state`, `state_not`,
+`above`, `below`, and `for_minutes`. `{name}` expands per entity and `{count}`
+works with `aggregate: true`. A non-aggregated incident without a
+`navigation_path` opens the matching entity's More Info dialog. Configuring an
+input-text acknowledgement entity enables per-incident 7- or 30-day dismissal;
+error incidents remain visible.
 
 ## Actions
 
