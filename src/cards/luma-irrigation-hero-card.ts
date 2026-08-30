@@ -6,7 +6,7 @@ import { localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-interface Schedule { name:string; enabled_entity:string; start_entity:string; day_entities:string[] }
+interface Schedule { name:string; enabled_entity:string; start_entity:string; day_entities:string[]; mode_entity?:string; interval_entity?:string; anchor_entity?:string }
 interface Config {
   type:string; name?:string; controller_entity:string; rain_entity:string;
   suspended_entity:string; program_entity:string; active_program_entity?:string;
@@ -39,6 +39,18 @@ export class LumaIrrigationHeroCard extends LitElement implements LovelaceCard {
       const raw=this.hass.states[schedule.start_entity]?.state||"";
       const [hour,minute]=raw.split(":").map(Number);
       if(!Number.isFinite(hour)||!Number.isFinite(minute))continue;
+      if(schedule.mode_entity&&this.hass.states[schedule.mode_entity]?.state==="Minden N. nap"&&schedule.interval_entity&&schedule.anchor_entity){
+        const anchor=this.hass.states[schedule.anchor_entity]?.state||"",interval=Math.max(1,Number(this.hass.states[schedule.interval_entity]?.state)||1),parts=anchor.split("-").map(Number);
+        if(parts.length===3&&parts.every(Number.isFinite)){
+          const anchorDay=Date.UTC(parts[0],parts[1]-1,parts[2]),date=new Date(now);date.setHours(hour,minute,0,0);
+          for(let i=0;i<=Math.max(31,interval+1);i++){
+            const candidateDay=Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()),elapsed=Math.round((candidateDay-anchorDay)/86400000);
+            if(elapsed>=0&&elapsed%interval===0&&date>now){candidates.push({name:schedule.name,date:new Date(date)});break}
+            date.setDate(date.getDate()+1);
+          }
+        }
+        continue;
+      }
       schedule.day_entities.forEach((id,index)=>{
         if(this.hass!.states[id]?.state!=="on")return;
         let offset=(index-currentDay+7)%7;
