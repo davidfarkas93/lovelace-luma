@@ -47,7 +47,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-cover-card` | Cover position, motion state, progress bar and open/stop/close controls |
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
-| `custom:luma-energy-flow-card` | Animated live solar, home and grid power flow |
+| `custom:luma-energy-flow-card` | Animated solar, optional measured home load, and configurable-sign grid power flow |
 | `custom:luma-history-card` | Recorder-backed canvas history chart with signed ranges, gradients and touch inspection |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
