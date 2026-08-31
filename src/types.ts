@@ -114,11 +114,13 @@ export interface LumaIncidentRule extends LumaCondition {
   entity_patterns?: string[];
   related_suffix?: { from: string; to: string };
   device_classes?: string[];
+  label?: string;
   message: string;
   tone?: LumaIncidentTone;
   navigation_path?: string;
   for_minutes?: number;
   aggregate?: boolean;
+  ack_scope?: "rule" | "matches";
   dismissible?: boolean;
 }
 

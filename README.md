@@ -455,6 +455,11 @@ works with `aggregate: true`. A non-aggregated incident without a
 input-text acknowledgement entity enables per-incident 7- or 30-day dismissal;
 error incidents remain visible.
 
+Incident rules can use `label` to limit wildcard matches to entities carrying a
+specific Home Assistant label. Set `ack_scope: matches` when an aggregate warning
+should reappear as soon as the matched entity set or an entity's `latest_version`
+changes, while keeping a single combined acknowledgement action.
+
 ## Actions
 
 Cards support `none`, `navigate`, `more-info`, `toggle`, `perform-action`, and

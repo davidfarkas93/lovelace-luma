@@ -1024,14 +1024,21 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     return result;
   }
 
-  private incidentKey(message: string, path = ""): string {
-    return `${path}|${message}`
+  private incidentKey(message: string, path = "", identity = ""): string {
+    const base = `${path}|${message}`
       .toLowerCase()
       .replace(/\d+/g, "#")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9|#]/g, "")
-      .slice(0, 64);
+      .slice(0, identity ? 52 : 64);
+    if (!identity) return base;
+    let hash = 2166136261;
+    for (let index = 0; index < identity.length; index += 1) {
+      hash ^= identity.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `${base}|${(hash >>> 0).toString(36)}`;
   }
 
   private incidents(): Incident[] {
@@ -1055,16 +1062,31 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           ),
         );
       const matches = ids.filter((source) => {
+        if (
+          rule.label &&
+          !this.hass!.entities?.[source]?.labels?.includes(rule.label)
+        )
+          return false;
         const evaluated = rule.related_suffix
           ? source.replace(rule.related_suffix.from, rule.related_suffix.to)
           : source;
         return matchesRule(this.hass!.states[evaluated], rule);
       });
       if (!matches.length) continue;
+      const matchIdentity =
+        rule.ack_scope === "matches"
+          ? matches
+              .map((id) => {
+                const entity = this.hass!.states[id];
+                return `${id}@${String(entity?.attributes.latest_version || "")}`;
+              })
+              .sort()
+              .join(",")
+          : "";
       if (rule.aggregate) {
         const message = rule.message.replace("{count}", String(matches.length));
         found.push({
-          key: this.incidentKey(message, rule.navigation_path),
+          key: this.incidentKey(message, rule.navigation_path, matchIdentity),
           message,
           tone: rule.tone || "warning",
           path: rule.navigation_path,
@@ -1077,7 +1099,13 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
             .replace("{name}", String(entity?.attributes.friendly_name || id))
             .replace("{count}", "1");
           found.push({
-            key: this.incidentKey(message, rule.navigation_path),
+            key: this.incidentKey(
+              message,
+              rule.navigation_path,
+              rule.ack_scope === "matches"
+                ? `${id}@${String(entity?.attributes.latest_version || "")}`
+                : "",
+            ),
             message,
             tone: rule.tone || "warning",
             path: rule.navigation_path,

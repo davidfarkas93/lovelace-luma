@@ -17,7 +17,6 @@ export const homeIncidentPreset: LumaIncidentRule[] = [
   {entity:"sensor.tower_cpu_temperature",above:80,message:"Unraid CPU túlmelegedés",navigation_path:"/dashboard-homelab/overview"},
   {entity:"sensor.tower_ram_usage",above:90,message:"Unraid memória 90% felett",navigation_path:"/dashboard-homelab/overview"},
   {entity:"sensor.ups_allapot",state_not:"Online",message:"UPS nem hálózati üzemben",navigation_path:"/dashboard-homelab/overview"},
-  {entity:"sensor.infrastructure_updates_available",above:0,message:"Infrastruktúra-frissítés érhető el",tone:"warning",navigation_path:"/dashboard-homelab/operations"},
   {entity_pattern:"sensor.*_filter_life_level",below:20,message:"{name}: szűrőcsere szükséges",tone:"warning",navigation_path:"/dashboard-rooms/rooms"},
   {entity:"sensor.living_room_pre_filter",below:24,message:"A nappali légtisztító előszűrője tisztítást kér",tone:"warning",navigation_path:"/dashboard-rooms/living-area"},
   {entity_pattern:"sensor.*_tanusitvany_lejarata",above:13.99,below:30,message:"{name}: hamarosan lejár",tone:"warning",navigation_path:"/dashboard-homelab/services"},

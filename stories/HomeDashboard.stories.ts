@@ -38,7 +38,10 @@ const config={
     {entity:"sensor.dryer_state",name:"Dryer",active_entity:"binary_sensor.dryer_running",remaining_entity:"sensor.dryer_remaining",path:"/rooms/laundry",icon:"mdi:tumble-dryer",state_map:{drying:"Drying"}},
   ],
   incident_preset:"home",
-  incidents:[{entity:"binary_sensor.front_door",state:"on",message:"Front door is open",tone:"warning",path:"/security",dismissible:true}],
+  incidents:[
+    {entity:"binary_sensor.front_door",state:"on",message:"Front door is open",tone:"warning",path:"/security",dismissible:true},
+    {entity_pattern:"update.*",label:"infrastructure_update",state:"on",message:"Infrastructure update available",tone:"warning",aggregate:true,ack_scope:"matches",navigation_path:"/homelab/operations"},
+  ],
   tap_action:{action:"navigate",navigation_path:"/weather"},
 };
 
