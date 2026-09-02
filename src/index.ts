@@ -66,7 +66,7 @@ const cards = [
   { type:"luma-logbook-card", name:"Luma Logbook", description:"A recorder-backed, grouped and collapsible event timeline." },
   { type:"luma-irrigation-program-card", name:"Luma Irrigation Program", description:"A confirmed irrigation program launcher with live progress." },
   { type:"luma-irrigation-zone-card", name:"Luma Irrigation Zone", description:"An adjustable timed zone controller with confirmation and live progress." },
-  { type:"luma-irrigation-schedule-card", name:"Luma Irrigation Schedule", description:"An even-width weekday and start-time schedule controller." },
+  { type:"luma-irrigation-schedule-card", name:"Luma Irrigation Schedule", description:"A persistent weekday or every-N-days schedule controller with next-run preview." },
   { type:"luma-irrigation-hero-card", name:"Luma Irrigation Hero", description:"A contextual irrigation system header." },
   { type:"luma-rack-cooling-card", name:"Luma Rack Cooling", description:"A responsive rack thermal and fan controller summary." },
   { type:"luma-homelab-hero-card", name:"Luma Homelab Hero", description:"A dynamic Homelab health hero aggregating Kuma, Komodo and infrastructure incidents." },
