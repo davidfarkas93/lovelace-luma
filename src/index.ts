@@ -34,6 +34,8 @@ import "./cards/luma-camera-activity-card";
 import "./cards/luma-action-card";
 import "./cards/luma-weather-hero-card";
 import "./cards/luma-weather-forecast-card";
+import "./cards/luma-weather-hourly-card";
+import "./cards/luma-weather-details-card";
 import "./cards/luma-iframe-card";
 import "./cards/luma-waste-card";
 import "./cards/luma-lawn-card";
@@ -59,6 +61,8 @@ const cards = [
   { type:"luma-waste-ack-card", name:"Luma Waste Acknowledgement", description:"A confirmed collection preparation acknowledgement." },
   { type:"luma-weather-hero-card", name:"Luma Weather Hero", description:"A responsive current-weather hero with contextual conditions and metrics." },
   { type:"luma-weather-forecast-card", name:"Luma Weather Forecast", description:"A responsive native Home Assistant daily forecast strip." },
+  { type:"luma-weather-hourly-card", name:"Luma Weather Hourly", description:"A scrollable 24-hour temperature, rain and wind outlook." },
+  { type:"luma-weather-details-card", name:"Luma Weather Details", description:"A compact current weather, sun and recent precipitation panel." },
   { type:"luma-iframe-card", name:"Luma Iframe", description:"A polished responsive frame for maps and embedded dashboards." },
   { type:"luma-action-card", name:"Luma Action", description:"A compact reusable action, scene, or navigation card with optional confirmation." },
   { type:"luma-timeline-card", name:"Luma Timeline", description:"A responsive UniFi Protect event timeline with authenticated video playback." },
@@ -138,7 +142,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.55.3 ",
+  "%c LUMA %c 0.10.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

@@ -73,6 +73,8 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
 | `custom:luma-weather-forecast-card` | Responsive daily forecast with an hourly, data-rich per-day detail sheet |
+| `custom:luma-weather-hourly-card` | Scrollable 24-hour temperature, precipitation and wind outlook |
+| `custom:luma-weather-details-card` | Current atmospheric, recent rain, optional air-quality and sun details |
 
 `luma-remote-card` automatically adds a restrained now-playing artwork strip
 when the media player exposes `entity_picture_local` or `entity_picture`. It
