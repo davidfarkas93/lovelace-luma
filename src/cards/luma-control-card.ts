@@ -5,7 +5,7 @@ import { localize, localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
 
-interface Config { type:string; entity:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; display_as?:"light"|"media_player"|"switch"; artwork?:boolean; artwork_entity?:string; embedded_details?:boolean; compact?:boolean; tap_action?:LumaAction; hold_action?:LumaAction }
+interface Config { type:string; entity:string; state_entity?:string; name?:string; subtitle?:string; icon?:string; color?:string; active_color?:string; active_states?:string[]; state_map?:Record<string,string>; action_label?:string; display_as?:"light"|"media_player"|"switch"; artwork?:boolean; artwork_entity?:string; embedded_details?:boolean; compact?:boolean; tap_action?:LumaAction; hold_action?:LumaAction }
 
 @customElement("luma-control-card")
 export class LumaControlCard extends LitElement implements LovelaceCard {
@@ -29,7 +29,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   `];
   setConfig(config:Config){if(!config?.entity)throw Error("Luma control requires entity.");this.config={active_states:[],...config}}
   getCardSize(){return 2}
-  protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;const entity=this.config?.entity||"",artwork=this.config?.artwork_entity||"";return !old||old.states[entity]!==this.hass?.states[entity]||(artwork!==""&&old.states[artwork]!==this.hass?.states[artwork])}
+  protected shouldUpdate(changed:PropertyValues<this>){if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;const entity=this.config?.entity||"",stateEntity=this.config?.state_entity||entity,artwork=this.config?.artwork_entity||"";return !old||old.states[entity]!==this.hass?.states[entity]||old.states[stateEntity]!==this.hass?.states[stateEntity]||(artwork!==""&&old.states[artwork]!==this.hass?.states[artwork])}
   private startHold(){
     this.held=false;
     const domain=this.config?.display_as||this.config?.entity.split(".")[0];
@@ -41,7 +41,7 @@ export class LumaControlCard extends LitElement implements LovelaceCard {
   private activate(){const action=this.config?.tap_action;if(action&&"confirmation" in action&&action.confirmation){if(!this.pending){this.pending=true;clearTimeout(this.confirmTimer);this.confirmTimer=window.setTimeout(()=>this.pending=false,3500);return}this.pending=false}void runAction(this,this.hass!,action,this.config?.entity)}
   render(){
     if(!this.hass||!this.config)return nothing;
-    const e=this.hass.states[this.config.entity],domain=this.config.display_as||this.config.entity.split(".")[0];
+    const e=this.hass.states[this.config.state_entity||this.config.entity],domain=this.config.display_as||this.config.entity.split(".")[0];
     const defaults=["light","fan","switch"].includes(domain)?["on"]:domain==="media_player"?["on","playing","paused","buffering"]:[];
     const states=this.config.active_states?.length?this.config.active_states:defaults,active=states.includes(e?.state);
     const activeTone=domain==="light"?"var(--warning-color)":domain==="media_player"?"#7c78d8":"var(--primary-color)";

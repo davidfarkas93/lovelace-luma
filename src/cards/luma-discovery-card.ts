@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
-import { entityAreaName, entityName, entityState, runAction } from "../helpers";
+import { entityAreaName, entityName, runAction } from "../helpers";
 import { localize, localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HassEntity, HomeAssistant, LovelaceCard } from "../types";
@@ -554,42 +554,55 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
       .sort((a, b) => a.entity_id.localeCompare(b.entity_id));
     if (!buttons.length)
       return this.empty(
-        this.config!.empty_text || "Nincs felfedezett Komodo deployment",
+        this.config!.empty_text ||
+          localized(
+            this.hass,
+            "No Komodo deployments discovered",
+            "Nincs felfedezett Komodo deployment",
+          ),
       );
     return html`<div class="stack">
       ${buttons.map((button) => {
         const name = niceStackName(button.entity_id),
           slug = button.entity_id.split(".")[1].split("_deploy_")[0],
           statusId = `sensor.${slug}_stack_state`,
-          status = this.hass!.states[statusId];
-        return html`<div
-          class="item"
-          style="--tone:var(--primary-color)"
-          @click=${() =>
-            status &&
-            runAction(this, this.hass!, { action: "more-info" }, statusId)}
-        >
-          <span class="icon"
-            ><ha-icon icon="mdi:rocket-launch-outline"></ha-icon></span
-          ><span class="copy"
-            ><div class="name">${name}</div>
-            <div class="sub">
-              ${status ? entityState(this.hass!, status) : "Komodo stack"}
-            </div></span
-          ><button
-            class="action"
-            @click=${(ev: Event) => {
-              ev.stopPropagation();
-              this.arm(button.entity_id, () =>
-                this.hass!.callService("button", "press", undefined, {
-                  entity_id: button.entity_id,
-                }),
-              );
-            }}
-          >
-            ${this.pending === button.entity_id ? localize(this.hass,"confirm").toLocaleUpperCase(this.hass?.locale?.language) : "REDEPLOY"}
-          </button>
-        </div>`;
+          status = this.hass!.states[statusId],
+          childConfig = {
+            type: "custom:luma-control-card",
+            entity: button.entity_id,
+            state_entity: status ? statusId : button.entity_id,
+            name,
+            subtitle: localized(this.hass, "Komodo deployment", "Komodo deployment"),
+            icon: "mdi:rocket-launch-outline",
+            color: "var(--secondary-text-color)",
+            active_states: ["RUNNING", "running"],
+            active_color: "var(--success-color)",
+            action_label: localized(this.hass, "Redeploy", "Újratelepítés"),
+            tap_action: {
+              action: "perform-action",
+              perform_action: "button.press",
+              target: { entity_id: button.entity_id },
+              confirmation: {
+                text: localized(
+                  this.hass,
+                  `Redeploy ${name}?`,
+                  `Biztosan újratelepíted ezt: ${name}?`,
+                ),
+              },
+            },
+            hold_action: status
+              ? { action: "more-info", entity: statusId }
+              : { action: "more-info", entity: button.entity_id },
+          };
+        return html`<luma-control-card
+          ${ref((node) => {
+            const card = node as (HTMLElement & LovelaceCard) | undefined;
+            if (card) {
+              card.setConfig(childConfig);
+              card.hass = this.hass;
+            }
+          })}
+        ></luma-control-card>`;
       })}
     </div>`;
   }
