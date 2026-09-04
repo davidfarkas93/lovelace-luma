@@ -354,6 +354,17 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
 
   private incidentsList(): Incident[] {
     const result: Incident[] = [];
+    const usageDetail = (value: number): string => {
+      const format = new Intl.NumberFormat(
+        this.hass?.locale?.language || undefined,
+        { maximumFractionDigits: 1 },
+      );
+      return localized(
+        this.hass,
+        `${format.format(value)}% used · ${format.format(Math.max(0, 100 - value))}% free`,
+        `${format.format(value)}% foglalt · ${format.format(Math.max(0, 100 - value))}% szabad`,
+      );
+    };
     for (const entity of Object.values(this.hass!.states)) {
       if (!visible(this.hass!, entity.entity_id)) continue;
       const p = platform(this.hass!, entity.entity_id),
@@ -405,15 +416,15 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
         result.push({
           entity,
           name: entityName(entity, id).replace("Tower ", ""),
-          subtitle: "Capacity warning",
+          subtitle: usageDetail(value),
           icon: "mdi:database-alert",
           tone: value >= 90 ? "var(--error-color)" : "var(--warning-color)",
         });
       if (id === "sensor.tower_ram_usage" && value >= 90)
         result.push({
           entity,
-          name: "High RAM usage",
-          subtitle: "Unraid memory warning",
+          name: localized(this.hass, "High RAM usage", "Magas memóriahasználat"),
+          subtitle: usageDetail(value),
           icon: "mdi:memory",
           tone: "var(--warning-color)",
         });
