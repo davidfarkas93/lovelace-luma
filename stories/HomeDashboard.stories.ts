@@ -37,7 +37,6 @@ const config={
     {entity:"sensor.washer_state",name:"Washer",active_entity:"binary_sensor.washer_running",remaining_entity:"sensor.washer_remaining",path:"/rooms/laundry",icon:"mdi:washing-machine",state_map:{run:"Washing",spin:"Spinning"}},
     {entity:"sensor.dryer_state",name:"Dryer",active_entity:"binary_sensor.dryer_running",remaining_entity:"sensor.dryer_remaining",path:"/rooms/laundry",icon:"mdi:tumble-dryer",state_map:{drying:"Drying"}},
   ],
-  incident_preset:"home",
   incidents:[
     {entity:"binary_sensor.front_door",state:"on",message:"Front door is open",tone:"warning",path:"/security",dismissible:true},
     {entity_pattern:"update.*",label:"infrastructure_update",state:"on",message:"Infrastructure update available",tone:"warning",aggregate:true,ack_scope:"matches",navigation_path:"/homelab/operations"},
@@ -74,4 +73,4 @@ const entities={
 };
 
 export const RealWorldExample:Story={render:()=>renderCard("custom:luma-home-hero-card",config,entities,1080)};
-export const QuietHome:Story={render:()=>renderCard("custom:luma-home-hero-card",{...config,incidents:[],incident_preset:"none"},{...entities,"sensor.notifications":{state:0},"sensor.active_irrigation_program":{state:"none"},"switch.front_lawn":{state:"off"},"light.sofa":{state:"off"},"light.terrace":{state:"off"},"light.terrace_wall":{state:"off"},"media_player.living_room":{state:"off"},"climate.living_room":{state:"off"},"binary_sensor.dryer_running":{state:"off"},"input_boolean.waste_ready":{state:"on"}},1080)};
+export const QuietHome:Story={render:()=>renderCard("custom:luma-home-hero-card",{...config,incidents:[]},{...entities,"sensor.notifications":{state:0},"sensor.active_irrigation_program":{state:"none"},"switch.front_lawn":{state:"off"},"light.sofa":{state:"off"},"light.terrace":{state:"off"},"light.terrace_wall":{state:"off"},"media_player.living_room":{state:"off"},"climate.living_room":{state:"off"},"binary_sensor.dryer_running":{state:"off"},"input_boolean.waste_ready":{state:"on"}},1080)};

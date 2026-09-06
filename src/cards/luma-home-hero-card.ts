@@ -13,7 +13,7 @@ import {
 } from "../appliance";
 import { localize, localized, localizedMap } from "../localize";
 import { lumaTokens } from "../styles";
-import { homeIncidentPreset } from "../presets";
+import { glob, matchingIncidentIds } from "../incidents";
 import type {
   HassEntity,
   HomeAssistant,
@@ -63,7 +63,6 @@ interface LumaHomeHeroConfig {
   active_exclude?: string[];
   active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
-  incident_preset?: "home" | "none";
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
 }
@@ -106,13 +105,6 @@ const weatherIcons: Record<string, string> = {
   windy: "mdi:weather-windy",
 };
 
-const glob = (pattern: string, value: string): boolean => {
-  const escaped = pattern
-    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*");
-  return new RegExp(`^${escaped}$`).test(value);
-};
-
 const listed = (
   expected: string | string[] | undefined,
   actual: string,
@@ -122,35 +114,6 @@ const listed = (
     : (Array.isArray(expected) ? expected : [expected])
         .map((value) => value.toLocaleLowerCase())
         .includes(actual.toLocaleLowerCase());
-
-const matchesRule = (
-  entity: HassEntity | undefined,
-  rule: LumaIncidentRule,
-): boolean => {
-  if (!entity) return false;
-  if (rule.state !== undefined && !listed(rule.state, entity.state))
-    return false;
-  if (rule.state_not !== undefined && listed(rule.state_not, entity.state))
-    return false;
-  const numeric = Number(entity.state);
-  if (
-    rule.above !== undefined &&
-    (!Number.isFinite(numeric) || numeric <= rule.above)
-  )
-    return false;
-  if (
-    rule.below !== undefined &&
-    (!Number.isFinite(numeric) || numeric >= rule.below)
-  )
-    return false;
-  if (
-    rule.for_minutes &&
-    Date.now() - new Date(entity.last_changed).getTime() <
-      rule.for_minutes * 60_000
-  )
-    return false;
-  return true;
-};
 
 @customElement("luma-home-hero-card")
 export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
@@ -777,14 +740,13 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   setConfig(config: LumaHomeHeroConfig): void {
     if (!config?.weather_entity)
       throw new Error("Luma home hero requires weather_entity.");
-    const preset = config.incident_preset === "none" ? [] : homeIncidentPreset;
     this.config = {
       banners: [],
       waste_days: 2,
       wind_threshold: 8,
       alarm_popover: true,
       ...config,
-      incidents: [...preset, ...(config.incidents || [])],
+      incidents: config.incidents || [],
     };
   }
   getCardSize(): number {
@@ -1045,33 +1007,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config) return [];
     const found: Incident[] = [];
     for (const rule of this.config.incidents || []) {
-      let ids: string[] = [];
-      if (rule.entity) ids = [rule.entity];
-      else if (rule.entity_patterns)
-        ids = Object.keys(this.hass.states).filter((id) =>
-          rule.entity_patterns!.some((pattern) => glob(pattern, id)),
-        );
-      else if (rule.entity_pattern)
-        ids = Object.keys(this.hass.states).filter((id) =>
-          glob(rule.entity_pattern!, id),
-        );
-      else if (rule.device_classes)
-        ids = Object.keys(this.hass.states).filter((id) =>
-          rule.device_classes!.includes(
-            String(this.hass!.states[id].attributes.device_class || ""),
-          ),
-        );
-      const matches = ids.filter((source) => {
-        if (
-          rule.label &&
-          !this.hass!.entities?.[source]?.labels?.includes(rule.label)
-        )
-          return false;
-        const evaluated = rule.related_suffix
-          ? source.replace(rule.related_suffix.from, rule.related_suffix.to)
-          : source;
-        return matchesRule(this.hass!.states[evaluated], rule);
-      });
+      const matches = matchingIncidentIds(this.hass, rule);
       if (!matches.length) continue;
       const matchIdentity =
         rule.ack_scope === "matches"
@@ -1277,11 +1213,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         name: localize(this.hass, "open_item"),
         icon: "mdi:sprinkler-variant",
         color: "var(--info-color, var(--primary-color))",
-        tap_action: {
-          action: "navigate",
-          navigation_path:
-            this.config.irrigation_path || "/dashboard-irrigation/irrigation",
-        },
+        tap_action: this.config.irrigation_path
+          ? { action: "navigate", navigation_path: this.config.irrigation_path }
+          : { action: "more-info" },
       });
     if (
       this.config.waste_entity &&
@@ -1295,10 +1229,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         icon: "mdi:trash-can-outline",
         color: "var(--warning-color)",
         below: (this.config.waste_days || 2) + 0.01,
-        tap_action: {
-          action: "navigate",
-          navigation_path: this.config.waste_path || "/lovelace/waste",
-        },
+        tap_action: this.config.waste_path
+          ? { action: "navigate", navigation_path: this.config.waste_path }
+          : { action: "more-info" },
         secondary_label: localize(this.hass, "done"),
         secondary_action: this.config.waste_ack_entity
           ? {
@@ -1343,10 +1276,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           name: localize(this.hass, "open_item"),
           icon: item.icon || "mdi:washing-machine",
           color: "var(--info-color, var(--primary-color))",
-          tap_action: {
-            action: "navigate",
-            navigation_path: item.path || "/dashboard-rooms/laundry",
-          },
+          tap_action: item.path
+            ? { action: "navigate", navigation_path: item.path }
+            : { action: "more-info" },
         });
     }
     const alarmModes = this.config.alarm_modes || [
@@ -1375,10 +1307,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           runAction(
             this,
             this.hass!,
-            this.config?.tap_action || {
-              action: "navigate",
-              navigation_path: "/lovelace/weather",
-            },
+            this.config?.tap_action || { action: "more-info" },
             this.config?.weather_entity,
           )}
         >${this.renderWeatherFx(state, wind)}

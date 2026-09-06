@@ -27,7 +27,7 @@ export class LumaIrrigationHeroCard extends LitElement implements LovelaceCard {
     @media(max-width:599px){ha-card{padding:18px}.name{font-size:22px}.icon{width:50px;height:50px;border-radius:16px}.progress{margin-top:14px}.chips{margin-top:12px}.next{flex:1 1 100%;justify-content:center}}
   `];
 
-  setConfig(c:Config){if(!c?.controller_entity||!c.zones)throw Error("controller_entity and zones required");this.config={schedule_path:"/dashboard-irrigation/schedules",schedules:[],...c}}
+  setConfig(c:Config){if(!c?.controller_entity||!c.zones)throw Error("controller_entity and zones required");this.config={schedules:[],...c}}
   getCardSize(){return 3}
 
   private nextSchedule(){

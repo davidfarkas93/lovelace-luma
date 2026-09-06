@@ -134,10 +134,18 @@ The home hero's alarm chip opens an anchored alarm control by default. Its
 explicit second confirmation tap, and `alarm_action` continues to open the
 full detailed alarm sheet. Set `alarm_popover: false` to keep the direct action.
 
-The home hero loads the shared `home` incident preset by default. Set
-`incident_preset: none` to disable it, or add `incidents` to append local rules.
-This keeps safety, Homelab, maintenance, certificate, backup, and energy warning
-logic in one versioned location.
+The home hero has no installation-specific incident preset. Pass every warning
+rule through `incidents`; entity IDs, thresholds, labels, messages, and
+navigation paths therefore stay in the dashboard that owns them. Rules support
+explicit entities, glob patterns, entity-registry platform/label filters,
+device classes, numeric thresholds, duration, aggregation, and acknowledgement
+scope.
+
+The same boundary applies to specialized cards: `luma-homelab-hero-card`
+receives `status_rules`, `luma-discovery-card` in `homelab-incidents` mode
+receives `incident_rules`, and `luma-rack-cooling-card` receives all sensor
+entity IDs explicitly. Luma provides rendering and rule evaluation, while the
+runtime dashboard owns the installation topology.
 
 `luma-navbar-card` keeps installation-specific paths and entities outside the
 package. Pass Navbar Card-compatible `routes` explicitly, plus an optional

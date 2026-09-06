@@ -1,11 +1,13 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { runAction } from "../helpers";
+import { incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { localized } from "../localize";
 import { lumaTokens } from "../styles";
-import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
+import type { HomeAssistant, LumaAction, LovelaceCard, LumaIncidentRule } from "../types";
 
-interface Config { type:string; name?:string; icon?:string; tap_action?:LumaAction }
+type StatusRule = Omit<LumaIncidentRule,"message"> & { category:string; monitored?:boolean };
+interface Config { type:string; name?:string; icon?:string; tap_action?:LumaAction; status_rules?:StatusRule[] }
 
 @customElement("luma-homelab-hero-card")
 export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
@@ -19,15 +21,18 @@ export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
   setConfig(config:Config){this.config=config}
   getCardSize(){return 2}
   private summary(){
-    const states=this.hass?.states||{},ids=Object.keys(states);
-    const urls=ids.filter(id=>id.startsWith("sensor.")&&id.endsWith("_felugyelt_url"));
-    const kuma=urls.map(id=>id.replace("_felugyelt_url","_allapot")).filter(id=>states[id]&&String(states[id].state).toLowerCase()!=="up").length;
-    const komodo=ids.filter(id=>/^sensor\..*_alerts$/.test(id)&&!["","0","unknown","unavailable","none"].includes(String(states[id].state).toLowerCase())).length;
-    const critical=["binary_sensor.tower_array_started","binary_sensor.tower_parity_valid","binary_sensor.tower_disks_missing"].filter((id,index)=>states[id]&&((index===0&&states[id].state!=="on")||(index>0&&states[id].state==="on"))).length;
-    const warning=ids.filter(id=>/^sensor\.tower_disk_.*_usage$/.test(id)&&Number(states[id].state)>=80).length+(Number(states["sensor.tower_cpu_temperature"]?.state)>=80?1:0)+(Number(states["sensor.tower_ram_usage"]?.state)>=90?1:0);
-    const total=kuma+komodo+critical+warning,parts=[] as string[];
-    if(kuma)parts.push(`${kuma} Kuma`);if(komodo)parts.push(`${komodo} Komodo`);if(critical+warning)parts.push(`${critical+warning} ${localized(this.hass,"infrastructure","infrastruktúra")}`);
-    return{total,tone:kuma+critical>0?"var(--error-color)":total>0?"var(--warning-color)":"var(--success-color)",subtitle:total?`${parts.join(" · ")} ${localized(this.hass,"need attention","figyelmet kér")}`:`${urls.length} ${localized(this.hass,"services monitored · all systems operational","szolgáltatás felügyelve · minden rendszer működik")}`};
+    const rules=this.config?.status_rules||[],groups=new Map<string,number>();
+    let total=0,critical=0;
+    const monitored=new Set<string>();
+    for(const rule of rules){
+      if(rule.monitored)for(const id of incidentSourceIds(this.hass!,rule))monitored.add(id);
+      const count=matchingIncidentIds(this.hass!,rule).length;
+      if(!count)continue;
+      total+=count;if(rule.tone==="error")critical+=count;
+      groups.set(rule.category,(groups.get(rule.category)||0)+count);
+    }
+    const parts=[...groups].map(([name,count])=>`${count} ${name}`);
+    return{total,tone:critical>0?"var(--error-color)":total>0?"var(--warning-color)":"var(--success-color)",subtitle:total?`${parts.join(" · ")} ${localized(this.hass,"need attention","figyelmet kér")}`:`${monitored.size} ${localized(this.hass,"services monitored · all systems operational","szolgáltatás felügyelve · minden rendszer működik")}`};
   }
   render(){if(!this.hass||!this.config)return nothing;const status=this.summary();return html`<ha-card class="interactive" style=${`--tone:${status.tone}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action)}><span class="icon"><ha-icon icon=${this.config.icon||"mdi:server-security"}></ha-icon></span><span class="title">${this.config.name||"Homelab Control Center"}</span><span class="subtitle">${status.subtitle}</span><span class="badge">${status.total?`${status.total} ${localized(this.hass,"incidents","incidens")}`:localized(this.hass,"ALL GOOD","RENDBEN")}</span></ha-card>`}
 }

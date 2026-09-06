@@ -380,7 +380,6 @@ export class LumaCameraActivityCard extends LitElement implements LovelaceCard {
     if (!c?.cameras?.length) throw Error("cameras required");
     this.config = {
       events_attribute: "events",
-      security_path: "/dashboard-camera/camera",
       ...c,
     };
     this.signingKey = "";
@@ -559,7 +558,7 @@ export class LumaCameraActivityCard extends LitElement implements LovelaceCard {
                   <ha-icon icon=${c.icon || "mdi:cctv"}></ha-icon
                   ><span>${c.name}</span>
                 </button>`,
-            )}<button
+            )}${latest?.camera.timeline_path || this.config!.security_path ? html`<button
               class="action all"
               @click=${() =>
                 runAction(this, this.hass!, {
@@ -570,7 +569,7 @@ export class LumaCameraActivityCard extends LitElement implements LovelaceCard {
             >
               <ha-icon icon="mdi:timeline-clock-outline"></ha-icon
               ><span>${localize(this.hass, "open_timeline")}</span>
-            </button>
+            </button>` : nothing}
           </div>
         </div></ha-card
       >${this.live

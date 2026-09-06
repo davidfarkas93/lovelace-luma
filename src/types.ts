@@ -115,6 +115,7 @@ export interface LumaIncidentRule extends LumaCondition {
   related_suffix?: { from: string; to: string };
   device_classes?: string[];
   label?: string;
+  platform?: string;
   message: string;
   tone?: LumaIncidentTone;
   navigation_path?: string;

@@ -2,9 +2,10 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { entityAreaName, entityName, runAction } from "../helpers";
+import { matchingIncidentIds } from "../incidents";
 import { localize, localized } from "../localize";
 import { lumaTokens } from "../styles";
-import type { HassEntity, HomeAssistant, LovelaceCard } from "../types";
+import type { HassEntity, HomeAssistant, LovelaceCard, LumaIncidentRule } from "../types";
 
 type Mode =
   | "favorite-lights"
@@ -18,7 +19,10 @@ interface Config {
   limit?: number;
   label?: string;
   empty_text?: string;
+  exclude?: string[];
+  incident_rules?: DiscoveryIncidentRule[];
 }
+interface DiscoveryIncidentRule extends LumaIncidentRule { name?:string; subtitle?:string; icon?:string; strip_name?:string }
 interface Favorite {
   entity_id: string;
   count?: number;
@@ -258,7 +262,10 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
 
   setConfig(c: Config) {
     if (!c?.mode) throw Error("Discovery mode required.");
-    this.config = { limit: 5, label: "infrastructure_update", ...c };
+    if (c.mode === "favorite-lights" && !c.source_entity) throw Error("favorite-lights mode requires source_entity");
+    if (c.mode === "infrastructure-updates" && !c.label) throw Error("infrastructure-updates mode requires label");
+    if (c.mode === "homelab-incidents" && !c.incident_rules) throw Error("homelab-incidents mode requires incident_rules");
+    this.config = { limit: 5, ...c };
   }
   getCardSize() {
     return 3;
@@ -302,15 +309,12 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
   }
 
   private favorites() {
-    const source =
-      this.hass!.states[
-        this.config!.source_entity || "sensor.light_usage_favorites"
-      ];
+    const source = this.hass!.states[this.config!.source_entity!];
     const raw = (source?.attributes.lights as Favorite[] | undefined) || [];
     const items = raw
       .filter(
         (x) =>
-          x.entity_id !== "light.main_light" &&
+          !(this.config!.exclude || []).includes(x.entity_id) &&
           this.hass!.states[x.entity_id] &&
           visible(this.hass!, x.entity_id),
       )
@@ -354,80 +358,21 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
 
   private incidentsList(): Incident[] {
     const result: Incident[] = [];
-    const usageDetail = (value: number): string => {
+    const formatValue = (value: number): string => {
       const format = new Intl.NumberFormat(
         this.hass?.locale?.language || undefined,
         { maximumFractionDigits: 1 },
       );
-      return localized(
-        this.hass,
-        `${format.format(value)}% used · ${format.format(Math.max(0, 100 - value))}% free`,
-        `${format.format(value)}% foglalt · ${format.format(Math.max(0, 100 - value))}% szabad`,
-      );
+      return format.format(value);
     };
-    for (const entity of Object.values(this.hass!.states)) {
-      if (!visible(this.hass!, entity.entity_id)) continue;
-      const p = platform(this.hass!, entity.entity_id),
-        id = entity.entity_id,
-        lower = String(entity.state).toLowerCase();
-      if (
-        p === "uptime_kuma" &&
-        id.endsWith("_allapot") &&
-        !["up", "unknown", "unavailable"].includes(lower)
-      )
-        result.push({
-          entity,
-          name: entityName(entity, id).replace(" Állapot", ""),
-          subtitle: "Uptime Kuma incident",
-          icon: "mdi:alert-circle",
-          tone: "var(--error-color)",
-        });
-      if (
-        p === "komodo" &&
-        id.endsWith("_alerts") &&
-        !["", "0", "unknown", "unavailable", "none"].includes(lower)
-      )
-        result.push({
-          entity,
-          name: entityName(entity, id),
-          subtitle: "Komodo alert",
-          icon: "mdi:alert",
-          tone: "var(--error-color)",
-        });
-      if (
-        p === "unraid" &&
-        id.startsWith("binary_sensor.tower_") &&
-        entity.attributes.device_class === "problem" &&
-        entity.state === "on"
-      )
-        result.push({
-          entity,
-          name: entityName(entity, id).replace("Tower ", ""),
-          subtitle: "Unraid reported a problem",
-          icon: "mdi:harddisk-alert",
-          tone: "var(--error-color)",
-        });
-      const value = Number(entity.state);
-      if (
-        p === "unraid" &&
-        /^sensor\.tower_disk_.*_usage$/.test(id) &&
-        value >= 80
-      )
-        result.push({
-          entity,
-          name: entityName(entity, id).replace("Tower ", ""),
-          subtitle: usageDetail(value),
-          icon: "mdi:database-alert",
-          tone: value >= 90 ? "var(--error-color)" : "var(--warning-color)",
-        });
-      if (id === "sensor.tower_ram_usage" && value >= 90)
-        result.push({
-          entity,
-          name: localized(this.hass, "High RAM usage", "Magas memóriahasználat"),
-          subtitle: usageDetail(value),
-          icon: "mdi:memory",
-          tone: "var(--warning-color)",
-        });
+    for (const rule of this.config!.incident_rules || []) {
+      for (const id of matchingIncidentIds(this.hass!, rule)) {
+        if (!visible(this.hass!, id)) continue;
+        const entity=this.hass!.states[id],value=Number(entity.state),friendly=entityName(entity,id),name=rule.name||friendly.replace(rule.strip_name||"","");
+        const template=rule.subtitle||rule.message;
+        const subtitle=template.replaceAll("{name}",name).replaceAll("{value}",Number.isFinite(value)?formatValue(value):String(entity.state)).replaceAll("{remaining}",Number.isFinite(value)?formatValue(Math.max(0,100-value)):"—");
+        result.push({entity,name,subtitle,icon:rule.icon||"mdi:alert-circle",tone:rule.tone==="error"?"var(--error-color)":"var(--warning-color)"});
+      }
     }
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }
