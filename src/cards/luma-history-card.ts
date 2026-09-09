@@ -5,17 +5,26 @@ import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
 interface Series { entity: string; name?: string; color?: string }
+interface Range {
+  label: string;
+  hours_to_show?: number;
+  days_to_show?: number;
+  period?: "hour" | "day" | "week" | "month";
+  statistic?: "mean" | "min" | "max" | "state" | "sum" | "change";
+  chart_type?: "line" | "bar";
+}
 interface Config {
   type: string;
   hours_to_show?: number;
   days_to_show?: number;
-  period?: "hour" | "day";
+  period?: "hour" | "day" | "week" | "month";
   statistic?: "mean" | "min" | "max" | "state" | "sum" | "change";
   chart_type?: "line" | "bar";
   series: Series[];
   unit?: string;
   decimals?: number;
   title?: string;
+  ranges?: Range[];
 }
 interface Point { time: number; value: number }
 interface Tip { time: number; values: Array<{ name: string; color: string; value?: number }> }
@@ -29,20 +38,22 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   @state() private loading = true;
   @state() private error = "";
   @state() private tip?: Tip;
+  @state() private activeRange = 0;
   private refreshTimer?: number;
   private requestKey = "";
 
   static styles = [lumaTokens, css`
     ha-card{position:relative;min-height:300px;padding:18px 18px 13px;border:1px solid color-mix(in srgb,var(--primary-color) 14%,transparent);border-radius:22px;background:linear-gradient(145deg,color-mix(in srgb,var(--primary-color) 5%,var(--luma-surface)),var(--luma-surface) 68%);box-shadow:0 14px 38px rgba(0,0,0,.055);overflow:hidden}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}.title{font-size:13px;font-weight:720}.legend{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px}.legend-item{display:flex;align-items:center;gap:5px;color:var(--luma-muted);font-size:9px}.swatch{width:7px;height:7px;border-radius:50%;background:var(--series-color)}.legend-item strong{color:var(--primary-text-color);font-size:10px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}.title{font-size:13px;font-weight:720}.head-right{display:flex;align-items:center;justify-content:flex-end;gap:9px;min-width:0}.ranges{display:flex;padding:2px;border-radius:999px;background:color-mix(in srgb,var(--primary-color) 7%,transparent)}.range{appearance:none;border:0;border-radius:999px;padding:5px 9px;background:transparent;color:var(--luma-muted);font:650 9px/1 sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,box-shadow .18s ease}.range.active{background:var(--luma-surface);color:var(--primary-color);box-shadow:0 2px 8px rgba(0,0,0,.08)}.legend{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px}.legend-item{display:flex;align-items:center;gap:5px;color:var(--luma-muted);font-size:9px}.swatch{width:7px;height:7px;border-radius:50%;background:var(--series-color)}.legend-item strong{color:var(--primary-text-color);font-size:10px}
     .chart{position:relative;width:100%;touch-action:none}.chart canvas{display:block;width:100%;height:225px}
     .tooltip{position:absolute;z-index:2;top:9px;left:var(--tip-x);min-width:118px;padding:8px 9px;border:1px solid var(--luma-border);border-radius:12px;background:color-mix(in srgb,var(--luma-surface) 94%,transparent);box-shadow:0 10px 28px rgba(0,0,0,.12);font-size:9px;pointer-events:none;transform:translateX(-50%);backdrop-filter:blur(14px)}.tip-time{margin-bottom:5px;color:var(--luma-muted)}.tip-row{display:flex;justify-content:space-between;gap:12px}.tip-row span:first-child{color:var(--series-color)}.empty{display:grid;place-items:center;min-height:220px;color:var(--luma-muted);font-size:11px}
-    @media(max-width:600px){ha-card{min-height:240px;padding:14px 10px 10px}.top{align-items:flex-start}.legend{gap:5px}.chart canvas{height:190px}.tooltip{transform:none;left:8px}}
+    @media(max-width:600px){ha-card{min-height:240px;padding:14px 10px 10px}.top{align-items:flex-start;flex-wrap:wrap}.head-right{width:100%;justify-content:space-between}.legend{gap:5px}.chart canvas{height:190px}.tooltip{transform:none;left:8px}}
   `];
 
   setConfig(config: Config) {
     if (!config?.series?.length) throw Error("series required");
     this.config = { hours_to_show: 24, decimals: 0, ...config };
+    this.activeRange = 0;
     this.requestKey = "";
     void this.load();
   }
@@ -51,10 +62,28 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   disconnectedCallback() { super.disconnectedCallback(); clearInterval(this.refreshTimer); }
   updated() {
     if (this.hass && this.config) {
-      const key = this.config.series.map((item) => item.entity).join("|");
+      const key = this.requestIdentity();
       if (key !== this.requestKey) void this.load();
     }
     requestAnimationFrame(() => this.draw());
+  }
+
+  private settings(): Config & Partial<Range> {
+    return { ...this.config!, ...(this.config?.ranges?.[this.activeRange] || {}) };
+  }
+
+  private requestIdentity() {
+    const settings = this.settings();
+    return `${settings.series.map((item) => item.entity).join("|")}|${settings.hours_to_show}|${settings.days_to_show}|${settings.period}|${settings.statistic}`;
+  }
+
+  private selectRange(index: number) {
+    if (index === this.activeRange) return;
+    this.activeRange = index;
+    this.data = new Map();
+    this.tip = undefined;
+    this.requestKey = "";
+    void this.load();
   }
 
   private timestamp(record: HistoryRecord) {
@@ -86,24 +115,25 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
 
   private async load(silent = false) {
     if (!this.hass?.callWS || !this.config) return;
-    const key = this.config.series.map((item) => item.entity).join("|");
+    const settings = this.settings();
+    const key = this.requestIdentity();
     this.requestKey = key;
     if (!silent) this.loading = true;
     try {
       const end = new Date();
-      const hours = this.config.days_to_show ? this.config.days_to_show * 24 : (this.config.hours_to_show || 24);
+      const hours = settings.days_to_show ? settings.days_to_show * 24 : (settings.hours_to_show || 24);
       const start = new Date(end.getTime() - hours * 3600000);
-      const statistics = Boolean(this.config.period || this.config.statistic || this.config.chart_type === "bar");
+      const statistics = Boolean(settings.period || settings.statistic || settings.chart_type === "bar");
       const raw = await this.hass.callWS<unknown>(statistics ? {
         type: "recorder/statistics_during_period",
         start_time: start.toISOString(), end_time: end.toISOString(),
-        statistic_ids: this.config.series.map((item) => item.entity),
-        period: this.config.period || "day",
-        types: [this.config.statistic || "change"],
+        statistic_ids: settings.series.map((item) => item.entity),
+        period: settings.period || "day",
+        types: [settings.statistic || "change"],
       } : {
         type: "history/history_during_period",
         start_time: start.toISOString(), end_time: end.toISOString(),
-        entity_ids: this.config.series.map((item) => item.entity),
+        entity_ids: settings.series.map((item) => item.entity),
         minimal_response: false, no_attributes: true, significant_changes_only: false,
       });
       const next = new Map<string, Point[]>();
@@ -114,7 +144,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
             const record = item as HistoryRecord;
             return {
               time: statistics ? this.statisticsTimestamp(record) : this.timestamp(record),
-              value: Number(statistics ? record[this.config?.statistic || "change"] : record.state ?? record.s),
+              value: Number(statistics ? record[settings.statistic || "change"] : record.state ?? record.s),
             };
           })
           .filter((point: Point) => Number.isFinite(point.time) && Number.isFinite(point.value))
@@ -132,8 +162,9 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
 
   private color(series: Series, index: number) { return series.color || ["#f5b942", "#7aaad6", "#65b982", "#8b7bd8"][index % 4]; }
   private bounds() {
+    const settings = this.settings();
     const end = Date.now();
-    const hours = this.config?.days_to_show ? this.config.days_to_show * 24 : (this.config?.hours_to_show || 24);
+    const hours = settings.days_to_show ? settings.days_to_show * 24 : (settings.hours_to_show || 24);
     const start = end - hours * 3600000;
     const values = [...this.data.values()].flat().map((point) => point.value);
     const rawMin = Math.min(0, ...values);
@@ -144,6 +175,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   private draw() {
     const canvas = this.renderRoot.querySelector("canvas");
     if (!canvas || !this.config) return;
+    const settings = this.settings();
     const rect = canvas.getBoundingClientRect();
     const ratio = window.devicePixelRatio || 1;
     canvas.width = Math.round(rect.width * ratio);
@@ -164,13 +196,14 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       context.textAlign = "right"; context.fillText(String(Math.round(bounds.max - (bounds.max - bounds.min) * fraction)), left - 6, y + 3);
       const time = bounds.start + fraction * (bounds.end - bounds.start);
       context.textAlign = index === 0 ? "left" : index === 4 ? "right" : "center";
-      context.fillText(this.config.period === "day" ? new Date(time).toLocaleDateString(this.hass?.locale?.language || undefined, { month: "short", day: "numeric" }) : new Date(time).toLocaleTimeString(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit", hour12: false }), left + fraction * plotWidth, height - 5);
+      const dateOptions: Intl.DateTimeFormatOptions = settings.period === "month" ? { month: "short", year: "2-digit" } : { month: "short", day: "numeric" };
+      context.fillText(settings.period === "day" || settings.period === "week" || settings.period === "month" ? new Date(time).toLocaleDateString(this.hass?.locale?.language || undefined, dateOptions) : new Date(time).toLocaleTimeString(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit", hour12: false }), left + fraction * plotWidth, height - 5);
     }
     this.config.series.forEach((series, index) => {
       const points = this.data.get(series.entity) || [];
       if (!points.length) return;
       const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (bounds.max - point.value) / (bounds.max - bounds.min) * plotHeight, value: point.value }));
-      if (this.config?.chart_type === "bar") {
+      if (settings.chart_type === "bar") {
         const barWidth = Math.max(5, Math.min(30, plotWidth / Math.max(points.length, 1) * .62));
         const base = top + (bounds.max - Math.max(0, bounds.min)) / (bounds.max - bounds.min) * plotHeight;
         const gradient = context.createLinearGradient(0, top, 0, base);
@@ -212,16 +245,17 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
 
   render() {
     if (!this.config) return nothing;
+    const settings = this.settings();
     if (this.loading && !this.data.size) return html`<ha-card><div class="empty">${localized(this.hass,"Loading history…","Előzmények betöltése…")}</div></ha-card>`;
     if (this.error && !this.data.size) return html`<ha-card><div class="empty">${this.error}</div></ha-card>`;
     const bounds = this.bounds();
-    const unit = this.config.unit || this.hass?.states[this.config.series[0].entity]?.attributes?.unit_of_measurement || "";
+    const unit = settings.unit || this.hass?.states[settings.series[0].entity]?.attributes?.unit_of_measurement || "";
     const format = (value: number | undefined) => value === undefined ? "—" : `${value.toFixed(this.config?.decimals || 0)}${unit ? ` ${unit}` : ""}`;
     return html`<ha-card>
-      <div class="top"><div class="title">${this.config.title || localized(this.hass,"History","Előzmények")}</div><div class="legend">${this.config.series.map((series, index) => { const points = this.data.get(series.entity) || []; return html`<span class="legend-item" style=${`--series-color:${this.color(series,index)}`}><i class="swatch"></i>${series.name || series.entity}<strong>${format(points.at(-1)?.value)}</strong></span>`; })}</div></div>
+      <div class="top"><div class="title">${settings.title || localized(this.hass,"History","Előzmények")}</div><div class="head-right">${this.config.ranges?.length ? html`<div class="ranges">${this.config.ranges.map((range,index)=>html`<button class=${`range ${index===this.activeRange?"active":""}`} @click=${()=>this.selectRange(index)}>${range.label}</button>`)}</div>` : nothing}<div class="legend">${settings.series.map((series, index) => { const points = this.data.get(series.entity) || []; return html`<span class="legend-item" style=${`--series-color:${this.color(series,index)}`}><i class="swatch"></i>${series.name || series.entity}<strong>${format(points.at(-1)?.value)}</strong></span>`; })}</div></div></div>
       <div class="chart" @pointermove=${this.move} @pointerleave=${() => this.tip = undefined}>
         <canvas></canvas>
-        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${this.config.period === "day" ? new Date(this.tip.time).toLocaleDateString(this.hass?.locale?.language||undefined,{month:"short",day:"numeric"}) : new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}</div>` : nothing}
+        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${settings.period === "day" || settings.period === "week" || settings.period === "month" ? new Date(this.tip.time).toLocaleDateString(this.hass?.locale?.language||undefined,settings.period === "month"?{year:"numeric",month:"long"}:{month:"short",day:"numeric"}) : new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}</div>` : nothing}
       </div>
     </ha-card>`;
   }

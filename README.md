@@ -48,7 +48,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-disclosure-card` | Compact expandable container for related controls |
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
 | `custom:luma-energy-flow-card` | Animated solar, optional measured home load, and configurable-sign grid power flow |
-| `custom:luma-history-card` | Recorder-backed line or aggregated bar chart with signed ranges and touch inspection |
+| `custom:luma-history-card` | Recorder-backed line or aggregated bar chart with optional daily/monthly range switching |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
