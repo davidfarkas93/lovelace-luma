@@ -161,6 +161,13 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   }
 
   private color(series: Series, index: number) { return series.color || ["#f5b942", "#7aaad6", "#65b982", "#8b7bd8"][index % 4]; }
+  private bucketCount(settings: Config & Partial<Range>) {
+    const days = settings.days_to_show || (settings.hours_to_show || 24) / 24;
+    if (settings.period === "month") return Math.max(1, Math.round(days / 30.4375));
+    if (settings.period === "week") return Math.max(1, Math.round(days / 7));
+    if (settings.period === "day") return Math.max(1, Math.round(days));
+    return Math.max(1, Math.round(settings.hours_to_show || days * 24));
+  }
   private bounds() {
     const settings = this.settings();
     const end = Date.now();
@@ -204,7 +211,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       if (!points.length) return;
       const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (bounds.max - point.value) / (bounds.max - bounds.min) * plotHeight, value: point.value }));
       if (settings.chart_type === "bar") {
-        const barWidth = Math.max(5, Math.min(30, plotWidth / Math.max(points.length, 1) * .62));
+        const barWidth = Math.max(5, Math.min(30, plotWidth / this.bucketCount(settings) * .62));
         const base = top + (bounds.max - Math.max(0, bounds.min)) / (bounds.max - bounds.min) * plotHeight;
         const gradient = context.createLinearGradient(0, top, 0, base);
         gradient.addColorStop(0, this.color(series, index));
