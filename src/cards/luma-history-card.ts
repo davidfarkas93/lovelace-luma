@@ -64,6 +64,13 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     return new Date(String(stamp ?? "")).getTime();
   }
 
+  private statisticsTimestamp(record: HistoryRecord) {
+    const stamp = record.start;
+    if (typeof stamp === "number") return stamp;
+    if (typeof stamp === "string" && /^\d+(\.\d+)?$/.test(stamp)) return Number(stamp);
+    return new Date(String(stamp ?? "")).getTime();
+  }
+
   private historyGroups(raw: unknown): Array<{ id: string; records: unknown }> {
     if (Array.isArray(raw)) {
       return raw.map((records) => ({
@@ -106,7 +113,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
           .map((item: unknown) => {
             const record = item as HistoryRecord;
             return {
-              time: statistics ? new Date(String(record.start ?? "")).getTime() : this.timestamp(record),
+              time: statistics ? this.statisticsTimestamp(record) : this.timestamp(record),
               value: Number(statistics ? record[this.config?.statistic || "change"] : record.state ?? record.s),
             };
           })

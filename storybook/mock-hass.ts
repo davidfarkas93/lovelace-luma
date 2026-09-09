@@ -80,7 +80,7 @@ export const createMockHass = (
         return Object.fromEntries(ids.map((id, series) => [
           id,
           Array.from({ length: 14 }, (_, index) => ({
-            start: new Date(new Date().setHours(0, 0, 0, 0) - (13 - index) * 86_400_000).toISOString(),
+            start: new Date().setHours(0, 0, 0, 0) - (13 - index) * 86_400_000,
             [statistic]: Math.max(0, 4.8 + series * 2.1 + Math.sin(index * 1.4) * 4.3),
           })),
         ])) as never;
