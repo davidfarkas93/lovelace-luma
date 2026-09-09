@@ -5,7 +5,18 @@ import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
 interface Series { entity: string; name?: string; color?: string }
-interface Config { type: string; hours_to_show?: number; series: Series[]; unit?: string; decimals?: number; title?: string }
+interface Config {
+  type: string;
+  hours_to_show?: number;
+  days_to_show?: number;
+  period?: "hour" | "day";
+  statistic?: "mean" | "min" | "max" | "state" | "sum" | "change";
+  chart_type?: "line" | "bar";
+  series: Series[];
+  unit?: string;
+  decimals?: number;
+  title?: string;
+}
 interface Point { time: number; value: number }
 interface Tip { time: number; values: Array<{ name: string; color: string; value?: number }> }
 type HistoryRecord = Record<string, unknown>;
@@ -73,15 +84,20 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     if (!silent) this.loading = true;
     try {
       const end = new Date();
-      const start = new Date(end.getTime() - (this.config.hours_to_show || 24) * 3600000);
-      const raw = await this.hass.callWS<unknown>({
+      const hours = this.config.days_to_show ? this.config.days_to_show * 24 : (this.config.hours_to_show || 24);
+      const start = new Date(end.getTime() - hours * 3600000);
+      const statistics = Boolean(this.config.period || this.config.statistic || this.config.chart_type === "bar");
+      const raw = await this.hass.callWS<unknown>(statistics ? {
+        type: "recorder/statistics_during_period",
+        start_time: start.toISOString(), end_time: end.toISOString(),
+        statistic_ids: this.config.series.map((item) => item.entity),
+        period: this.config.period || "day",
+        types: [this.config.statistic || "change"],
+      } : {
         type: "history/history_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
+        start_time: start.toISOString(), end_time: end.toISOString(),
         entity_ids: this.config.series.map((item) => item.entity),
-        minimal_response: false,
-        no_attributes: true,
-        significant_changes_only: false,
+        minimal_response: false, no_attributes: true, significant_changes_only: false,
       });
       const next = new Map<string, Point[]>();
       for (const { id, records } of this.historyGroups(raw)) {
@@ -89,7 +105,10 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
         const points = records
           .map((item: unknown) => {
             const record = item as HistoryRecord;
-            return { time: this.timestamp(record), value: Number(record.state ?? record.s) };
+            return {
+              time: statistics ? new Date(String(record.start ?? "")).getTime() : this.timestamp(record),
+              value: Number(statistics ? record[this.config?.statistic || "change"] : record.state ?? record.s),
+            };
           })
           .filter((point: Point) => Number.isFinite(point.time) && Number.isFinite(point.value))
           .sort((a, b) => a.time - b.time);
@@ -107,7 +126,8 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   private color(series: Series, index: number) { return series.color || ["#f5b942", "#7aaad6", "#65b982", "#8b7bd8"][index % 4]; }
   private bounds() {
     const end = Date.now();
-    const start = end - (this.config?.hours_to_show || 24) * 3600000;
+    const hours = this.config?.days_to_show ? this.config.days_to_show * 24 : (this.config?.hours_to_show || 24);
+    const start = end - hours * 3600000;
     const values = [...this.data.values()].flat().map((point) => point.value);
     const rawMin = Math.min(0, ...values);
     const rawMax = Math.max(1, ...values);
@@ -137,12 +157,26 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       context.textAlign = "right"; context.fillText(String(Math.round(bounds.max - (bounds.max - bounds.min) * fraction)), left - 6, y + 3);
       const time = bounds.start + fraction * (bounds.end - bounds.start);
       context.textAlign = index === 0 ? "left" : index === 4 ? "right" : "center";
-      context.fillText(new Date(time).toLocaleTimeString(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit", hour12: false }), left + fraction * plotWidth, height - 5);
+      context.fillText(this.config.period === "day" ? new Date(time).toLocaleDateString(this.hass?.locale?.language || undefined, { month: "short", day: "numeric" }) : new Date(time).toLocaleTimeString(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit", hour12: false }), left + fraction * plotWidth, height - 5);
     }
     this.config.series.forEach((series, index) => {
       const points = this.data.get(series.entity) || [];
       if (!points.length) return;
-      const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (bounds.max - point.value) / (bounds.max - bounds.min) * plotHeight }));
+      const coordinates = points.map((point) => ({ x: left + (point.time - bounds.start) / (bounds.end - bounds.start) * plotWidth, y: top + (bounds.max - point.value) / (bounds.max - bounds.min) * plotHeight, value: point.value }));
+      if (this.config?.chart_type === "bar") {
+        const barWidth = Math.max(5, Math.min(30, plotWidth / Math.max(points.length, 1) * .62));
+        const base = top + (bounds.max - Math.max(0, bounds.min)) / (bounds.max - bounds.min) * plotHeight;
+        const gradient = context.createLinearGradient(0, top, 0, base);
+        gradient.addColorStop(0, this.color(series, index));
+        gradient.addColorStop(1, `${this.color(series, index)}aa`);
+        context.fillStyle = gradient;
+        coordinates.forEach((point) => {
+          context.beginPath();
+          context.roundRect(point.x - barWidth / 2, point.y, barWidth, Math.max(2, base - point.y), [5, 5, 2, 2]);
+          context.fill();
+        });
+        return;
+      }
       const gradient = context.createLinearGradient(0, top, 0, top + plotHeight);
       gradient.addColorStop(0, `${this.color(series, index)}44`); gradient.addColorStop(1, `${this.color(series, index)}00`);
       context.beginPath(); coordinates.forEach((point, i) => i ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
@@ -180,7 +214,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       <div class="top"><div class="title">${this.config.title || localized(this.hass,"History","Előzmények")}</div><div class="legend">${this.config.series.map((series, index) => { const points = this.data.get(series.entity) || []; return html`<span class="legend-item" style=${`--series-color:${this.color(series,index)}`}><i class="swatch"></i>${series.name || series.entity}<strong>${format(points.at(-1)?.value)}</strong></span>`; })}</div></div>
       <div class="chart" @pointermove=${this.move} @pointerleave=${() => this.tip = undefined}>
         <canvas></canvas>
-        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}</div>` : nothing}
+        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${this.config.period === "day" ? new Date(this.tip.time).toLocaleDateString(this.hass?.locale?.language||undefined,{month:"short",day:"numeric"}) : new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}</div>` : nothing}
       </div>
     </ha-card>`;
   }

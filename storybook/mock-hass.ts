@@ -74,6 +74,17 @@ export const createMockHass = (
           attributes: states[id]?.attributes || {},
         }))) as never;
       }
+      if (message.type === "recorder/statistics_during_period") {
+        const ids = (message.statistic_ids as string[]) || [];
+        const statistic = ((message.types as string[]) || ["change"])[0];
+        return Object.fromEntries(ids.map((id, series) => [
+          id,
+          Array.from({ length: 14 }, (_, index) => ({
+            start: new Date(new Date().setHours(0, 0, 0, 0) - (13 - index) * 86_400_000).toISOString(),
+            [statistic]: Math.max(0, 4.8 + series * 2.1 + Math.sin(index * 1.4) * 4.3),
+          })),
+        ])) as never;
+      }
       if (message.type === "logbook/get_events") return [
         { when: Date.now() / 1000 - 900, name: "Front lawn", state: "on", entity_id: "switch.front_lawn" },
         { when: Date.now() / 1000 - 1500, name: "Irrigation", state: "Program started", entity_id: "sensor.irrigation_state" },
