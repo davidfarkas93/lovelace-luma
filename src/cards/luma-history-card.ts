@@ -240,14 +240,30 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   private nearest(points: Point[], time: number) {
     return points.reduce<Point | undefined>((best, point) => !best || Math.abs(point.time - time) < Math.abs(best.time - time) ? point : best, undefined);
   }
+  private pointInBucket(points: Point[], time: number, period?: Range["period"]) {
+    const target = new Date(time);
+    if (period === "month") return points.find((point) => {
+      const date = new Date(point.time);
+      return date.getFullYear() === target.getFullYear() && date.getMonth() === target.getMonth();
+    });
+    if (period === "day") return points.find((point) => {
+      const date = new Date(point.time);
+      return date.getFullYear() === target.getFullYear() && date.getMonth() === target.getMonth() && date.getDate() === target.getDate();
+    });
+    return this.nearest(points, time);
+  }
   private move(event: PointerEvent) {
     if (!this.config) return;
+    const settings = this.settings();
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
     const bounds = this.bounds();
     const time = bounds.start + ratio * (bounds.end - bounds.start);
-    this.tip = { time, values: this.config.series.map((series, index) => ({ name: series.name || series.entity, color: this.color(series, index), value: this.nearest(this.data.get(series.entity) || [], time)?.value })) };
-    this.style.setProperty("--tip-x", `${ratio * 100}%`);
+    const selected = settings.series.map((series, index) => ({ series, index, point: this.pointInBucket(this.data.get(series.entity) || [], time, settings.period) }));
+    const snapTime = selected.find((item) => item.point)?.point?.time;
+    if (snapTime === undefined) { this.tip = undefined; return; }
+    this.tip = { time: snapTime, values: selected.map(({ series, index, point }) => ({ name: series.name || series.entity, color: this.color(series, index), value: point?.value })) };
+    this.style.setProperty("--tip-x", `${(snapTime - bounds.start) / (bounds.end - bounds.start) * 100}%`);
   }
 
   render() {
