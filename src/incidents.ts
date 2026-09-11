@@ -45,6 +45,7 @@ export const incidentSourceIds = (
   return sources.filter((id) => {
     const entity = hass.states[id];
     if (!entity) return false;
+    if (rule.exclude?.some((pattern) => glob(pattern, id))) return false;
     if (rule.platform && hass.entities?.[id]?.platform !== rule.platform) return false;
     if (rule.label && !hass.entities?.[id]?.labels?.includes(rule.label)) return false;
     if (rule.device_classes?.length && !rule.device_classes.includes(String(entity.attributes.device_class || ""))) return false;

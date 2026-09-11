@@ -112,6 +112,7 @@ export interface LumaIncidentRule extends LumaCondition {
   entity?: string;
   entity_pattern?: string;
   entity_patterns?: string[];
+  exclude?: string[];
   related_suffix?: { from: string; to: string };
   device_classes?: string[];
   label?: string;
