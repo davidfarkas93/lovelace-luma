@@ -57,3 +57,11 @@ card.setConfig({ ...base, state_not: ['unavailable'], exclude: ['switch.*_stack'
 assert.equal(card.matchesEntity(service), false);
 assert.equal(helpers.glob('switch.example_stack', 'switchXexample_stack'), false);
 console.log('Entity grid filter regression checks passed.');
+const extra={type:'custom:luma-control-card',entity:'switch.manual_vm'};
+card.setConfig({...base,extra_cards:[extra],empty_card:{type:'markdown',content:'empty'}});
+assert.equal(card.cardConfigs([]).length,1);
+assert.equal(card.cardConfigs([])[0].entity,'switch.manual_vm');
+assert.equal(card.cardConfigs([stack]).length,2);
+card.setConfig({...base,extra_cards:[],empty_card:{type:'markdown',content:'empty'}});
+assert.equal(card.cardConfigs([])[0].type,'markdown');
+assert.equal(card.signature,undefined); // Empty inventories still mount extras/empty cards.

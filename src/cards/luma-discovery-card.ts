@@ -1,6 +1,9 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
+import { repeat } from "lit/directives/repeat.js";
+import "./luma-update-card";
+import type { LumaUpdateCard } from "./luma-update-card";
 import { entityAreaName, entityName, runAction } from "../helpers";
 import { matchingIncidentIds } from "../incidents";
 import { localize, localized } from "../localize";
@@ -17,6 +20,9 @@ interface Config {
   mode: Mode;
   source_entity?: string;
   limit?: number;
+  columns?: number;
+  tablet_columns?: number;
+  mobile_columns?: number;
   label?: string;
   empty_text?: string;
   exclude?: string[];
@@ -84,6 +90,9 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
         display: grid;
         gap: 9px;
       }
+      .updates{grid-template-columns:repeat(var(--update-columns,1),minmax(0,1fr));align-items:start}
+      @media(max-width:1023px){.updates{grid-template-columns:repeat(var(--update-tablet,1),minmax(0,1fr))}}
+      @media(max-width:599px){.updates{grid-template-columns:repeat(var(--update-mobile,1),minmax(0,1fr))}}
       .item {
         display: grid;
         grid-template-columns: 42px minmax(0, 1fr) auto;
@@ -414,7 +423,8 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
           e.entity_id.startsWith("update.") &&
           visible(this.hass!, e.entity_id) &&
           labels(this.hass!, e.entity_id).includes(this.config!.label!) &&
-          (e.state === "on" || Boolean(e.attributes.in_progress)),
+          (e.state === "on" || e.attributes.in_progress === true ||
+            (typeof e.attributes.in_progress === "number" && e.attributes.in_progress >= 0)),
       )
       .sort((a, b) =>
         entityName(a, a.entity_id).localeCompare(entityName(b, b.entity_id)),
@@ -423,68 +433,10 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
       return this.empty(
         this.config!.empty_text || localized(this.hass,"No infrastructure updates available","Nincs elérhető infrastruktúra-frissítés"),
       );
-    return html`<div class="stack">
-      ${items.map((e) => {
-        const a = e.attributes,
-          raw = a.in_progress,
-          installing = raw === true || (typeof raw === "number" && raw >= 0),
-          pct = Number(
-            a.update_percentage ?? (typeof raw === "number" ? raw : NaN),
-          ),
-          progress = Number.isFinite(pct)
-            ? Math.max(0, Math.min(100, pct))
-            : undefined,
-          tone = installing
-            ? "var(--info-color,var(--primary-color))"
-            : "var(--warning-color)";
-        return html`<div
-          class="item"
-          style=${`--tone:${tone}`}
-          @click=${() =>
-            runAction(this, this.hass!, { action: "more-info" }, e.entity_id)}
-        >
-          <span class="icon"
-            ><ha-icon
-              icon=${installing ? "mdi:progress-download" : "mdi:package-up"}
-            ></ha-icon></span
-          ><span class="copy"
-            ><div class="name">${entityName(e, e.entity_id)}</div>
-            <div class="sub">
-              ${installing
-                ? progress !== undefined
-                  ? `${localize(this.hass,"installing")} · ${Math.round(progress)}%`
-                  : localize(this.hass,"installing")
-                : `${a.installed_version || ""} → ${a.latest_version || ""}`}
-            </div></span
-          ><button
-            class="action"
-            ?disabled=${installing}
-            @click=${(ev: Event) => {
-              ev.stopPropagation();
-              this.arm(e.entity_id, () =>
-                this.hass!.callService("update", "install", undefined, {
-                  entity_id: e.entity_id,
-                }),
-              );
-            }}
-          >
-            ${installing
-              ? progress !== undefined
-                ? `${Math.round(progress)}%`
-                : localize(this.hass, "installing")
-              : this.pending === e.entity_id
-                ? localize(this.hass,"confirm").toLocaleUpperCase(this.hass?.locale?.language)
-                : localize(this.hass, "install")}</button
-          >${installing
-            ? html`<span class="track"
-                ><span
-                  class=${`fill ${progress === undefined ? "indeterminate" : ""}`}
-                  style=${progress === undefined ? "" : `width:${progress}%`}
-                ></span
-              ></span>`
-            : nothing}
-        </div>`;
-      })}
+    return html`<div class="stack updates" style=${`--update-columns:${this.config?.columns||1};--update-tablet:${this.config?.tablet_columns||1};--update-mobile:${this.config?.mobile_columns||1}`}>
+      ${repeat(items,e=>e.entity_id,e=>html`<luma-update-card
+        ${ref(node=>{if(node){const card=node as LumaUpdateCard;if(card.dataset.entity!==e.entity_id){card.setConfig({type:"custom:luma-update-card",entity:e.entity_id});card.dataset.entity=e.entity_id}card.hass=this.hass}})}
+      ></luma-update-card>`)}
     </div>`;
   }
 

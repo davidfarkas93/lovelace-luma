@@ -307,6 +307,25 @@ metric in their row. Content remains vertically centered without a subtitle;
 no placeholder or fixed height is required. Other layout children retain their
 top alignment. See the Metric / Equal Height Row story for a responsive example.
 
+## Compute and operations layouts
+
+[Interactive examples](https://davidfarkas93.github.io/lovelace-luma/?path=/story/patterns-infrastructure--virtual-machines)
+demonstrate full-width VM and update grids and combined compute metrics.
+
+- Entity grids accept `extra_cards: [...]` to append explicitly configured cards
+  to the same responsive grid as discovered entities. This can place a manually
+  controlled workstation beside dynamically discovered VMs, without a second grid.
+  Extras render even if discovery is empty; `empty_card` is used only when both
+  collections are empty. Actions and confirmation remain child-card configuration.
+- Metric cards accept `secondary_tap_action`, e.g. `{ action: more-info, entity:
+  sensor.cpu_temperature }`. Secondary clicks do not trigger the main card action.
+  Without this option, existing secondary text remains non-interactive.
+- Discovery mode `infrastructure-updates` uses the shared `luma-update-card` and
+  accepts `columns`, `tablet_columns`, `mobile_columns` (all default to 1).
+  Installing items remain visible, including numeric `in_progress: 0`.
+- Rack cooling uses a horizontal summary/metrics layout when its available width
+  is at least 620px, and keeps the compact vertical layout below that width.
+
 ## Storage cards
 
 [Try disk, logical-volume, parity, warning and unavailable examples](https://davidfarkas93.github.io/lovelace-luma/?path=/story/cards-storage--responsive-section).
