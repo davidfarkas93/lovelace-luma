@@ -43,9 +43,11 @@ import "./cards/luma-battery-card";
 import "./cards/luma-layout-card";
 import "./cards/luma-appliance-card";
 import "./cards/luma-entity-grid-card";
+import "./cards/luma-service-grid-card";
 import "./cards/luma-discovery-card";
 
 const cards = [
+  { type:"luma-service-grid-card", name:"Luma Services", description:"Unified application availability, container counts and confirmed stack operations with runtime discovery." },
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
   { type:"luma-navbar-card", name:"Luma Navbar", description:"Configurable routes with an artwork-aware, switchable active-media dock." },
   { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },

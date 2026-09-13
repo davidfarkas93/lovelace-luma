@@ -22,7 +22,7 @@ export interface HomeAssistant {
     platform?: string;
     labels?: string[];
   }>;
-  devices?: Record<string, { area_id?: string | null; name?: string; model?: string }>;
+  devices?: Record<string, { area_id?: string | null; name?: string; name_by_user?: string; model?: string }>;
   areas?: Record<string, { name?: string }>;
   user?: { id?: string; name?: string; is_admin?: boolean };
   editMode?: boolean;

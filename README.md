@@ -72,6 +72,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-layout-card` | Child-card grid with independent desktop, tablet and mobile column counts |
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
+| `custom:luma-service-grid-card` | One card per application: availability, container counts, metrics and confirmed management in a detail sheet |
 | `custom:luma-weather-forecast-card` | Responsive daily forecast with an hourly, data-rich per-day detail sheet |
 | `custom:luma-weather-hourly-card` | Scrollable 24-hour temperature, precipitation and wind outlook |
 | `custom:luma-weather-details-card` | Current atmospheric, recent rain, optional air-quality and sun details |
@@ -301,6 +302,91 @@ Pages workflow validates the TypeScript project, builds the catalogue, and
 publishes it after every push to `main`.
 
 ## Runtime entity filtering
+
+### Unified services
+
+`luma-service-grid-card` combines stack state and availability monitors without
+adding a backend, polling another API, or guessing matches from application names.
+Stacks, containers, updates and operation targets are discovered from selectors
+and grouped by their existing Home Assistant device. Cross-integration monitor
+bindings, names, URLs, selectors and operation definitions live in the dashboard.
+New stacks and enabled container entities appear automatically; link a new monitor
+by adding a binding. No Luma rebuild is needed for that change.
+
+```yaml
+type: custom:luma-service-grid-card
+columns: 3
+tablet_columns: 2
+mobile_columns: 1
+stacks:
+  integration: komodo
+  entity_pattern: sensor.*_stack_state
+containers:
+  integration: komodo
+  domain: switch
+  exclude: [switch.*_stack]
+updates:
+  integration: komodo
+  domain: update
+monitors:
+  integration: uptime_kuma
+  entity_pattern: sensor.*_status
+metrics:
+  latency: {from: _status, to: _response_time}
+  uptime: {from: _status, to: _uptime_30_days}
+  url: {from: _status, to: _monitored_url}
+uptime_label: 30 days
+bindings:
+  - entity: sensor.photos_stack_state
+    monitor: sensor.photos_status
+    name: Photos
+    icon: mdi:image-multiple-outline
+monitor_groups:
+  - name: Infrastructure
+    entity_pattern: sensor.host_*
+  - name: Backups
+    entity_pattern: sensor.backup_*
+operations:
+  - name: Redeploy stack
+    icon: mdi:rocket-launch-outline
+    selector: {domain: button, entity_pattern: button.*_deploy_*}
+    service: button.press
+    confirm: Redeploy this entire stack? Service may be interrupted.
+  - name: Stop stack
+    icon: mdi:stop-circle-outline
+    selector: {domain: switch, entity_pattern: switch.*_stack}
+    state: ["on"]
+    service: switch.turn_off
+    confirm: Stop all containers in this stack?
+```
+
+Entity suffixes depend on your HA language and entity naming: use the actual
+entities from your installation. `metrics` suffix mappings apply only to the
+linked monitor entity. Selectors support `integration`, `domain`, `entity_pattern`
+and `exclude` wildcard lists. A binding may also override `url` (HTTP(S) only).
+
+- Availability and container state stay separate: 4/4 running does **not** mean
+  the application is healthy. A down monitor is an error; partial container
+  failure or a non-running stack is a warning even if the monitor is up.
+- Missing monitor data is unknown, not healthy. Unlinked stacks say **No monitor**.
+  Unknown latency/uptime values are omitted, not rendered as zero or `unknown ms`.
+- Counts cover discovered, enabled, non-hidden container switches. Enable all
+  constituent container entities to get a complete count. The whole-stack switch
+  must be excluded from `containers`. Restored orphan entities are ignored;
+  explicitly bound stacks remain visible during integration recovery.
+- Clicking the main card only opens details. Container start/stop, stack actions
+  and available updates require a second click within six seconds. Closing the
+  sheet or a target state change cancels pending confirmation; request errors
+  are shown. Read-only history links never toggle anything.
+- Only configure operations actually exposed by your integration. In Komodo,
+  deploying a stack is **not** a simple restart; a stack switch's ON action may
+  redeploy it. No start/restart action is invented by this card.
+- Monitor-only entities remain visible, optionally grouped with `monitor_groups`.
+  Raw infrastructure update discovery can remain on an Operations view; the
+  separate deployments list is no longer necessary.
+
+See [interactive service examples](https://davidfarkas93.github.io/lovelace-luma/?path=/story/cards-services--unified),
+including mobile, partial failure, missing data and detail-sheet scenarios.
 
 ### Entity grid exclusions
 
