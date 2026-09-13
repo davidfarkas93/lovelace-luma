@@ -302,8 +302,8 @@ The static catalogue is built into `storybook-static`. The included GitHub
 Pages workflow validates the TypeScript project, builds the catalogue, and
 publishes it after every push to `main`.
 
-Metric cards placed directly inside `luma-layout-card` stretch to the tallest
-metric in their row. Content remains vertically centered without a subtitle;
+Metric and control cards placed directly inside `luma-layout-card` stretch to
+their row height. Content remains vertically centered without a subtitle;
 no placeholder or fixed height is required. Other layout children retain their
 top alignment. See the Metric / Equal Height Row story for a responsive example.
 
