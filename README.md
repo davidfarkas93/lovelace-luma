@@ -300,7 +300,31 @@ The static catalogue is built into `storybook-static`. The included GitHub
 Pages workflow validates the TypeScript project, builds the catalogue, and
 publishes it after every push to `main`.
 
-## Active entity filtering
+## Runtime entity filtering
+
+### Entity grid exclusions
+
+`luma-entity-grid-card` supports an optional `exclude` list of entity IDs or
+`*` wildcard patterns. Exclusions take precedence over its inclusion filters.
+Discovery stays dynamic, including stopped or unavailable entities unless a
+state filter explicitly excludes them. For example, show individual Komodo
+services without also showing whole-stack controls:
+
+```yaml
+type: custom:luma-entity-grid-card
+integration: komodo
+domain: switch
+exclude:
+  - switch.*_stack
+columns: 2
+mobile_columns: 1
+tap_action:
+  action: toggle
+  confirmation:
+    text: Change this service's state?
+```
+
+### Active entity filter rules
 
 The home hero and active card use the same runtime filter language. Rules are
 evaluated against the current Home Assistant state and entity registry, so no

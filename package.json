@@ -1,6 +1,6 @@
 {
   "name": "lovelace-luma",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "A vibrant, context-aware dashboard suite for Home Assistant.",
   "license": "MIT",
   "author": "David Farkas",
@@ -11,7 +11,7 @@
   "scripts": {
     "build": "vite build",
     "build:docs": "storybook build",
-    "check": "tsc --noEmit && npm run check:stories",
+    "check": "tsc --noEmit && npm run check:stories && node scripts/check-entity-grid.mjs",
     "check:stories": "node scripts/check-story-coverage.mjs",
     "dev": "vite build --watch",
     "docs": "storybook dev -p 6006"
