@@ -44,9 +44,11 @@ import "./cards/luma-layout-card";
 import "./cards/luma-appliance-card";
 import "./cards/luma-entity-grid-card";
 import "./cards/luma-service-grid-card";
+import "./cards/luma-storage-card";
 import "./cards/luma-discovery-card";
 
 const cards = [
+  { type:"luma-storage-card", name:"Luma Storage", description:"Unified disk capacity, temperature and SMART health with configurable state/attribute sources." },
   { type:"luma-service-grid-card", name:"Luma Services", description:"Unified application availability, container counts and confirmed stack operations with runtime discovery." },
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
   { type:"luma-navbar-card", name:"Luma Navbar", description:"Configurable routes with an artwork-aware, switchable active-media dock." },

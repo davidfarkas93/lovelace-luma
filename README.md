@@ -33,6 +33,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-control-card` | Entity action with mapped state and contextual styling |
 | `custom:luma-control-group-card` | Dense, responsive row of controls |
 | `custom:luma-metric-card` | Primary and secondary live metrics |
+| `custom:luma-storage-card` | Disk/volume usage, capacity, temperature and SMART health in one card |
 | `custom:luma-room-card` | Room summary with environment and quick actions |
 | `custom:luma-action-card` | Compact scene, service, or navigation action |
 | `custom:luma-comfort-card` | Indoor comfort and air-quality summary |
@@ -300,6 +301,53 @@ npm run build:docs
 The static catalogue is built into `storybook-static`. The included GitHub
 Pages workflow validates the TypeScript project, builds the catalogue, and
 publishes it after every push to `main`.
+
+## Storage cards
+
+[Try disk, logical-volume, parity, warning and unavailable examples](https://davidfarkas93.github.io/lovelace-luma/?path=/story/cards-storage--responsive-section).
+
+`custom:luma-storage-card` combines a **percentage** usage entity with optional
+capacity, temperature and SMART health. Every source and threshold is runtime
+configuration: there are no built-in Unraid/Proxmox entity names or attribute mappings.
+
+```yaml
+type: custom:luma-storage-card
+entity: sensor.data_disk_usage
+name: Data disk
+subtitle: Array · XFS
+health_entity: binary_sensor.data_disk_problem
+healthy_states: ["off"]
+problem_states: ["on"]
+used: { attribute: used }
+free: { attribute: free }
+total: { attribute: total }
+temperature: { attribute: temperature_celsius, unit: "°C" }
+health_detail: { entity: binary_sensor.data_disk_problem, attribute: reason }
+warning_above: 85
+critical_above: 95
+```
+
+A source accepts `entity`, `attribute`, and `unit`. Without `entity` it reads the
+main usage entity (or `health_entity` on a health-only card). Without `attribute`
+it reads that entity's state. Numeric values are rounded to one decimal using the
+active HA locale; preformatted capacity strings such as `2.9 TB` are preserved.
+For separate Proxmox sensors, use e.g. `used: { entity: sensor.volume_used }`.
+Capacity values are displayed as reported, not recomputed: filesystem free space
+may account for reserved blocks differently from total minus used.
+
+Omit `health_entity` for logical volumes without SMART; omit `entity` for a
+health-only/parity disk; `usage_note` overrides its explanatory text. Missing,
+unavailable and restored data is never shown as
+zero usage or healthy. Health and capacity warnings remain independent.
+Usage, capacity, SMART and temperature buttons open the corresponding HA more-info
+dialog; the card cannot start a disk operation or change power state. An attribute's
+button opens its parent entity (HA does not create a separate history for attributes).
+
+For full-width stacked sections, put each heading and one `luma-layout-card` in a
+separate HA section with `column_span` equal to the view's `max_columns`. Set the
+layout to `columns: 3`, `tablet_columns: 2`, `mobile_columns: 1` and
+`grid_options: { columns: full, rows: auto }`. Do not nest the three sections in
+side-by-side stacks: different row heights recreate the empty-space problem.
 
 ## Runtime entity filtering
 
