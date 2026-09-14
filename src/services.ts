@@ -28,6 +28,7 @@ export interface ServiceOperation {
 }
 export interface ServiceGridConfig {
   type: string;
+  compact?: boolean;
   stacks?: ServiceSelector;
   containers?: ServiceSelector;
   updates?: ServiceSelector;

@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { entityName, runAction } from '../helpers';
 import { localized } from '../localize';
 import { lumaTokens } from '../styles';
-import { storageModel, storageNumber, storageValue, type StorageConfig, type StorageSource } from '../storage';
+import { storageModel, storageNumber, storageValue, storageOperation, type StorageConfig, type StorageSource } from '../storage';
 import type { HomeAssistant, LovelaceCard } from '../types';
 
 @customElement('luma-storage-card')
@@ -12,6 +12,8 @@ export class LumaStorageCard extends LitElement implements LovelaceCard {
   @state() private config?:StorageConfig;
   static styles=[lumaTokens,css`
     :host{min-width:0;height:100%}
+    .card.compact{min-height:180px;padding:15px;gap:12px}.compact footer{padding-top:9px}.compact .usage{gap:8px}
+    .operation{display:grid;gap:9px;margin:auto 0}.operation-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.operation-state{font-size:21px;font-weight:700;overflow-wrap:anywhere}.operation-progress{font-size:13px;font-weight:650}.operation .label{margin-bottom:2px}
     .card{height:100%;min-height:200px;padding:18px;border:1px solid var(--luma-border);border-radius:var(--luma-radius-card);background:linear-gradient(140deg,color-mix(in srgb,var(--tone) 6%,var(--luma-surface)),var(--luma-surface) 80%);box-shadow:var(--luma-shadow);display:flex;flex-direction:column;gap:16px}
     header{display:flex;gap:12px;align-items:center;min-width:0}.icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:12px;background:color-mix(in srgb,var(--tone) 12%,transparent);color:var(--tone)}ha-icon{--mdc-icon-size:20px}
     .title{min-width:0;flex:1}.name{font-size:15px;font-weight:var(--luma-weight-title);overflow-wrap:anywhere}.subtitle{font-size:11px;color:var(--luma-muted);margin-top:3px;overflow-wrap:anywhere}
@@ -42,18 +44,19 @@ export class LumaStorageCard extends LitElement implements LovelaceCard {
   }
   render(){
     if(!this.config||!this.hass)return nothing;
-    const c=this.config,m=storageModel(this.hass,c),primary=c.entity||c.health_entity;
+    const c=this.config,m=storageModel(this.hass,c),primary=c.entity||c.health_entity,operation=storageOperation(this.hass,c);
     const name=c.name||entityName(this.hass.states[primary!],primary);
     const healthTone=m.healthStatus==='healthy'?'var(--success-color)':m.healthStatus==='problem'?'var(--error-color)':'var(--secondary-text-color)';
     const healthText=m.healthStatus==='healthy'?this.text('SMART healthy','SMART rendben'):m.healthStatus==='problem'?this.text('SMART warning','SMART probléma'):this.text('SMART unknown','SMART ismeretlen');
     const detail=c.health_detail?storageValue(this.hass,c.health_detail,primary):undefined;
     const capacity=[['Used','Használt',c.used],['Free','Szabad',c.free],['Total','Összes',c.total]] as const;
-    return html`<ha-card class="card" style=${`--tone:var(--${m.tone}-color);--health-tone:${healthTone}`}>
+    return html`<ha-card class=${`card ${c.compact?'compact':''}`} style=${`--tone:var(--${m.tone}-color);--health-tone:${healthTone}`}>
       <header><span class="icon"><ha-icon icon=${c.icon||'mdi:harddisk'}></ha-icon></span><div class="title"><div class="name">${name}</div>${c.subtitle?html`<div class="subtitle">${c.subtitle}</div>`:nothing}</div></header>
       ${c.entity?html`<button class="usage" aria-label=${`${name} · ${this.text('Storage usage details','Tárhelyhasználat részletei')}`} @click=${()=>this.info(c.entity)}>
         <span class="value-row"><span class="value">${m.usage===undefined?'—':new Intl.NumberFormat(this.hass.locale?.language||'en',{maximumFractionDigits:1}).format(m.usage)}${m.usage!==undefined?html`<span class="unit">%</span>`:nothing}</span><span class="label">${m.usage===undefined?this.text('Unavailable','Nem elérhető'):this.text('Used','Foglalt')}</span></span>
         <span class=${`track ${m.usage===undefined?'unknown':''}`}><span class="fill" style=${`width:${m.usage??0}%`}></span></span>
-      </button>`:html`<div class="parity">${c.usage_note||this.text('Health monitoring · no usage sensor configured','Állapotfigyelés · nincs tárhelyhasználat-szenzor megadva')}</div>`}
+      </button>`:c.operation?nothing:html`<div class="parity">${c.usage_note||this.text('Health monitoring · no usage sensor configured','Állapotfigyelés · nincs tárhelyhasználat-szenzor megadva')}</div>`}
+      ${c.operation?html`<div class="operation"><span class="label">${c.operation.label||this.text('Operation','Művelet')}</span><div class="operation-head"><button class="operation-state" @click=${()=>this.info(c.operation?.state.entity||primary)}>${operation.label||this.text('Unavailable','Nem elérhető')}</button>${operation.progress!==undefined?html`<button class="operation-progress" aria-label=${this.text('Progress details','Előrehaladás részletei')} @click=${()=>this.info(c.operation?.progress?.entity||c.operation?.state.entity||primary)}>${Math.round(operation.progress)}%</button>`:nothing}</div>${operation.progress!==undefined?html`<div class="track" role="progressbar" aria-label=${c.operation.label||this.text('Operation','Művelet')} aria-valuemin="0" aria-valuemax="100" aria-valuenow=${operation.progress}><span class="fill" style=${`width:${operation.progress}%`}></span></div>`:nothing}</div>`:nothing}
       ${capacity.some(([, ,source])=>source)?html`<div class="capacity">${capacity.map(([en,hu,source])=>source?html`<button @click=${()=>this.info(source.entity||primary)}><span class="label">${this.text(en,hu)}</span><strong>${this.format(source)}</strong></button>`:nothing)}</div>`:nothing}
       ${m.healthStatus==='problem'&&detail!==undefined?html`<div class="detail">${String(detail)}</div>`:nothing}
       ${c.health_entity||c.temperature?html`<footer>${c.health_entity?html`<button class="health" aria-label=${`${name} · ${healthText}`} @click=${()=>this.info(c.health_entity)}><ha-icon icon=${m.healthStatus==='healthy'?'mdi:shield-check-outline':m.healthStatus==='problem'?'mdi:shield-alert-outline':'mdi:help-circle-outline'}></ha-icon>${healthText}</button>`:nothing}${c.temperature?html`<button class="temperature" aria-label=${`${name} · ${this.text('Temperature','Hőmérséklet')}`} @click=${()=>this.info(c.temperature?.entity||primary)}><ha-icon icon="mdi:thermometer"></ha-icon>${this.format(c.temperature)}</button>`:nothing}</footer>`:nothing}

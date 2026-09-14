@@ -4,6 +4,8 @@ import type { HomeAssistant } from './types';
 export interface StorageSource { entity?:string; attribute?:string; unit?:string }
 export interface StorageConfig {
   type:string; entity?:string; name?:string; subtitle?:string; icon?:string; usage_note?:string;
+  compact?:boolean;
+  operation?:{state:StorageSource; label?:string; state_map?:Record<string,string>; progress?:StorageSource; progress_states?:string[]};
   health_entity?:string; healthy_states?:string[]; problem_states?:string[];
   health_detail?:StorageSource; temperature?:StorageSource;
   used?:StorageSource; total?:StorageSource; free?:StorageSource;
@@ -28,4 +30,11 @@ export function storageModel(hass:HomeAssistant|undefined, config:StorageConfig)
   const healthStatus=!config.health_entity?'none':(config.healthy_states||['off']).includes(healthState)?'healthy':(config.problem_states||['on']).includes(healthState)?'problem':'unknown';
   const tone=healthStatus==='problem'||usage!==undefined&&usage>=(config.critical_above??95)?'error':usage!==undefined&&usage>=(config.warning_above??85)?'warning':'primary';
   return {usage,healthStatus,tone};
+}
+export function storageOperation(hass:HomeAssistant|undefined,config:StorageConfig){
+  const operation=config.operation;
+  const raw=operation?storageValue(hass,operation.state,config.entity||config.health_entity):undefined;
+  const state=raw===undefined?undefined:String(raw);
+  const progress=operation&&state!==undefined&&(!operation.progress_states||operation.progress_states.includes(state))?storageNumber(storageValue(hass,operation.progress,operation.state.entity||config.entity||config.health_entity)):undefined;
+  return {state,label:state===undefined?undefined:operation?.state_map?.[state]||state,progress:progress!==undefined&&progress>=0&&progress<=100?progress:undefined};
 }

@@ -6,7 +6,7 @@ const exports={};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/storage.ts',import.meta.url),'utf8'),{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
 }).outputText,{exports});
-const {storageValue,storageNumber,storageModel}=exports;
+const {storageValue,storageNumber,storageModel,storageOperation}=exports;
 const hass={states:{'sensor.disk':{state:'73.4',attributes:{used:'2.9 TB',temp:0}},'binary_sensor.health':{state:'off',attributes:{}}}};
 const config={entity:'sensor.disk',health_entity:'binary_sensor.health'};
 assert.equal(storageModel(hass,config).usage,73.4);
@@ -28,4 +28,16 @@ assert.equal(storageModel(hass,{entity:'sensor.disk'}).healthStatus,'none');
 assert.equal(storageModel(hass,{health_entity:'binary_sensor.health'}).usage,undefined);
 hass.states['binary_sensor.health']={state:'passed',attributes:{}};
 assert.equal(storageModel(hass,{...config,healthy_states:['passed']}).healthStatus,'healthy');
-console.log('Storage: capacity, thresholds, health mapping and unavailable/stale data checks passed.');
+const operationConfig={operation:{state:{entity:'binary_sensor.check',attribute:'status'},state_map:{paused:'Paused',completed:'Completed'},progress:{entity:'sensor.progress'},progress_states:['running','paused']}};
+hass.states['binary_sensor.check']={state:'on',attributes:{status:'paused'}};
+hass.states['sensor.progress']={state:'25',attributes:{}};
+assert.equal(storageOperation(hass,operationConfig).label,'Paused');
+assert.equal(storageOperation(hass,operationConfig).progress,25);
+hass.states['sensor.progress'].state='0';assert.equal(storageOperation(hass,operationConfig).progress,0);
+hass.states['binary_sensor.check']={state:'off',attributes:{status:'completed'}};
+assert.equal(storageOperation(hass,operationConfig).label,'Completed');
+assert.equal(storageOperation(hass,operationConfig).progress,undefined);
+hass.states['binary_sensor.check'].state='unavailable';assert.equal(storageOperation(hass,operationConfig).label,undefined);
+hass.states['binary_sensor.check']={state:'on',attributes:{status:'running'}};
+for(const value of ['unavailable','-1','101']){hass.states['sensor.progress'].state=value;assert.equal(storageOperation(hass,operationConfig).progress,undefined);}
+console.log('Storage: capacity, health, operation state/progress, and unavailable/stale checks passed.');

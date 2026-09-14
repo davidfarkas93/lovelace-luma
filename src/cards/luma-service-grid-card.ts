@@ -1,9 +1,10 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { entityName, runAction } from '../helpers';
 import { localize, localized } from '../localize';
 import { lumaTokens } from '../styles';
+import '../components/luma-bottom-sheet';
 import { discoverServices, serviceAvailable, serviceHealth, serviceNumber, serviceRunning,
   type ServiceGridConfig, type ServiceItem } from '../services';
 import type { HassEntity, HomeAssistant, LovelaceCard } from '../types';
@@ -20,10 +21,8 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
   @state() private busy?: string;
   @state() private error = '';
   @state() private feedback = '';
-  @state() private drag = 0;
-  @query('dialog') private dialog?: HTMLDialogElement;
+  @state() private detailsOpen = false;
   private confirmTimer?: number;
-  private dragStartY?: number;
   private previewOpened = false;
   private cachedHass?: HomeAssistant;
   private cachedItems: ServiceItem[] = [];
@@ -33,6 +32,7 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
     .grid{display:grid;grid-template-columns:repeat(var(--columns,3),minmax(0,1fr));gap:12px}
     .group-title{margin:26px 0 12px;font-size:16px;font-weight:700}
     .service{display:flex;flex-direction:column;gap:13px;width:100%;min-width:0;min-height:150px;padding:18px;text-align:left;font:inherit;color:var(--primary-text-color);border:1px solid color-mix(in srgb,var(--tone) 16%,var(--luma-border));border-radius:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--tone) 9%,var(--luma-surface)),var(--luma-surface) 78%);box-shadow:0 7px 22px rgba(0,0,0,.035);cursor:pointer;transition:transform .16s,border-color .16s,box-shadow .16s}
+    .compact .service{min-height:132px;padding:15px;gap:10px}
     .service:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tone) 42%,transparent);box-shadow:var(--luma-shadow)}
     .top{display:grid;grid-template-columns:40px minmax(0,1fr) 18px;gap:11px;align-items:center;width:100%}
     .icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:color-mix(in srgb,var(--tone) 12%,transparent);color:var(--tone)}
@@ -44,11 +44,7 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
     .metrics{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:auto;color:var(--luma-muted);font-size:11px;line-height:1.5}
     .metrics strong{color:var(--primary-text-color);font-weight:650}.issue{font-size:11px;line-height:1.5;overflow-wrap:anywhere;color:var(--warning-color)}
     .empty{padding:16px;color:var(--luma-muted)}
-    dialog{position:fixed;inset:auto 0 0;margin:0 auto;padding:0;border:1px solid var(--luma-border);border-bottom:0;border-radius:28px 28px 0 0;width:min(760px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);color:var(--primary-text-color);background:var(--card-background-color,#f7f7fb);box-shadow:0 -16px 70px rgba(0,0,0,.25);overflow:hidden}
-    dialog::backdrop{background:rgba(12,13,18,.55)}
-    .sheet{display:flex;flex-direction:column;max-height:calc(100dvh - 26px);transform:translateY(var(--drag,0px))}
-    .handle{display:grid;place-items:center;min-height:27px;cursor:grab;touch-action:none}.handle:after{content:'';width:38px;height:4px;border-radius:9px;background:color-mix(in srgb,var(--primary-text-color) 22%,transparent)}
-    .header{display:grid;grid-template-columns:42px minmax(0,1fr) 40px;gap:12px;align-items:center;padding:0 22px 18px}.header .name{font-size:21px}.body{overflow:auto;overscroll-behavior:contain;padding:0 22px max(24px,env(safe-area-inset-bottom));min-height:0}
+    .body{min-width:0}
     .close,.info{display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:50%;background:color-mix(in srgb,var(--primary-text-color) 6%,transparent);color:var(--luma-muted);cursor:pointer}.close ha-icon,.info ha-icon{--mdc-icon-size:19px}
     h3{margin:24px 0 11px;font-size:13px;font-weight:720}.notice{font-size:12px;line-height:1.55;color:var(--luma-muted);overflow-wrap:anywhere;margin:12px 0}.error{color:var(--error-color)}
     .detail-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.metric{padding:14px;border:1px solid var(--luma-border);border-radius:16px;background:color-mix(in srgb,var(--primary-color) 4%,var(--luma-surface));color:inherit;font:inherit;text-align:left;cursor:pointer}.metric span{display:block;font-size:11px;color:var(--luma-muted)}.metric strong{display:block;font-size:22px;margin-top:5px;font-weight:690}
@@ -57,7 +53,7 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
     button:focus-visible,a:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}a.action{text-decoration:none;display:inline-flex;align-items:center}
     @container(max-width:960px){.grid{grid-template-columns:repeat(var(--tablet-columns,2),minmax(0,1fr))}}
     @container(max-width:560px){.grid{grid-template-columns:repeat(var(--mobile-columns,1),minmax(0,1fr))}.service{min-height:140px;padding:15px}}
-    @media(max-width:599px){dialog{width:100%;border-left:0;border-right:0;max-height:calc(100dvh - 10px)}.sheet{max-height:calc(100dvh - 12px)}.header{padding:0 16px 16px}.body{padding-left:16px;padding-right:16px}.row{gap:7px;padding:10px;grid-template-columns:24px minmax(0,1fr) auto 32px}.row .action{padding:8px 10px;font-size:11px}}
+    @media(max-width:599px){.row{gap:7px;padding:10px;grid-template-columns:24px minmax(0,1fr) auto 32px}.row .action{padding:8px 10px;font-size:11px}}
   `];
   setConfig(config: ServiceGridConfig) {
     if (!config.stacks && !config.monitors) throw Error('Services require stacks or monitors discovery selectors.');
@@ -66,7 +62,7 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
     this.close();
   }
   getCardSize() { return 5; }
-  disconnectedCallback() { clearTimeout(this.confirmTimer); this.dialog?.close(); super.disconnectedCallback(); }
+  disconnectedCallback() { clearTimeout(this.confirmTimer); this.detailsOpen=false; super.disconnectedCallback(); }
   protected updated(changed: PropertyValues<this>) {
     if (this.selected && !this.items.find(x => x.entity === this.selected)) this.close();
     if (!this.previewOpened && this.config?.show_details && this.hass?.editMode) {
@@ -98,10 +94,9 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
   }
   private async open(id: string) {
     this.selected = id; this.error = ''; this.feedback = ''; this.clearPending();
-    await this.updateComplete;
-    if (this.selected === id && this.dialog && !this.dialog.open) this.dialog.showModal();
+    this.detailsOpen = true;
   }
-  private close() { this.dialog?.close(); this.selected = undefined; this.drag = 0; this.clearPending(); }
+  private close() { this.detailsOpen = false; this.clearPending(); }
   private clearPending() { this.pending = undefined; clearTimeout(this.confirmTimer); }
   private info(entity: string) { this.close(); void runAction(this, this.hass!, {action:'more-info'}, entity); }
   private operationKey(op: Operation) { return `${op.entity}:${op.service}`; }
@@ -152,10 +147,7 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
     return html`<div class="row"><ha-icon icon="mdi:package-up"></ha-icon><div><div class="name">${name}</div><div class="kind">${installing ? localize(this.hass,'installing') : versions || (entity.state==='on' ? this.t('Update available','Frissítés elérhető') : this.t('No update reported','Nincs jelzett frissítés'))}</div></div>${entity.state==='on'||installing ? this.action(op) : nothing}<button class="info" aria-label=${`${name} · ${localize(this.hass,'details')}`} @click=${() => this.info(entity.entity_id)}><ha-icon icon="mdi:information-outline"></ha-icon></button></div>`;
   }
   private details(item: ServiceItem) {
-    return html`<div class="sheet" style=${`--drag:${this.drag}px;--tone:${this.tone(serviceHealth(item).tone)}`}>
-      <div class="handle" @pointerdown=${(e:PointerEvent) => {this.dragStartY=e.clientY;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);}} @pointermove=${(e:PointerEvent) => {if(this.dragStartY!==undefined)this.drag=Math.max(0,e.clientY-this.dragStartY);}} @pointerup=${() => {this.dragStartY=undefined;if(this.drag>85)this.close();this.drag=0;}} @pointercancel=${() => {this.dragStartY=undefined;this.drag=0;}}></div>
-      <header class="header"><span class="icon"><ha-icon icon=${item.icon}></ha-icon></span><div><div class="name">${item.name}</div><div class="kind">${this.t('Availability & workload details','Elérhetőség és szolgáltatásrészletek')}</div></div><button class="close" aria-label=${localize(this.hass,'close')} @click=${() => this.close()}><ha-icon icon="mdi:close"></ha-icon></button></header>
-      <div class="body">${this.signals(item)}<div class="detail-metrics">${this.metric(item.latency,this.t('Response time','Válaszidő'),'ms')}${this.metric(item.uptime,this.config?.uptime_label || this.t('Availability','Rendelkezésre állás'),'%',2)}</div>
+    return html`      <div class="body">${this.signals(item)}<div class="detail-metrics">${this.metric(item.latency,this.t('Response time','Válaszidő'),'ms')}${this.metric(item.uptime,this.config?.uptime_label || this.t('Availability','Rendelkezésre állás'),'%',2)}</div>
         ${item.alerts.map(e => html`<p class="notice error">${e.state}</p>`)}
         <p class="notice">${item.monitorConfigured ? this.t('Availability is measured by the configured monitor. Running containers alone do not prove application health.','Az elérhetőséget a hozzárendelt monitor méri. A futó konténerek önmagukban nem bizonyítják az alkalmazás hibátlan működését.') : this.t('No availability monitor is linked. Only workload state is known.','Nincs hozzárendelt elérhetőségi monitor. Csak a konténerek futási állapota ismert.')}</p>
         <div class="actions">${item.url ? html`<a class="action" href=${item.url} target="_blank" rel="noopener noreferrer"><ha-icon icon="mdi:open-in-new"></ha-icon>${this.t('Open service','Szolgáltatás megnyitása')}</a>` : nothing}${item.monitor ? html`<button class="action" @click=${() => this.info(item.monitor!.entity_id)}>${localize(this.hass,'history')}</button>` : nothing}${item.stack ? html`<button class="action" @click=${() => this.info(item.entity)}>${this.t('Stack state','Stack állapota')}</button>` : nothing}</div>
@@ -164,15 +156,20 @@ export class LumaServiceGridCard extends LitElement implements LovelaceCard {
         ${this.pending ? html`<p class="notice confirmation" role="status">${this.pending.operation.confirm} ${this.t('Click the same button again to confirm.','A megerősítéshez kattints újra ugyanarra a gombra.')}</p>` : nothing}
         ${this.error ? html`<p class="notice error" role="alert">${this.error}</p>` : nothing}${this.feedback ? html`<p class="notice" role="status">${this.feedback}</p>` : nothing}
         ${item.updates.length ? html`<h3>${this.t('Updates','Frissítések')}</h3><div class="rows">${repeat(item.updates,e=>e.entity_id,e=>this.updateRow(e))}</div>` : nothing}
-      </div></div>`;
+      </div>`;
   }
   render() {
     if (!this.hass || !this.config) return nothing;
     const items = this.items, groups = [...new Set(items.map(item=>item.group))].sort((a,b)=>!a?-1:!b?1:a.localeCompare(b));
     const selected = items.find(item=>item.entity===this.selected);
-    return html`<div style=${`--columns:${this.config.columns};--tablet-columns:${this.config.tablet_columns};--mobile-columns:${this.config.mobile_columns}`}>
+    return html`<div class=${this.config.compact ? 'compact' : ''} style=${`--columns:${this.config.columns};--tablet-columns:${this.config.tablet_columns};--mobile-columns:${this.config.mobile_columns}`}>
       ${groups.map(group=>html`${group ? html`<h2 class="group-title">${group}</h2>` : nothing}<div class="grid">${repeat(items.filter(item=>item.group===group),item=>item.entity,item=>this.tile(item))}</div>`)}
       ${!items.length ? html`<div class="empty">${this.t('No services discovered.','Nincs felfedezett szolgáltatás.')}</div>` : nothing}</div>
-      <dialog aria-label=${selected?.name || localize(this.hass,'details')} @cancel=${() => this.close()} @click=${(event:MouseEvent) => {if(event.target===this.dialog)this.close();}}>${selected ? this.details(selected) : nothing}</dialog>`;
+      <luma-bottom-sheet .open=${this.detailsOpen} .heading=${selected?.name||localize(this.hass,'details')}
+        .subtitle=${this.t('Availability & workload details','Elérhetőség és szolgáltatásrészletek')}
+        .icon=${selected?.icon||'mdi:server'} .maxWidth=${760} .closeLabel=${localize(this.hass,'close')}
+        @sheet-dismiss=${()=>this.close()} @sheet-closed=${()=>{if(!this.detailsOpen)this.selected=undefined}}>
+        ${selected ? this.details(selected) : nothing}
+      </luma-bottom-sheet>`;
   }
 }

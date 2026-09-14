@@ -51,6 +51,7 @@ const meta:Meta<Args>={title:'Cards/Services',args:{config,entities,width:1120},
 export default meta;
 type Story=StoryObj<Args>;
 export const Unified:Story={};
+export const Compact:Story={args:{config:{...config,compact:true}}};
 export const Mobile:Story={args:{width:360}};
 export const PartialFailure:Story={args:{entities:{...entities,'switch.photos_container_3':{...entities['switch.photos_container_3'],state:'off'},'sensor.media_status':{...entities['sensor.media_status'],state:'down'}}}};
 export const MissingData:Story={args:{entities:{...entities,'sensor.identity_status':{...entities['sensor.identity_status'],state:'unavailable'},'switch.photos_container_2':{...entities['switch.photos_container_2'],state:'unavailable'}}}};

@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { lumaTokens } from "../styles";
+import "../components/luma-bottom-sheet";
 import { localize, localized } from "../localize";
 import type { HomeAssistant, LovelaceCard } from "../types";
 interface Config {
@@ -20,16 +21,9 @@ export class LumaPopupCard extends LitElement implements LovelaceCard {
   @property({ type: Boolean }) editMode = false;
   @state() private config?: Config;
   @state() private open = false;
-  @state() private dragY = 0;
-  @state() private dragging = false;
   @query(".content") private content?: HTMLElement;
   private childCards: ChildCard[] = [];
-  private dragStartY = 0;
-  private dragStartTime = 0;
   private locationChanged = () => this.syncLocation();
-  private keyDown = (event: KeyboardEvent) => {
-    if (this.open && event.key === "Escape") this.close();
-  };
   static styles = [
     lumaTokens,
     css`
@@ -85,201 +79,19 @@ export class LumaPopupCard extends LitElement implements LovelaceCard {
         font-size: 10px;
         font-weight: 720;
       }
-      .layer {
-        position: fixed;
-        inset: 0;
-        z-index: 1000;
-        display: grid;
-        align-items: end;
-        justify-items: center;
-        pointer-events: none;
-        visibility: hidden;
-      }
-      .layer.open {
-        pointer-events: auto;
-        visibility: visible;
-      }
-      .scrim {
-        position: absolute;
-        inset: 0;
-        background: rgba(12, 13, 18, 0.58);
-        opacity: 0;
-        transition: opacity 0.22s ease;
-      }
-      .open .scrim {
-        opacity: calc(1 - var(--drag-progress, 0));
-      }
-      .sheet {
-        position: relative;
-        isolation: isolate;
-        display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
-        width: min(var(--sheet-width), calc(100vw - 32px));
-        max-height: min(860px, calc(100dvh - 28px));
-        border: 1px solid
-          color-mix(in srgb, var(--primary-text-color) 11%, transparent);
-        border-radius: 28px 28px 0 0;
-        color: var(--primary-text-color);
-        background:
-          radial-gradient(
-            circle at 8% 0,
-            color-mix(in srgb, var(--primary-color) 10%, transparent),
-            transparent 31%
-          ),
-          var(
-            --md-sys-color-surface-container-high,
-            var(--primary-background-color, #fafafa)
-          );
-        box-shadow: 0 -16px 60px rgba(0, 0, 0, 0.34);
-        overflow: hidden;
-        transform: translateY(calc(100% + 32px));
-        opacity: 0.8;
-        transition:
-          transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1),
-          opacity 0.22s ease;
-      }
-      .open .sheet {
-        transform: translateY(var(--drag-y, 0));
-        opacity: 1;
-      }
-      .dragging .sheet {
-        transition: none;
-      }
-      .handle-zone {
-        position: absolute;
-        z-index: 3;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 28px;
-        cursor: grab;
-        touch-action: none;
-      }
-      .dragging .handle-zone {
-        cursor: grabbing;
-      }
-      .handle {
-        position: absolute;
-        top: 9px;
-        left: 50%;
-        width: 34px;
-        height: 4px;
-        border-radius: 99px;
-        background: color-mix(
-          in srgb,
-          var(--primary-text-color) 28%,
-          transparent
-        );
-        transform: translateX(-50%);
-      }
-      header {
-        display: grid;
-        grid-template-columns: 42px minmax(0, 1fr) 40px;
-        align-items: center;
-        gap: 12px;
-        padding: 25px 20px 14px;
-        border-bottom: 1px solid
-          color-mix(in srgb, var(--primary-text-color) 7%, transparent);
-        background: transparent;
-      }
-      .icon {
-        display: grid;
-        place-items: center;
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        color: var(--primary-color);
-        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-      }
-      .icon ha-icon {
-        --mdc-icon-size: 22px;
-      }
-      .title {
-        font-size: 18px;
-        font-weight: 730;
-        line-height: 1.15;
-      }
-      .subtitle {
-        margin-top: 3px;
-        color: var(--luma-muted);
-        font-size: 11px;
-      }
-      .close {
-        display: grid;
-        place-items: center;
-        width: 40px;
-        height: 40px;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        color: var(--primary-text-color);
-        background: color-mix(
-          in srgb,
-          var(--primary-text-color) 7%,
-          transparent
-        );
-      }
-      .close ha-icon {
-        --mdc-icon-size: 19px;
-      }
-      .content {
-        display: grid;
-        align-content: start;
-        gap: 14px;
-        min-height: 160px;
-        padding: 16px 20px calc(22px + env(safe-area-inset-bottom));
-        background: transparent;
-        overflow: auto;
-        overscroll-behavior: contain;
-      }
-      .loading {
-        display: grid;
-        place-items: center;
-        min-height: 160px;
-        color: var(--luma-muted);
-        font-size: 12px;
-      }
-      @media (min-width: 700px) {
-        .layer {
-          padding-bottom: 18px;
-        }
-        .sheet {
-          border-radius: 28px;
-          max-height: calc(100dvh - 56px);
-        }
-      }
-      @media (max-width: 699px) {
-        .sheet {
-          width: 100%;
-          max-height: calc(100dvh - 8px);
-          border-right: 0;
-          border-bottom: 0;
-          border-left: 0;
-        }
-        .content {
-          padding-right: 16px;
-          padding-left: 16px;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .scrim,
-        .sheet {
-          transition-duration: 0.01ms;
-        }
-      }
+      .content { display:grid;gap:14px;min-width:0; }
+      .loading { min-height:160px;display:grid;place-items:center;color:var(--luma-muted); }
     `,
   ];
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener("hashchange", this.locationChanged);
     window.addEventListener("location-changed", this.locationChanged);
-    window.addEventListener("keydown", this.keyDown);
     this.syncLocation();
   }
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.locationChanged);
     window.removeEventListener("location-changed", this.locationChanged);
-    window.removeEventListener("keydown", this.keyDown);
     super.disconnectedCallback();
   }
   setConfig(c: Config) {
@@ -336,28 +148,7 @@ export class LumaPopupCard extends LitElement implements LovelaceCard {
       );
   }
   private close() {
-    this.dragY = 0;
-    this.dragging = false;
     this.navigate();
-  }
-  private dragStart(event: PointerEvent) {
-    this.dragging = true;
-    this.dragStartY = event.clientY;
-    this.dragStartTime = performance.now();
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-  }
-  private dragMove(event: PointerEvent) {
-    if (this.dragging)
-      this.dragY = Math.max(0, event.clientY - this.dragStartY);
-  }
-  private dragEnd(event: PointerEvent) {
-    if (!this.dragging) return;
-    const elapsed = Math.max(1, performance.now() - this.dragStartTime),
-      velocity = this.dragY / elapsed;
-    (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
-    this.dragging = false;
-    if (this.dragY > 110 || velocity > 0.65) this.close();
-    else this.dragY = 0;
   }
   private async mountCards() {
     if (!this.config || !this.content) return;
@@ -391,48 +182,11 @@ export class LumaPopupCard extends LitElement implements LovelaceCard {
             </button></ha-card
           >`
         : nothing}
-      <div
-        class=${`layer ${this.open ? "open" : ""} ${this.dragging ? "dragging" : ""}`}
-        style=${`--drag-y:${this.dragY}px;--drag-progress:${Math.min(0.75, this.dragY / 420)}`}
-        aria-hidden=${!this.open}
-      >
-        <div class="scrim" @click=${() => this.close()}></div>
-        <section
-          class="sheet"
-          role="dialog"
-          aria-modal="true"
-          aria-label=${this.config.name}
-          style=${`--sheet-width:${this.config.max_width}px`}
-        >
-          <div
-            class="handle-zone"
-            @pointerdown=${this.dragStart}
-            @pointermove=${this.dragMove}
-            @pointerup=${this.dragEnd}
-            @pointercancel=${this.dragEnd}
-          >
-            <div class="handle"></div>
-          </div>
-          <header>
-            <span class="icon"
-              ><ha-icon
-                icon=${this.config.icon || "mdi:lightning-bolt-outline"}
-              ></ha-icon></span
-            ><span
-              ><div class="title">${this.config.name}</div>
-              ${this.config.subtitle
-                ? html`<div class="subtitle">${this.config.subtitle}</div>`
-                : nothing}</span
-            ><button
-              class="close"
-              aria-label=${localize(this.hass, "dismiss")}
-              @click=${() => this.close()}
-            >
-              <ha-icon icon="mdi:close"></ha-icon>
-            </button>
-          </header>
-          <div class="content"><div class="loading">${localize(this.hass, "loading")}</div></div>
-        </section>
-      </div>`;
+      <luma-bottom-sheet .open=${this.open} .heading=${this.config.name}
+        .subtitle=${this.config.subtitle||''} .icon=${this.config.icon||'mdi:lightning-bolt-outline'}
+        .maxWidth=${this.config.max_width} .closeLabel=${localize(this.hass,'dismiss')}
+        @sheet-dismiss=${()=>this.close()}>
+        <div class="content"><div class="loading">${localize(this.hass,'loading')}</div></div>
+      </luma-bottom-sheet>`;
   }
 }

@@ -21,6 +21,7 @@ const {LumaServiceGridCard}=compile('../src/cards/luma-service-grid-card.ts',nam
   if(name==='../services')return model;
   if(name==='../localize')return{localize:(_h,key)=>key,localized:(_h,en)=>en};
   if(name==='../styles')return{lumaTokens:''};
+  if(name==='../components/luma-bottom-sheet')return{};
   throw Error(name);
 });
 const config={type:'custom:luma-service-grid-card',

@@ -334,6 +334,31 @@ demonstrate full-width VM and update grids and combined compute metrics.
 capacity, temperature and SMART health. Every source and threshold is runtime
 configuration: there are no built-in Unraid/Proxmox entity names or attribute mappings.
 
+Set `compact: true` for slightly tighter padding and card height without shrinking
+the text. An optional `operation` displays a read-only task state and progress on
+the disk itself, for example a parity check:
+
+```yaml
+type: custom:luma-storage-card
+name: Parity disk
+compact: true
+health_entity: binary_sensor.parity_disk_problem
+operation:
+  label: Parity check
+  state: { entity: binary_sensor.parity_check_running, attribute: status }
+  state_map:
+    running: Running
+    paused: Paused
+    completed: Completed
+    idle: Idle
+  progress: { entity: sensor.parity_check_progress }
+  progress_states: [running, paused]
+```
+
+`progress_states` matches raw states, before `state_map`. Completed/idle tasks
+therefore do not show a misleading 0% bar when the source resets after completion.
+Missing or invalid progress is hidden. Both values open their source's more-info.
+
 ```yaml
 type: custom:luma-storage-card
 entity: sensor.data_disk_usage
@@ -384,6 +409,13 @@ and grouped by their existing Home Assistant device. Cross-integration monitor
 bindings, names, URLs, selectors and operation definitions live in the dashboard.
 New stacks and enabled container entities appear automatically; link a new monitor
 by adding a binding. No Luma rebuild is needed for that change.
+
+Set `compact: true` to reduce service tile padding and minimum height. Service
+details, weather forecast day details and configured `luma-popup-card` popups all
+use the same bottom-sheet shell: opaque themed surface, shared header and motion,
+scrollable content, Escape/backdrop/close-button dismissal and drag-down handle.
+On mobile the sheet meets the bottom edge; on desktop it floats above it. Reduced
+motion preferences are respected. No existing popup configuration needs changing.
 
 ```yaml
 type: custom:luma-service-grid-card
