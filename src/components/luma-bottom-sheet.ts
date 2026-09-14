@@ -26,7 +26,8 @@ export class LumaBottomSheet extends LitElement {
         inset: 0;
         z-index: 1000;
         margin: 0; padding: 0; border: 0; width: 100%; height: 100%;
-        max-width: none; max-height: none; background: transparent; overflow: hidden;
+        /* hidden still allows focus-driven scrolling during the enter transform. */
+        max-width: none; max-height: none; background: transparent; overflow: clip;
         align-items: end;
         justify-items: center;
         pointer-events: none;
@@ -35,7 +36,7 @@ export class LumaBottomSheet extends LitElement {
       .layer[open] { display: grid; pointer-events: auto; visibility: visible; }
       .layer::backdrop { background: transparent; }
       .scrim {
-        position: absolute;
+        position: fixed;
         inset: 0;
         background: rgba(12, 13, 18, 0.58);
         opacity: 0;
@@ -232,7 +233,7 @@ export class LumaBottomSheet extends LitElement {
     this.dragging=false;
     if(dismiss)this.dismiss();else this.dragY=0;
   }
-  render(){return html`<dialog class=${`layer ${this.visible?'open':''} ${this.dragging?'dragging':''}`}
+  render(){return html`<dialog tabindex="-1" autofocus class=${`layer ${this.visible?'open':''} ${this.dragging?'dragging':''}`}
     aria-label=${this.heading} style=${`--drag-y:${this.dragY}px;--drag-progress:${Math.min(.75,this.dragY/420)}`}
     @cancel=${(event:Event)=>{event.preventDefault();this.dismiss()}}>
     <div class="scrim" @click=${()=>this.dismiss()}></div>
