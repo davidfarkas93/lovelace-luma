@@ -457,6 +457,27 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         background: color-mix(in srgb, var(--issue-color) 12%, transparent);
         font-size: 9px;
         font-weight: 780;
+        cursor: pointer;
+        transition:
+          color 140ms ease,
+          background-color 140ms ease,
+          box-shadow 140ms ease,
+          transform 140ms ease;
+      }
+      .issue-actions button:hover {
+        color: var(--card-background-color);
+        background: var(--issue-color);
+        box-shadow: 0 5px 14px
+          color-mix(in srgb, var(--issue-color) 24%, transparent);
+        transform: translateY(-1px);
+      }
+      .issue-actions button:active {
+        box-shadow: none;
+        transform: translateY(0) scale(0.97);
+      }
+      .issue-actions button:focus-visible {
+        outline: 2px solid var(--issue-color);
+        outline-offset: 2px;
       }
       .banners {
         display: grid;
@@ -1003,7 +1024,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     return `${base}|${(hash >>> 0).toString(36)}`;
   }
 
-  private incidents(): Incident[] {
+  private incidentCandidates(): Incident[] {
     if (!this.hass || !this.config) return [];
     const found: Incident[] = [];
     for (const rule of this.config.incidents || []) {
@@ -1050,13 +1071,17 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           });
         }
     }
-    const ack = this.ackMap(),
-      now = Date.now() / 1000;
-    return found
-      .filter((x) => x.tone === "error" || !(ack[x.key] > now))
-      .sort(
+    return found.sort(
         (a, b) => (b.tone === "error" ? 1 : 0) - (a.tone === "error" ? 1 : 0),
       );
+  }
+
+  private incidents(): Incident[] {
+    const ack = this.ackMap(),
+      now = Date.now() / 1000;
+    return this.incidentCandidates().filter(
+      (issue) => issue.tone === "error" || !(ack[issue.key] > now),
+    );
   }
 
   private async dismiss(
@@ -1066,12 +1091,33 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   ): Promise<void> {
     event.stopPropagation();
     if (!this.hass || !this.config?.acknowledgements_entity) return;
-    const ack = this.ackMap();
-    ack[issue.key] = Math.floor(Date.now() / 1000 + days * 86400);
-    const value = Object.entries(ack)
-      .filter(([, expiry]) => expiry > Date.now() / 1000)
-      .map(([key, expiry]) => `${key}:${expiry}`)
-      .join(",");
+    const now = Date.now() / 1000;
+    const validKeys = new Set(this.incidentCandidates().map((item) => item.key));
+    const ack = Object.fromEntries(
+      Object.entries(this.ackMap()).filter(
+        ([key, expiry]) => validKeys.has(key) && expiry > now,
+      ),
+    );
+    ack[issue.key] = Math.floor(now + days * 86400);
+
+    const maxLength = Number(
+      this.hass.states[this.config.acknowledgements_entity]?.attributes.max ||
+        255,
+    );
+    const ordered = Object.entries(ack).sort(([keyA, expiryA], [keyB, expiryB]) =>
+      keyA === issue.key
+        ? -1
+        : keyB === issue.key
+          ? 1
+          : expiryB - expiryA,
+    );
+    const stored: string[] = [];
+    for (const [key, expiry] of ordered) {
+      const entry = `${key}:${expiry}`;
+      const candidate = [...stored, entry].join(",");
+      if (candidate.length <= maxLength) stored.push(entry);
+    }
+    const value = stored.join(",");
     await this.hass.callService(
       "input_text",
       "set_value",
