@@ -52,7 +52,7 @@ import "./cards/luma-session-browser-card";
 import "./cards/luma-ev-control-card";
 
 const cards = [
-  { type:"luma-ev-control-card", name:"Luma EV Control", description:"State-aware charging and Solar Boost controls with inline confirmation." },
+  { type:"luma-ev-control-card", name:"Luma EV Control", description:"Lifecycle-aware Charge Now controls with automatic Solar handoff." },
   { type:"luma-session-browser-card", name:"Luma Session Browser", description:"Swipeable Recorder-backed completed-session history with a retained recent-session fallback." },
   { type:"luma-period-stats-card", name:"Luma Period Stats", description:"Compact swipeable day, month and year energy statistics with source attribution." },
   { type:"luma-storage-card", name:"Luma Storage", description:"Unified disk capacity, temperature and SMART health with configurable state/attribute sources." },
