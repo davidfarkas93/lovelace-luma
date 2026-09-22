@@ -53,6 +53,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-history-card` | Recorder-backed line or aggregated bar chart with optional daily/monthly range switching |
 | `custom:luma-session-browser-card` | Swipeable completed-session browser combining Recorder events with a retained recent-session fallback |
 | `custom:luma-period-stats-card` | Compact swipeable day/month/year energy and source-attribution summary |
+| `custom:luma-ev-control-card` | Compact swipeable charging and Solar Boost controls with inline confirmation |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
