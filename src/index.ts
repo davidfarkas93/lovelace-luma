@@ -47,8 +47,12 @@ import "./cards/luma-entity-grid-card";
 import "./cards/luma-service-grid-card";
 import "./cards/luma-storage-card";
 import "./cards/luma-discovery-card";
+import "./cards/luma-period-stats-card";
+import "./cards/luma-session-browser-card";
 
 const cards = [
+  { type:"luma-session-browser-card", name:"Luma Session Browser", description:"Swipeable Recorder-backed completed-session history with a retained recent-session fallback." },
+  { type:"luma-period-stats-card", name:"Luma Period Stats", description:"Compact swipeable day, month and year energy statistics with source attribution." },
   { type:"luma-storage-card", name:"Luma Storage", description:"Unified disk capacity, temperature and SMART health with configurable state/attribute sources." },
   { type:"luma-service-grid-card", name:"Luma Services", description:"Unified application availability, container counts and confirmed stack operations with runtime discovery." },
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
@@ -148,7 +152,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.10.5 ",
+  "%c LUMA %c 0.22.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
