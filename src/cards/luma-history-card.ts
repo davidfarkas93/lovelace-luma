@@ -150,6 +150,13 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
           .filter((point: Point) => Number.isFinite(point.time) && Number.isFinite(point.value))
           .sort((a, b) => a.time - b.time);
         if (!statistics) {
+          const finalRecord = records.at(-1) as HistoryRecord | undefined;
+          const finalRecordTime = finalRecord ? this.timestamp(finalRecord) : Number.NaN;
+          const finalRecordValue = Number(finalRecord?.state ?? finalRecord?.s);
+          const lastKnownPoint = points.at(-1);
+          if (lastKnownPoint && Number.isFinite(finalRecordTime) && !Number.isFinite(finalRecordValue) && finalRecordTime > lastKnownPoint.time) {
+            points.push({ time: finalRecordTime, value: lastKnownPoint.value });
+          }
           const currentValue = Number(this.hass.states[id]?.state);
           const lastPoint = points.at(-1);
           if (Number.isFinite(currentValue) && (!lastPoint || lastPoint.time < end.getTime() - 1000)) {
