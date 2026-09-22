@@ -18,6 +18,7 @@ import "./cards/luma-cover-card";
 import "./cards/luma-temperature-card";
 import "./cards/luma-disclosure-card";
 import "./cards/luma-energy-flow-card";
+import "./cards/luma-energy-mix-card";
 import "./cards/luma-navigation-card";
 import "./cards/luma-navbar-card";
 import "./cards/luma-history-card";
@@ -80,6 +81,7 @@ const cards = [
   { type:"luma-homelab-hero-card", name:"Luma Homelab Hero", description:"A dynamic Homelab health hero aggregating Kuma, Komodo and infrastructure incidents." },
   { type:"luma-history-card", name:"Luma History", description:"Responsive recorder history chart with gradients and touch inspection." },
   { type:"luma-energy-flow-card", name:"Luma Energy Flow", description:"Live solar, home and grid power flow." },
+  { type:"luma-energy-mix-card", name:"Luma Energy Mix", description:"A polished live or session energy-source split with totals and percentages." },
   { type:"luma-navigation-card", name:"Luma Navigation", description:"A polished contextual navigation card." },
   { type:"luma-disclosure-card", name:"Luma Disclosure", description:"A compact expandable container for related controls." },
   { type:"luma-temperature-card", name:"Luma Temperature", description:"A visual room-temperature comparison with comfort-aware color and scale." },
