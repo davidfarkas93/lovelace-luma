@@ -232,8 +232,9 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
         gradient.addColorStop(1, `${this.color(series, index)}aa`);
         context.fillStyle = gradient;
         coordinates.forEach((point) => {
+          const x = Math.max(left + barWidth / 2, Math.min(width - right - barWidth / 2, point.x));
           context.beginPath();
-          context.roundRect(point.x - barWidth / 2, point.y, barWidth, Math.max(2, base - point.y), [5, 5, 2, 2]);
+          context.roundRect(x - barWidth / 2, point.y, barWidth, Math.max(2, base - point.y), [5, 5, 2, 2]);
           context.fill();
         });
         return;
