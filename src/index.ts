@@ -51,8 +51,10 @@ import "./cards/luma-period-stats-card";
 import "./cards/luma-session-browser-card";
 import "./cards/luma-ev-control-card";
 import "./cards/luma-ev-mode-card";
+import "./cards/luma-ev-solar-readiness-card";
 
 const cards = [
+  { type:"luma-ev-solar-readiness-card", name:"Luma EV Solar Readiness", description:"Canonical EV Solar recommendation with operational overrides and the current or next useful charging window." },
   { type:"luma-ev-mode-card", name:"Luma EV Mode", description:"Persistent EV charging strategy selector with confirmed mode changes." },
   { type:"luma-ev-control-card", name:"Luma EV Control", description:"Temporary Charge Now override with lifecycle-aware handoff to the persistent base mode." },
   { type:"luma-session-browser-card", name:"Luma Session Browser", description:"Swipeable Recorder-backed completed-session history with a retained recent-session fallback." },
@@ -156,7 +158,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.25.0 ",
+  "%c LUMA %c 0.26.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

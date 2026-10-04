@@ -55,6 +55,7 @@ can be reviewed in either language without changing Home Assistant.
 | `custom:luma-period-stats-card` | Compact swipeable day/month/year energy and source-attribution summary |
 | `custom:luma-ev-mode-card` | Persistent Off, Solar or Always charging strategy selector with confirmed changes |
 | `custom:luma-ev-control-card` | Temporary Charge Now override with lifecycle-aware handoff to the persistent base mode |
+| `custom:luma-ev-solar-readiness-card` | Canonical Solar recommendation, operational priority overrides and current/next useful charging window |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
