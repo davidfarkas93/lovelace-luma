@@ -129,6 +129,17 @@ export class LumaEvSolarReadinessCard extends LitElement implements LovelaceCard
     if (!this.valid(entity)) return fallback;
     return this.hass?.formatEntityState?.(entity!) || `${entity!.state}${entity!.attributes.unit_of_measurement ? ` ${entity!.attributes.unit_of_measurement}` : ""}`;
   }
+  private duration(entity?: HassEntity) {
+    if (!this.valid(entity)) return "—";
+    const raw = Number(entity!.state);
+    if (!Number.isFinite(raw)) return this.value(entity);
+    const unit = String(entity!.attributes.unit_of_measurement || "min").toLowerCase();
+    const minutes = Math.max(0, Math.round(unit === "s" ? raw / 60 : unit === "h" ? raw * 60 : raw));
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    if (!hours) return `${rest} min`;
+    return localized(this.hass, `${hours} h${rest ? ` ${rest} min` : ""}`, `${hours} ó${rest ? ` ${rest} p` : ""}`);
+  }
 
   render() {
     if (!this.hass || !this.config) return nothing;
@@ -164,7 +175,7 @@ export class LumaEvSolarReadinessCard extends LitElement implements LovelaceCard
         </div>
       </div>
       <div class="metrics">
-        ${this.metric(this.config.window_remaining_entity, "mdi:timer-sand", usefulLabel, this.value(remaining))}
+        ${this.metric(this.config.window_remaining_entity, "mdi:timer-sand", usefulLabel, this.duration(remaining))}
         ${this.metric(this.config.expected_charge_entity, "mdi:battery-charging-medium", localized(this.hass, "Estimated Solar energy", "Becsült Solar energia"), this.value(expected))}
       </div>
     </ha-card>`;
