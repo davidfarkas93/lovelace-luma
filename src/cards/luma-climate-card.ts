@@ -4,6 +4,7 @@ import { runAction } from "../helpers";
 import { localize, localized, localizedMap } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
+import { thermostatSummary } from "../climate";
 interface Mode {
   mode: string;
   name?: string;
@@ -12,6 +13,7 @@ interface Mode {
 interface Config {
   type: string;
   entity: string;
+  variant?: "default" | "thermostat";
   name?: string;
   icon?: string;
   modes?: Mode[];
@@ -42,6 +44,34 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
   static styles = [
     lumaTokens,
     css`
+      .thermostat-shell { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+      .thermostat {
+        container-type: inline-size;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 15px;
+        text-align: left;
+        color: var(--primary-text-color);
+        font: inherit;
+        border: 1px solid color-mix(in srgb, var(--tone) 20%, var(--luma-border));
+        border-radius: var(--luma-radius-card);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--tone) 10%, var(--luma-surface)), var(--luma-surface));
+        cursor: pointer;
+      }
+      .thermostat:hover { border-color: var(--tone); }
+      .thermostat:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 3px; }
+      .thermostat-header { display: flex; align-items: center; gap: 8px; }
+      .thermostat-header .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      .thermostat-header ha-icon { --mdc-icon-size: 19px; color: var(--tone); }
+      .thermostat-header .arrow { --mdc-icon-size: 15px; color: var(--luma-muted); }
+      .temperatures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin: 17px 0 13px; }
+      .temperature-label { display: block; font-size: 10px; color: var(--luma-muted); margin-bottom: 3px; }
+      .temperature-value { font-size: clamp(20px, 16cqi, 28px); font-weight: 750; line-height: 1.15; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .target { padding-left: 10px; border-left: 1px solid var(--luma-border); }
+      .target .temperature-value { font-weight: 600; }
+      .operation { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; box-sizing: border-box; padding: 5px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); }
+      .operation ha-icon { --mdc-icon-size: 14px; flex-shrink: 0; }
       .card {
         display: grid;
         grid-template-columns: 44px minmax(110px, 1fr) auto;
@@ -163,7 +193,7 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
     this.config = c;
   }
   getCardSize() {
-    return 1;
+    return this.config?.variant === "thermostat" ? 3 : 1;
   }
   protected shouldUpdate(changed: PropertyValues<this>) {
     if (!changed.has("hass")) return true;
@@ -189,6 +219,7 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
   }
   render() {
     if (!this.hass || !this.config) return nothing;
+    if (this.config.variant === "thermostat") return this.renderThermostat();
     const e = this.hass.states[this.config.entity],
       mode = e?.state || "unknown",
       target = e?.attributes.temperature,
@@ -242,5 +273,24 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
         </button></span
       ></ha-card
     >`;
+  }
+
+  private renderThermostat() {
+    const hass = this.hass!, config = this.config!;
+    const summary = thermostatSummary(hass.states[config.entity]);
+    const tone = summary.active ? "var(--warning-color)" : "var(--secondary-text-color)";
+    const format = (value: number | undefined) => value === undefined ? "—" : value.toLocaleString(hass.locale?.language || "en", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const unit = hass.config?.unit_system?.temperature || "°C";
+    const name = config.name || localized(hass, "Heating", "Fűtés");
+    return html`<ha-card class="thermostat-shell"><button class="thermostat" style=${`--tone:${tone}`}
+      aria-label=${`${name} · ${localized(hass, "Settings", "Beállítások")}`}
+      @click=${() => runAction(this, hass, { action: "more-info" }, config.entity)}>
+      <div class="thermostat-header"><ha-icon icon=${config.icon || "mdi:radiator"}></ha-icon><span class="name">${name}</span><ha-icon class="arrow" icon="mdi:chevron-right"></ha-icon></div>
+      <div class="temperatures">
+        <div><span class="temperature-label">${localized(hass, "Now", "Most")} · ${unit}</span><span class="temperature-value">${format(summary.current)}</span></div>
+        <div class="target"><span class="temperature-label">${localized(hass, "Target", "Cél")} · ${unit}</span><span class="temperature-value">${format(summary.target)}</span></div>
+      </div>
+      <span class="operation"><ha-icon icon=${summary.icon}></ha-icon>${localized(hass, summary.en, summary.hu)}</span>
+    </button></ha-card>`;
   }
 }

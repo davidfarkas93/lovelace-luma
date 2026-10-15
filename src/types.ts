@@ -27,6 +27,7 @@ export interface HomeAssistant {
   user?: { id?: string; name?: string; is_admin?: boolean };
   editMode?: boolean;
   locale?: { language?: string };
+  config?: { unit_system?: { temperature?: string } };
   formatEntityState?: (state: HassEntity) => string;
   callService: (
     domain: string,
@@ -53,6 +54,7 @@ export type LumaAction =
     };
 
 export interface LumaCondition {
+  attribute?: string;
   state?: string | string[];
   state_not?: string | string[];
   above?: number;

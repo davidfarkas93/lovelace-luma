@@ -215,6 +215,11 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
           display: block;
         }
 
+        .hero.chips-inline .chips {
+          margin-top: 12px;
+          justify-content: flex-start;
+        }
+
         .top {
           grid-template-columns: 46px minmax(0, 1fr) auto;
           column-gap: 12px;

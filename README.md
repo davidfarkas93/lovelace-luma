@@ -734,3 +734,41 @@ have distinct labels; idle/off produce no chip. If the integration omits
 `hvac_action`, a recognized enabled HVAC mode shows only **AC on**, without
 claiming compressor activity. Missing, unknown, unavailable and restored activity
 sources produce no chip.
+
+
+## Thermostat summary
+
+Use `variant: thermostat` on `custom:luma-climate-card` for a compact,
+read-only room tile with **Now**, **Target** and actual **Heating / Not heating /
+Off** status. Only `hvac_action: heating` gets the active warm tint; `heat` mode
+alone never implies activity. Missing action is explicitly unknown. Missing,
+unavailable and restored entities show no stale temperature values. Temperatures
+use Home Assistant's temperature unit and locale. Clicking or keyboard-activating
+the tile opens the thermostat's native More Info controls.
+
+```yaml
+type: custom:luma-climate-card
+variant: thermostat
+entity: climate.room_thermostat
+name: Heating
+```
+
+Hero chips can filter on an entity attribute with `attribute` plus `state`:
+
+```yaml
+chips:
+  - entity: climate.room_thermostat
+    attribute: hvac_action
+    state: heating
+    name: Heating active
+    icon: mdi:fire
+    show_state: false
+    color: var(--warning-color)
+    tap_action: { action: more-info }
+```
+
+The chip disappears when idle, off, missing, restored or unavailable, even if
+HVAC mode remains `heat`. Attribute conditions also support `state_not`, `above`
+and `below`; `state_map` still maps the displayed entity state, not the condition
+attribute. Room quick-control pills likewise use actual HVAC action for their
+active tint.

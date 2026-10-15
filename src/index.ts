@@ -113,7 +113,7 @@ const cards = [
     type:"luma-tab-card",name:"Luma Tabs",description:"A polished responsive tab container for native and custom Lovelace cards.",
   },
   {
-    type:"luma-climate-card",name:"Luma Climate",description:"A compact responsive climate controller with configurable HVAC modes.",
+    type:"luma-climate-card",name:"Luma Climate",description:"Climate controls and a thermostat summary with current/target temperatures and actual heating activity.",
   },
   {
     type:"luma-comfort-card",name:"Luma Comfort",description:"Indoor comfort, air quality and live heating/air-conditioning activity.",
@@ -158,7 +158,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.28.0 ",
+  "%c LUMA %c 0.29.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

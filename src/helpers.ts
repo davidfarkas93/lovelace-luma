@@ -143,10 +143,12 @@ export const conditionMatches = (
   condition: LumaCondition,
 ): boolean => {
   if (!entity) return false;
-  if (condition.state !== undefined && !includesState(condition.state, entity.state)) return false;
-  if (condition.state_not !== undefined && includesState(condition.state_not, entity.state)) return false;
+  if (condition.attribute && (["unknown", "unavailable"].includes(entity.state) || entity.attributes.restored === true || entity.attributes[condition.attribute] == null)) return false;
+  const value = condition.attribute ? String(entity.attributes[condition.attribute]) : entity.state;
+  if (condition.state !== undefined && !includesState(condition.state, value)) return false;
+  if (condition.state_not !== undefined && includesState(condition.state_not, value)) return false;
 
-  const numeric = Number(entity.state);
+  const numeric = Number(value);
   if (condition.above !== undefined && (!Number.isFinite(numeric) || numeric <= condition.above)) {
     return false;
   }
