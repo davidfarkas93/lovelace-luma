@@ -773,3 +773,15 @@ HVAC mode remains `heat`. Attribute conditions also support `state_not`, `above`
 and `below`; `state_map` still maps the displayed entity state, not the condition
 attribute. Room quick-control pills likewise use actual HVAC action for their
 active tint.
+
+
+## Weather at a glance
+
+The weather hero summarizes precipitation and temperature over the next 12
+hours. Forecast icons use consistent semantic accents: warm amber for sunshine,
+slate for cloud/fog, blue for rain, indigo for a clear night, cyan for snow and
+purple for storms. Every condition also has a text label, so color is never the
+only way to read the outlook. Daily temperatures explicitly say **max / min**;
+hourly rain percentages are labelled as probabilities, separate from
+precipitation amounts. Missing measurements remain unknown, including a zero
+degree temperature; incomplete rain data never implies a dry forecast.

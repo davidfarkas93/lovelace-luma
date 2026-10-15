@@ -1,34 +1,12 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { isHungarian, localized, localizedMap } from "../localize";
+import { isHungarian, localized } from "../localize";
 import { lumaTokens } from "../styles";
+import { weatherVisual, precipitationChance, type WeatherForecast as Forecast } from "../weather";
 import "../components/luma-bottom-sheet";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-interface Forecast {
-  datetime?: string; condition?: string; temperature?: number; templow?: number;
-  apparent_temperature?: number; precipitation?: number; precipitation_probability?: number;
-  humidity?: number; wind_speed?: number; wind_gust_speed?: number; wind_bearing?: number;
-  pressure?: number; uv_index?: number; dew_point?: number; visibility?: number;
-}
 interface Config { type: string; weather_entity: string; fallback_entity?: string; days?: number; locale?: string }
-
-const icons: Record<string, string> = {
-  "clear-night":"mdi:weather-night", cloudy:"mdi:weather-cloudy", fog:"mdi:weather-fog", hail:"mdi:weather-hail",
-  lightning:"mdi:weather-lightning", "lightning-rainy":"mdi:weather-lightning-rainy", partlycloudy:"mdi:weather-partly-cloudy",
-  pouring:"mdi:weather-pouring", rainy:"mdi:weather-rainy", snowy:"mdi:weather-snowy", "snowy-rainy":"mdi:weather-snowy-rainy",
-  sunny:"mdi:weather-sunny", windy:"mdi:weather-windy",
-};
-const labelsHu: Record<string, string> = {
-  "clear-night":"Derült éjszaka", cloudy:"Felhős", fog:"Ködös", hail:"Jégeső", lightning:"Zivatar",
-  "lightning-rainy":"Zivatar esővel", partlycloudy:"Részben felhős", pouring:"Heves eső", rainy:"Esős",
-  snowy:"Havas", "snowy-rainy":"Havas eső", sunny:"Napos", windy:"Szeles",
-};
-const labelsEn: Record<string, string> = {
-  "clear-night":"Clear night", cloudy:"Cloudy", fog:"Fog", hail:"Hail", lightning:"Thunderstorms",
-  "lightning-rainy":"Thunderstorms with rain", partlycloudy:"Partly cloudy", pouring:"Heavy rain", rainy:"Rainy",
-  snowy:"Snowy", "snowy-rainy":"Sleet", sunny:"Sunny", windy:"Windy",
-};
 
 @customElement("luma-weather-forecast-card")
 export class LumaWeatherForecastCard extends LitElement implements LovelaceCard {
@@ -45,16 +23,16 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
   get hass() { return this._hass; }
 
   static styles = [lumaTokens, css`
-    ha-card { padding:16px; border:1px solid var(--luma-border); border-radius:22px; background:radial-gradient(circle at 88% 6%,color-mix(in srgb,var(--info-color,var(--primary-color)) 13%,transparent),transparent 31%),linear-gradient(145deg,color-mix(in srgb,var(--info-color,var(--primary-color)) 8%,var(--luma-surface)),var(--luma-surface)); box-shadow:var(--luma-shadow); }
+    ha-card { padding:16px; border:1px solid var(--luma-border); border-radius:22px; background:var(--luma-surface); box-shadow:var(--luma-shadow); }
     .days { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-    .day { display:grid; grid-template-columns:58px 34px minmax(0,1fr) auto; grid-template-areas:"date icon condition temps" "date icon details details"; align-items:center; justify-items:start; gap:3px 9px; min-width:0; padding:11px 12px; border:1px solid transparent; border-radius:16px; color:inherit; background:color-mix(in srgb,var(--primary-text-color) 5%,var(--luma-surface)); font:inherit; text-align:left; transition:.18s ease; }
+    .day { display:grid; grid-template-columns:48px 34px minmax(0,1fr); grid-template-areas:"date icon condition" "date icon temps" "date icon details"; align-items:center; justify-items:start; gap:5px 10px; min-width:0; padding:11px 12px; border:1px solid var(--luma-border); border-left:3px solid var(--weather-tone); border-radius:var(--luma-radius-control); color:inherit; background:color-mix(in srgb,var(--primary-text-color) 2%,var(--luma-surface)); font:inherit; text-align:left; transition:.18s ease; }
     .day:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--primary-color) 18%,transparent); background:color-mix(in srgb,var(--primary-color) 9%,var(--luma-surface)); }
-    .date { grid-area:date; font-size:10px; font-weight:720; text-transform:capitalize; }
-    .icon { grid-area:icon; color:var(--primary-color); --mdc-icon-size:27px; }
-    .condition { grid-area:condition; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; font-weight:700; }
-    .temps { grid-area:temps; justify-self:end; font-size:12px; font-weight:720; }
+    .date { grid-area:date; font-size:11px; font-weight:720; text-transform:capitalize; }
+    .icon { grid-area:icon; color:var(--weather-tone); --mdc-icon-size:27px; }
+    .condition { grid-area:condition; min-width:0; font-size:13px; line-height:1.4; font-weight:700; }
+    .temps { grid-area:temps; font-size:14px; font-weight:720; }.temps small { font-size:10px; font-weight:500; color:var(--luma-muted); }
     .low { margin-left:4px; color:var(--luma-muted); font-weight:560; }
-    .details { grid-area:details; display:flex; gap:10px; min-width:0; color:var(--luma-muted); font-size:9px; }.details span{display:inline-flex;align-items:center;gap:3px}.details ha-icon{--mdc-icon-size:12px}.rain { color:var(--info-color,var(--primary-color)); }
+    .details { grid-area:details; display:flex; flex-wrap:wrap; gap:5px 10px; min-width:0; color:var(--luma-muted); font-size:10px; }.details span{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}.details ha-icon{--mdc-icon-size:12px}.rain { color:var(--luma-muted); }.rain.likely { color:var(--primary-text-color); font-weight:700; }.rain.likely ha-icon { color:#3184bf; }
     .loading { display:grid; place-items:center; min-height:104px; color:var(--luma-muted); font-size:12px; }
     .facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .fact { display:grid; grid-template-columns:28px minmax(0,1fr); align-items:center; gap:8px; padding:10px; border-radius:15px; background:color-mix(in srgb,var(--primary-color) 7%,var(--luma-surface)); }
@@ -63,18 +41,18 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
     .fact small { color:var(--luma-muted); font-size:9px; }
     .hourly-title { margin:20px 2px 9px; font-size:11px; font-weight:730; letter-spacing:.04em; text-transform:uppercase; }
     .hourly { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
-    .hour { display:grid; justify-items:center; gap:5px; min-width:0; padding:10px 5px; border-radius:15px; background:color-mix(in srgb,var(--primary-text-color) 5%,var(--luma-surface)); }
+    .hour { display:grid; justify-items:center; gap:5px; min-width:0; padding:10px 5px; border-radius:15px; background:color-mix(in srgb,var(--primary-text-color) 2%,var(--luma-surface)); }
     .hour time { color:var(--luma-muted); font-size:9px; }
-    .hour ha-icon { color:var(--primary-color); --mdc-icon-size:20px; }
+    .hour ha-icon { color:var(--weather-tone,var(--primary-color)); --mdc-icon-size:20px; }
     .hour-temp { font-size:11px; font-weight:720; }
     .hour-rain { color:var(--info-color,var(--primary-color)); font-size:8px; }
     @media(max-width:599px) {
       ha-card { padding:11px; }
       .days { display:grid; grid-template-columns:1fr; gap:6px; }
-      .day { grid-template-columns:48px 31px minmax(0,1fr) auto; gap:3px 7px; padding:10px 11px; }
+      .day { grid-template-columns:48px 31px minmax(0,1fr); gap:3px 7px; padding:10px 11px; }
       .day .icon { --mdc-icon-size:25px; }
       .temps { font-size:13px; }
-      .condition { font-size:10px; }
+      .condition { font-size:13px; }
       .facts { grid-template-columns:1fr 1fr; }
       .hourly { grid-template-columns:repeat(4,minmax(0,1fr)); overflow-x:auto; }
     }
@@ -139,19 +117,24 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
     const hours = this.dayHours(selected);
     return html`<ha-card><div class="days" style=${`--days:${this.forecast.length}`}>${this.forecast.map(item => {
       const date = item.datetime ? new Intl.DateTimeFormat(lang, { weekday:"short" }).format(new Date(item.datetime)) : "—";
-      const rain = item.precipitation_probability ?? item.precipitation;
-      const rainUnit = item.precipitation_probability != null ? "%" : ` ${weatherAttrs.precipitation_unit || "mm"}`;
-      return html`<button class="day" @click=${() => {this.selected = item;this.detailsOpen=true;}}><span class="date">${date}</span><ha-icon class="icon" icon=${icons[item.condition || ""] || "mdi:weather-cloudy"}></ha-icon><span class="condition">${localizedMap(this.hass,labelsEn,labelsHu,item.condition||"")}</span><span class="temps">${item.temperature ?? "—"}°<span class="low">${item.templow != null ? item.templow + "°" : ""}</span></span><span class="details">${rain != null ? html`<span class="rain"><ha-icon icon="mdi:weather-rainy"></ha-icon>${rain}${rainUnit}</span>` : nothing}${item.wind_speed!=null?html`<span><ha-icon icon="mdi:weather-windy"></ha-icon>${item.wind_speed} ${weatherAttrs.wind_speed_unit||"km/h"}</span>`:nothing}</span></button>`;
+      const chance = precipitationChance(item);
+      const visual = weatherVisual(item.condition,isHungarian(this.hass));
+      const today = new Date().toLocaleDateString("sv-SE");
+      const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
+      const tomorrow = tomorrowDate.toLocaleDateString("sv-SE");
+      const dayKey = item.datetime ? new Date(item.datetime).toLocaleDateString("sv-SE") : "";
+      const dateLabel = dayKey === today ? localized(this.hass,"Today","Ma") : dayKey === tomorrow ? localized(this.hass,"Tomorrow","Holnap") : date;
+      return html`<button class="day interactive" style=${`--weather-tone:${visual.tone}`} @click=${() => {this.selected = item;this.detailsOpen=true;}}><span class="date">${dateLabel}</span><ha-icon class="icon" icon=${visual.icon}></ha-icon><span class="condition">${visual.label}</span><span class="temps"><small>${localized(this.hass,"max","max.")}</small> ${item.temperature ?? "—"}°<span class="low"><small>${localized(this.hass,"min","min.")}</small> ${item.templow ?? "—"}°</span></span><span class="details">${chance != null ? html`<span class=${`rain ${chance >= 30 ? "likely" : ""}`}><ha-icon icon="mdi:water-outline"></ha-icon>${localized(this.hass,"Precip.","Csapadék")} ${chance}%</span>` : item.precipitation != null ? html`<span class="rain"><ha-icon icon="mdi:water-outline"></ha-icon>${item.precipitation} ${weatherAttrs.precipitation_unit || "mm"}</span>` : nothing}${item.wind_speed!=null?html`<span><ha-icon icon="mdi:weather-windy"></ha-icon>${item.wind_speed} ${weatherAttrs.wind_speed_unit||"km/h"}</span>`:nothing}</span></button>`;
     })}</div></ha-card>
     <luma-bottom-sheet .open=${this.detailsOpen}
       .heading=${selected?.datetime ? new Intl.DateTimeFormat(lang,{weekday:"long",month:"long",day:"numeric"}).format(new Date(selected.datetime)) : localized(this.hass,"Details","Részletek")}
-      .subtitle=${localizedMap(this.hass,labelsEn,labelsHu,selected?.condition||"")||localized(this.hass,"Weather forecast","Időjárási előrejelzés")}
-      .icon=${icons[selected?.condition||""]||"mdi:weather-cloudy"} .maxWidth=${560}
+      .subtitle=${weatherVisual(selected?.condition,isHungarian(this.hass)).label}
+      .icon=${weatherVisual(selected?.condition).icon} .maxWidth=${560}
       .closeLabel=${localized(this.hass,"Close","Bezárás")} @sheet-dismiss=${()=>this.detailsOpen=false}
       @sheet-closed=${()=>{if(!this.detailsOpen)this.selected=undefined}}>
       ${selected ? html`<div>
       <div class="facts">${this.fact("mdi:thermometer-high",localized(this.hass,"Maximum","Maximum"),selected.temperature,"°")}${this.fact("mdi:thermometer-low",localized(this.hass,"Minimum","Minimum"),selected.templow,"°")}${this.fact("mdi:thermometer-lines",localized(this.hass,"Feels like","Hőérzet"),selected.apparent_temperature,"°")}${this.fact("mdi:weather-pouring",localized(this.hass,"Chance of rain","Csapadék esélye"),selected.precipitation_probability,"%")}${this.fact("mdi:water",localized(this.hass,"Precipitation","Csapadék"),selected.precipitation,` ${weatherAttrs.precipitation_unit || "mm"}`)}${this.fact("mdi:water-percent",localized(this.hass,"Humidity","Páratartalom"),selected.humidity,"%")}${this.fact("mdi:weather-windy",localized(this.hass,"Wind","Szél"),selected.wind_speed,` ${weatherAttrs.wind_speed_unit || "km/h"}`)}${this.fact("mdi:windsock",localized(this.hass,"Wind direction","Szélirány"),this.windDirection(selected.wind_bearing))}${this.fact("mdi:weather-tornado",localized(this.hass,"Wind gust","Széllökés"),selected.wind_gust_speed,` ${weatherAttrs.wind_speed_unit || "km/h"}`)}${this.fact("mdi:gauge",localized(this.hass,"Pressure","Légnyomás"),selected.pressure,` ${weatherAttrs.pressure_unit || "hPa"}`)}${this.fact("mdi:weather-sunny-alert",localized(this.hass,"UV index","UV-index"),selected.uv_index)}${this.fact("mdi:eye-outline",localized(this.hass,"Visibility","Látótávolság"),selected.visibility,` ${weatherAttrs.visibility_unit || "km"}`)}</div>
-      ${hours.length ? html`<div class="hourly-title">${localized(this.hass,"Hourly outlook","Napközbeni alakulás")}</div><div class="hourly">${hours.map(hour => html`<div class="hour"><time>${new Intl.DateTimeFormat(lang,{hour:"2-digit",minute:"2-digit"}).format(new Date(hour.datetime!))}</time><ha-icon icon=${icons[hour.condition || ""] || "mdi:weather-cloudy"}></ha-icon><span class="hour-temp">${hour.temperature ?? "—"}°</span>${hour.precipitation_probability != null ? html`<span class="hour-rain">${hour.precipitation_probability}%</span>` : nothing}</div>`)}</div>` : nothing}
+      ${hours.length ? html`<div class="hourly-title">${localized(this.hass,"Hourly outlook","Napközbeni alakulás")}</div><div class="hourly">${hours.map(hour => html`<div class="hour"><time>${new Intl.DateTimeFormat(lang,{hour:"2-digit",minute:"2-digit"}).format(new Date(hour.datetime!))}</time><ha-icon style=${`--weather-tone:${weatherVisual(hour.condition).tone}`} icon=${weatherVisual(hour.condition).icon}></ha-icon><span class="hour-temp">${hour.temperature ?? "—"}°</span>${hour.precipitation_probability != null ? html`<span class="hour-rain">${hour.precipitation_probability}%</span>` : nothing}</div>`)}</div>` : nothing}
     </div>` : nothing}</luma-bottom-sheet>`;
   }
 }

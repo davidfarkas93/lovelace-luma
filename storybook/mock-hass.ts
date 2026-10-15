@@ -90,16 +90,19 @@ export const createMockHass = (
         { when: Date.now() / 1000 - 1500, name: "Irrigation", state: "Program started", entity_id: "sensor.irrigation_state" },
         { when: Date.now() / 1000 - 4200, name: "Rain sensor", state: "dry", entity_id: "binary_sensor.rain" },
       ] as never;
-      if (message.type === "call_service" && message.domain === "weather") return {
-        response: { "weather.home": { forecast: demoForecast() } },
-      } as never;
+      if (message.type === "call_service" && message.domain === "weather") {
+        const entityId = String((message.target as Record<string, unknown>)?.entity_id || "weather.home");
+        const forecastType = String((message.service_data as Record<string, unknown>)?.type || "daily");
+        const attributes = states[entityId]?.attributes as Record<string, unknown> | undefined;
+        return { response: { [entityId]: { forecast: attributes?.[`forecast_${forecastType}`] || demoForecast(forecastType) } } } as never;
+      }
       return {} as never;
     },
   };
 };
 
-const demoForecast = () => Array.from({ length: 7 }, (_, index) => ({
-  datetime: new Date(Date.now() + index * 86_400_000).toISOString(),
+const demoForecast = (type: string) => Array.from({ length: type === "hourly" ? 24 : 7 }, (_, index) => ({
+  datetime: new Date(Date.now() + index * (type === "hourly" ? 3_600_000 : 86_400_000)).toISOString(),
   condition: ["partlycloudy", "sunny", "rainy", "cloudy"][index % 4],
   temperature: 24 - index * .5,
   templow: 14 + index * .3,
