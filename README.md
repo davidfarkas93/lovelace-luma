@@ -705,3 +705,32 @@ the legacy `call-service` action spelling.
 ## License
 
 [MIT](LICENSE)
+
+
+## Comfort activity
+
+`custom:luma-comfort-card` accepts optional `heating_entity` and
+`air_conditioner_entity` alongside the required `temperature_entity` and
+`humidity_entity`. Comfort thresholds still use temperature, humidity and optional
+PM2.5: the warning label is **Uncomfortable** (Hungarian: **Nem komfortos**).
+Heating and AC activity appear as separate supporting chips and do not change the
+comfort rating.
+
+```yaml
+type: custom:luma-comfort-card
+temperature_entity: sensor.indoor_temperature
+humidity_entity: sensor.indoor_humidity
+heating_entity: sensor.heating_activity
+air_conditioner_entity: climate.air_conditioner
+```
+
+`heating_entity` may be a sensor reporting `heat`/`heating`, a binary sensor
+reporting `on`, or a climate entity whose `hvac_action` is `heating`. A climate
+entity's `heat` mode alone never counts as heating. The aggregate sensor must
+itself derive activity from actual thermostat actions.
+
+For AC, `hvac_action` takes precedence: heating, cooling, drying, fan and defrosting
+have distinct labels; idle/off produce no chip. If the integration omits
+`hvac_action`, a recognized enabled HVAC mode shows only **AC on**, without
+claiming compressor activity. Missing, unknown, unavailable and restored activity
+sources produce no chip.
