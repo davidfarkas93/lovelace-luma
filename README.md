@@ -739,7 +739,8 @@ sources produce no chip.
 ## Thermostat summary
 
 Use `variant: thermostat` on `custom:luma-climate-card` for a compact,
-read-only room tile with **Now**, **Target** and actual **Heating / Not heating /
+read-only room tile matching adjacent control heights (70px mobile, 80px desktop),
+with inline **Now**, **Target** and actual **Heating / Not heating /
 Off** status. Only `hvac_action: heating` gets the active warm tint; `heat` mode
 alone never implies activity. Missing action is explicitly unknown. Missing,
 unavailable and restored entities show no stale temperature values. Temperatures
