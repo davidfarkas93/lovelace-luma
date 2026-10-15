@@ -25,8 +25,8 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
   static styles = [lumaTokens, css`
     ha-card { padding:16px; border:1px solid var(--luma-border); border-radius:22px; background:var(--luma-surface); box-shadow:var(--luma-shadow); }
     .days { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-    .day { display:grid; grid-template-columns:48px 34px minmax(0,1fr); grid-template-areas:"date icon condition" "date icon temps" "date icon details"; align-items:center; justify-items:start; gap:5px 10px; min-width:0; padding:11px 12px; border:1px solid var(--luma-border); border-left:3px solid var(--weather-tone); border-radius:var(--luma-radius-control); color:inherit; background:color-mix(in srgb,var(--primary-text-color) 2%,var(--luma-surface)); font:inherit; text-align:left; transition:.18s ease; }
-    .day:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--primary-color) 18%,transparent); background:color-mix(in srgb,var(--primary-color) 9%,var(--luma-surface)); }
+    .day { display:grid; grid-template-columns:48px 34px minmax(0,1fr); grid-template-areas:"date icon condition" "date icon temps" "date icon details"; align-items:center; justify-items:start; gap:5px 10px; min-width:0; padding:11px 12px; border:1px solid var(--luma-border); border-radius:var(--luma-radius-control); color:inherit; background:color-mix(in srgb,var(--weather-tone) 7%,var(--luma-surface)); font:inherit; text-align:left; transition:.18s ease; }
+    .day:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--weather-tone) 20%,var(--luma-border)); background:color-mix(in srgb,var(--weather-tone) 11%,var(--luma-surface)); }
     .date { grid-area:date; font-size:11px; font-weight:720; text-transform:capitalize; }
     .icon { grid-area:icon; color:var(--weather-tone); --mdc-icon-size:27px; }
     .condition { grid-area:condition; min-width:0; font-size:13px; line-height:1.4; font-weight:700; }
