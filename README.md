@@ -797,7 +797,10 @@ Optional `state_bands` shade the plot for matching recorded states. Each band
 accepts `entity` or `entities`, optional `attribute`, required `active_states`,
 `name`, and optional `color`. With multiple entities the shaded interval is the
 union: at least one source must explicitly match. Unknown, unavailable, restored
-attribute data, and missing attributes never count as active.
+attribute data, and missing attributes never count as active. The tooltip shows
+each source’s recorded active, inactive, or unknown state at the selected time.
+Use optional `entity_names: { climate.room: Room name }` on a band to override
+source labels; otherwise the entity’s friendly name is used.
 
 ```yaml
 type: custom:luma-history-card

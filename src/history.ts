@@ -85,6 +85,17 @@ export function activityIntervals(points: ActivityPoint[], window: HistoryWindow
   return result;
 }
 
+/** Sorted recorder states persist until the next change, including unknowns. */
+export function activityAt(points: ActivityPoint[], time: number): boolean | undefined {
+  let left = 0, right = points.length;
+  while (left < right) {
+    const middle = Math.floor((left + right) / 2);
+    if (points[middle].time <= time) left = middle + 1;
+    else right = middle;
+  }
+  return points[left - 1]?.active;
+}
+
 export function mergeActivityIntervals(intervals: ActivityInterval[]): ActivityInterval[] {
   const result: ActivityInterval[] = [];
   for (const interval of intervals.slice().sort((a, b) => a.start - b.start)) {

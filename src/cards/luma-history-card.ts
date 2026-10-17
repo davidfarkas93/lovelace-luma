@@ -3,10 +3,10 @@ import { customElement, property, state } from "lit/decorators.js";
 import { localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
-import { activityIntervals, mergeActivityIntervals, bucketCenter, bucketStart, chartWindow, historyGroups, historyNumber, historySegments, historyLinePoints, historyTimestamp, recordTime, recordValue, shiftBucket, tooltipLeft, type ActivityInterval, type ActivityPoint, type HistoryPoint, type HistoryWindow } from "../history";
+import { activityAt, activityIntervals, mergeActivityIntervals, bucketCenter, bucketStart, chartWindow, historyGroups, historyNumber, historySegments, historyLinePoints, historyTimestamp, recordTime, recordValue, shiftBucket, tooltipLeft, type ActivityInterval, type ActivityPoint, type HistoryPoint, type HistoryWindow } from "../history";
 
 interface Series { entity: string; name?: string; color?: string; attribute?: string; dashed?: boolean; interpolation?: "linear" | "step" }
-interface StateBand { entity?: string; entities?: string[]; name: string; attribute?: string; active_states: string[]; color?: string }
+interface StateBand { entity?: string; entities?: string[]; entity_names?: Record<string, string>; name: string; attribute?: string; active_states: string[]; color?: string }
 interface Range {
   label: string;
   hours_to_show?: number;
@@ -33,6 +33,7 @@ interface Config {
 }
 type Point = HistoryPoint;
 interface Tip { time: number; values: Array<{ name: string; color: string; value?: number }> }
+interface BandSource { entity: string; points: ActivityPoint[] }
 
 
 @customElement("luma-history-card")
@@ -49,6 +50,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
   private loadSequence = 0;
   private window?: HistoryWindow;
   private bands = new Map<string, ActivityInterval[]>();
+  private bandSources = new Map<string, BandSource[]>();
   private resizeObserver?: ResizeObserver;
   private frame?: number;
 
@@ -56,7 +58,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     :host{display:flex;min-width:0}ha-card{display:flex;flex-direction:column;flex:1;min-width:0;position:relative;min-height:300px;padding:18px 18px 13px;border:1px solid color-mix(in srgb,var(--primary-color) 14%,transparent);border-radius:22px;background:linear-gradient(145deg,color-mix(in srgb,var(--primary-color) 5%,var(--luma-surface)),var(--luma-surface) 68%);box-shadow:0 14px 38px rgba(0,0,0,.055);overflow:hidden}
     .top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}.title{font-size:13px;font-weight:720}.head-right{display:flex;flex:1 1 240px;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:9px;min-width:0}.ranges{display:flex;flex-shrink:0;max-width:100%;overflow-x:auto;padding:2px;border-radius:999px;background:color-mix(in srgb,var(--primary-color) 7%,transparent)}.range{appearance:none;border:0;border-radius:999px;min-height:28px;padding:5px 9px;background:transparent;color:var(--luma-muted);font:650 9px/1 sans-serif;cursor:pointer;transition:background .18s ease,color .18s ease,box-shadow .18s ease}.range.active{background:var(--luma-surface);color:var(--primary-color);box-shadow:0 2px 8px rgba(0,0,0,.08)}.legend{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px}.legend-item{display:flex;align-items:center;gap:5px;color:var(--luma-muted);font-size:9px}.swatch{width:7px;height:7px;border-radius:50%;background:var(--series-color)}.legend-item strong{color:var(--primary-text-color);font-size:10px}
     .chart{position:relative;width:100%;margin-top:auto;touch-action:pan-y}.chart canvas{display:block;width:100%;height:225px}
-    .tooltip{position:absolute;z-index:2;top:9px;left:8px;min-width:min(118px,calc(100% - 16px));max-width:calc(100% - 16px);overflow-wrap:anywhere;padding:8px 9px;border:1px solid var(--luma-border);border-radius:12px;background:color-mix(in srgb,var(--luma-surface) 94%,transparent);box-shadow:0 10px 28px rgba(0,0,0,.12);font-size:9px;pointer-events:none;backdrop-filter:blur(14px)}.tip-time{margin-bottom:5px;color:var(--luma-muted)}.tip-row{display:flex;justify-content:space-between;gap:12px}.tip-row strong{white-space:nowrap}.tip-row span:first-child{color:var(--series-color)}.empty{display:grid;place-items:center;min-height:220px;color:var(--luma-muted);font-size:11px}
+    .tooltip{position:absolute;z-index:2;top:9px;left:8px;min-width:min(118px,calc(100% - 16px));max-width:calc(100% - 16px);overflow-wrap:anywhere;padding:8px 9px;border:1px solid var(--luma-border);border-radius:12px;background:color-mix(in srgb,var(--luma-surface) 94%,transparent);box-shadow:0 10px 28px rgba(0,0,0,.12);font-size:9px;pointer-events:none;backdrop-filter:blur(14px)}.tip-time{margin-bottom:5px;color:var(--luma-muted)}.tip-row{display:flex;justify-content:space-between;gap:12px}.tip-row strong{white-space:nowrap}.tip-band{margin-top:7px;padding-top:6px;border-top:1px solid var(--luma-border)}.tip-band-title{margin-bottom:4px;color:var(--luma-muted)}.tip-activity{color:var(--luma-muted)}.tip-activity.active{color:var(--series-color)}.tip-row:not(.tip-activity) span:first-child{color:var(--series-color)}.empty{display:grid;place-items:center;min-height:220px;color:var(--luma-muted);font-size:11px}
     @media(max-width:600px){ha-card{min-height:240px;padding:14px 10px 10px}.top{align-items:flex-start;flex-wrap:wrap}.head-right{width:100%;justify-content:space-between}.legend{gap:5px}.chart canvas{height:190px}.tooltip{transform:none;left:8px}}
   `];
 
@@ -151,18 +153,21 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       }
       const bandGroups = new Map(historyGroups(history).map(group => [group.id, group.records]));
       const nextBands = new Map<string, ActivityInterval[]>();
+      const nextBandSources = new Map<string, BandSource[]>();
       bands.forEach((band, index) => {
         const ids = band.entities || (band.entity ? [band.entity] : []);
-        const intervals = ids.flatMap(id => {
+        const sources = ids.map(id => {
           const points: ActivityPoint[] = (bandGroups.get(id) || []).map(record => {
             const value = recordValue(record, band.attribute);
             return { time: recordTime(record), active: value == null ? undefined : band.active_states.includes(String(value)) };
-          });
-          return activityIntervals(points, { start: window.start, end: Math.min(window.end, now) });
+          }).filter(point => Number.isFinite(point.time)).sort((a, b) => a.time - b.time);
+          return { entity: id, points };
         });
+        nextBandSources.set(String(index), sources);
+        const intervals = sources.flatMap(source => activityIntervals(source.points, { start: window.start, end: Math.min(window.end, now) }));
         nextBands.set(String(index), mergeActivityIntervals(intervals));
       });
-      this.window = window; this.data = next; this.bands = nextBands; this.tip = undefined; this.error = '';
+      this.window = window; this.data = next; this.bands = nextBands; this.bandSources = nextBandSources; this.tip = undefined; this.error = '';
     } catch (error) {
       if (sequence !== this.loadSequence) return;
       this.error = error instanceof Error ? error.message : localized(this.hass,'The chart could not be loaded','A grafikon nem tölthető be');
@@ -300,6 +305,17 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
     this.tip = { time: period ? bucketStart(time, period) : time, values: selected.map(({ series, index, point }) => ({ name: series.name || series.entity, color: this.color(series, index), value: point?.value })) };
   }
 
+  private renderBandTips(time: number) {
+    return this.settings().state_bands?.map((band, index) => html`<div class="tip-band" style=${`--series-color:${band.color || '#e9a15b'}`}>
+      <div class="tip-band-title">${band.name}</div>
+      ${(this.bandSources.get(String(index)) || []).map(source => {
+        const active = activityAt(source.points, time);
+        const name = band.entity_names?.[source.entity] || this.hass?.states[source.entity]?.attributes?.friendly_name || source.entity;
+        return html`<div class=${`tip-row tip-activity ${active === true ? 'active' : ''}`}><span>${name}</span><strong>${active === true ? localized(this.hass, 'Active', 'Aktív') : active === false ? localized(this.hass, 'Inactive', 'Inaktív') : localized(this.hass, 'Unknown', 'Ismeretlen')}</strong></div>`;
+      })}
+    </div>`);
+  }
+
   render() {
     if (!this.config) return nothing;
     const settings = this.settings();
@@ -313,7 +329,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
       ${!hasValues ? html`<div class="empty">${this.error || localized(this.hass,'No numeric history in this time range','Nincs számszerű előzmény ebben az időszakban')}</div>` : nothing}
       <div class="chart" style=${hasValues ? '' : 'display:none'} @pointermove=${this.move} @pointerleave=${() => this.tip = undefined}>
         <canvas role="img" aria-label=${settings.title || localized(this.hass,"History","Előzmények")}></canvas>
-        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${settings.period === "day" || settings.period === "week" || settings.period === "month" ? new Date(this.tip.time).toLocaleDateString(this.hass?.locale?.language||undefined,settings.period === "month"?{year:"numeric",month:"long"}:{month:"short",day:"numeric"}) : new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}</div>` : nothing}
+        ${this.tip ? html`<div class="tooltip"><div class="tip-time">${settings.period === "day" || settings.period === "week" || settings.period === "month" ? new Date(this.tip.time).toLocaleDateString(this.hass?.locale?.language||undefined,settings.period === "month"?{year:"numeric",month:"long"}:{month:"short",day:"numeric"}) : new Date(this.tip.time).toLocaleString(this.hass?.locale?.language||undefined,{hour:"2-digit",minute:"2-digit",hour12:false})}</div>${this.tip.values.map((item)=>html`<div class="tip-row" style=${`--series-color:${item.color}`}><span>${item.name}</span><strong>${format(item.value)}</strong></div>`)}${this.renderBandTips(this.tip.time)}</div>` : nothing}
       </div>
     </ha-card>`;
   }

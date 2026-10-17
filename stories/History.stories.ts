@@ -14,7 +14,7 @@ const heating = {
   title: 'Szobák hőmérséklete', unit: '°C', decimals: 1, include_zero: false,
   ranges: [{label:'24 óra',hours_to_show:24},{label:'3 nap',hours_to_show:72}],
   series: rooms.map((room,index)=>({entity:`sensor.${room}_temperature`,name:roomNames[index],color:colors[index]})),
-  state_bands: [{entities:rooms.map(room=>`climate.${room}`),attribute:'hvac_action',active_states:['heating'],name:'Legalább egy szoba fűtést kér',color:'#e9a15b'}],
+  state_bands: [{entities:rooms.map(room=>`climate.${room}`),entity_names:Object.fromEntries(rooms.map((room,index)=>[`climate.${room}`,roomNames[index]])),attribute:'hvac_action',active_states:['heating'],name:'Legalább egy szoba fűtést kér',color:'#e9a15b'}],
 };
 const energy = {
   title:'Autótöltési energia',unit:'kWh',decimals:2,series:[{entity:'sensor.ev_energy',name:'Töltés',color:'#58b984'}],

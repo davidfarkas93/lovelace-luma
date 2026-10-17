@@ -9,7 +9,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../src/history.t
 });
 const exports = {};
 vm.runInNewContext(outputText, { exports, Date });
-const { historyNumber, historyTimestamp, recordTime, recordValue, historyGroups, chartWindow, bucketCenter, bucketStart, shiftBucket, activityIntervals, mergeActivityIntervals, historySegments, historyLinePoints, tooltipLeft } = exports;
+const { historyNumber, historyTimestamp, recordTime, recordValue, historyGroups, chartWindow, bucketCenter, bucketStart, shiftBucket, activityAt, activityIntervals, mergeActivityIntervals, historySegments, historyLinePoints, tooltipLeft } = exports;
 const plain = value => JSON.parse(JSON.stringify(value));
 for (const value of [null, undefined, '', ' ', true, 'unknown', 'unavailable', NaN, Infinity]) assert.equal(historyNumber(value), undefined);
 assert.equal(historyNumber('0'), 0);
@@ -61,3 +61,16 @@ const gapSegments=historySegments([{time:0,value:0},{time:4},{time:8,value:4200}
 assert.equal(historyLinePoints(gapSegments[0],'step').at(-1).time,4);
 assert.equal(historyLinePoints(gapSegments[1],'step')[0].time,8);
 console.log('History: sparse step changes keep old values until the new measurement and preserve unavailable gaps.');
+
+// Per-room hover states use the last recorded change, never a future sample
+// or the thermostat's current state. Unknowns terminate the previous state.
+const activity = [{time:10,active:true},{time:15},{time:18,active:false},{time:20,active:true}];
+assert.equal(activityAt(activity,9),undefined);
+assert.equal(activityAt(activity,10),true);
+assert.equal(activityAt(activity,14.999),true);
+assert.equal(activityAt(activity,15),undefined);
+assert.equal(activityAt(activity,17),undefined);
+assert.equal(activityAt(activity,18),false);
+assert.equal(activityAt(activity,20),true);
+assert.equal(activityAt([],20),undefined);
+console.log('History: per-source activity tooltips respect transitions, missing seeds and unavailable gaps.');
