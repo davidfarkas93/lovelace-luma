@@ -68,8 +68,6 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
   @state() private config?: Config;
   @state() private pending?: string;
   private confirmTimer?: number;
-  private holdTimer?: number;
-  private held = false;
 
   static styles = [
     lumaTokens,
@@ -282,17 +280,6 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
   private moreInfo(e: Event, entityId: string) {
     e.stopPropagation();
     void runAction(this, this.hass!, { action: "more-info" }, entityId);
-  }
-  private startHold(entityId: string) {
-    this.held = false;
-    clearTimeout(this.holdTimer);
-    this.holdTimer = window.setTimeout(() => {
-      this.held = true;
-      void runAction(this, this.hass!, { action: "more-info" }, entityId);
-    }, 500);
-  }
-  private endHold() {
-    clearTimeout(this.holdTimer);
   }
   private arm(entityId: string, action: () => Promise<unknown>) {
     if (this.pending !== entityId) {

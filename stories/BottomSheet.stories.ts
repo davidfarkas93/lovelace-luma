@@ -3,6 +3,7 @@ import { html } from 'lit';
 import '../src/index';
 import type { LumaBottomSheet } from '../src/components/luma-bottom-sheet';
 import { renderCard } from '../storybook/render-card';
+import { createMockHass } from '../storybook/mock-hass';
 
 interface Args { count: number; heading: string }
 const meta: Meta<Args> = {
@@ -36,3 +37,19 @@ type Story = StoryObj<Args>;
 export const Scrollable: Story = {};
 export const Compact: Story = { args: { count: 1 } };
 export const LongHeading: Story = { args: { heading: 'Aktív eszközök és a leggyakrabban használt otthoni vezérlők' } };
+
+// The exact controls used by favorites/active devices, plus grouped controls.
+export const ScrollAndHold: Story = { render: () => {
+  const hass = createMockHass(Object.fromEntries(Array.from({length:16}, (_, i) =>
+    [`light.demo_${i}`, {state:'off',attributes:{friendly_name:`Lámpa ${i + 1}`}}])));
+  const layout = document.createElement('luma-layout-card') as HTMLElement & {hass:typeof hass;setConfig(config:Record<string,unknown>):void};
+  layout.setConfig({type:'custom:luma-layout-card',columns:1,tablet_columns:1,mobile_columns:1,cards:[
+    {type:'custom:luma-control-group-card',columns:2,items:[0,1].map(i=>({entity:`light.demo_${i}`,name:`Csoport ${i + 1}`,tap_action:{action:'toggle'},hold_action:{action:'more-info'}}))},
+    ...Array.from({length:16},(_,i)=>({type:'custom:luma-control-card',entity:`light.demo_${i}`,name:`Lámpa ${i + 1}`,embedded_details:true,tap_action:{action:'toggle'}})),
+  ]});
+  layout.hass=hass;
+  return html`<luma-bottom-sheet .open=${true} heading="Gyors hozzáférés" closeLabel="Bezárás"
+    @sheet-dismiss=${(event:Event)=>{(event.currentTarget as LumaBottomSheet).open=false}}>
+    <div style="padding-bottom:8px">${layout}</div>
+  </luma-bottom-sheet>`;
+}};

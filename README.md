@@ -134,6 +134,12 @@ styling; actions still target the entity's real domain.
 Light controls open Home Assistant's More Info dialog on long press by default,
 giving direct access to brightness, color temperature, and color controls when
 the entity supports them. An explicit `hold_action` overrides this behavior.
+
+Long press on control cards requires a stationary primary pointer for 500 ms.
+Moving 8 px, scrolling an ancestor (including a bottom sheet), or cancelling
+the touch stops the hold and suppresses the following pointer click. Normal
+taps, keyboard activation, and stationary More Info holds remain available.
+
 The active-entity list renders the same `luma-control-card` surface for each
 result, so active controls keep identical visuals, tap behavior, and long-press
 More Info access.
