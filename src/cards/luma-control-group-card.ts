@@ -9,7 +9,7 @@ interface LumaControlGroupItem {
   entity:string; name?:string; icon?:string; color?:string; active_color?:string;
   active_states?:string[]; state_map?:Record<string,string>; tap_action?:LumaAction; hold_action?:LumaAction;
 }
-interface LumaControlGroupConfig { type:string; items:LumaControlGroupItem[]; columns?:number; }
+interface LumaControlGroupConfig { type:string; items:LumaControlGroupItem[]; columns?:number; compact?:boolean; }
 
 @customElement("luma-control-group-card")
 export class LumaControlGroupCard extends LitElement implements LovelaceCard {
@@ -21,11 +21,14 @@ export class LumaControlGroupCard extends LitElement implements LovelaceCard {
     button{display:grid;grid-template-columns:36px minmax(0,1fr);grid-template-areas:"icon name" "icon state";align-items:center;gap:2px 9px;min-width:0;min-height:58px;padding:9px;border:0;border-radius:15px;color:var(--primary-text-color);background:linear-gradient(145deg,color-mix(in srgb,var(--tone) var(--mix),var(--luma-surface)),color-mix(in srgb,var(--tone) 2%,var(--luma-surface)));font:inherit;text-align:left;transition:transform .16s ease,background .16s ease}
     button:hover{transform:translateY(-1px);background:linear-gradient(145deg,color-mix(in srgb,var(--tone) 13%,var(--luma-surface)),color-mix(in srgb,var(--tone) 3%,var(--luma-surface)))}
     .icon{grid-area:icon;display:grid;place-items:center;width:36px;height:36px;border-radius:12px;color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}.icon ha-icon{--mdc-icon-size:20px}.name{grid-area:name;align-self:end;min-width:0;font-size:12px;font-weight:680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.state{grid-area:state;align-self:start;color:var(--luma-muted);font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .group.compact button{grid-template-columns:18px minmax(0,1fr);grid-template-areas:"icon name";gap:6px;min-height:44px;padding:8px;border-radius:12px}
+    .group.compact .icon{width:18px;height:18px;border-radius:0;background:none}.group.compact .icon ha-icon{--mdc-icon-size:18px}
+    .group.compact .name{align-self:center;font-size:11px;line-height:1.25;white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
   `];
   setConfig(config:LumaControlGroupConfig):void{if(!config?.items?.length)throw new Error("Luma control group requires items.");this.config={columns:config.items.length,...config}}
   getCardSize():number{return 1}
   protected shouldUpdate(changed:PropertyValues<this>):boolean{if(!changed.has("hass"))return true;const old=changed.get("hass") as HomeAssistant|undefined;return !old||this.config!.items.some(i=>old.states[i.entity]!==this.hass?.states[i.entity])}
   disconnectedCallback(){this.press.cancel();super.disconnectedCallback()}
   private down(event:PointerEvent,item:LumaControlGroupItem){this.press.start(event,item.hold_action?()=>void runAction(this,this.hass!,item.hold_action,item.entity):undefined)}
-  render(){if(!this.hass||!this.config)return nothing;return html`<ha-card class="group" style=${`--columns:${this.config.columns}`}>${this.config.items.map(item=>{const entity=this.hass!.states[item.entity],active=item.active_states?.includes(entity?.state),tone=active?(item.active_color||"var(--warning-color)"):(item.color||"var(--primary-color)");return html`<button class="interactive" style=${`--tone:${tone};--mix:${active?"9%":"3%"}`} @pointerdown=${(event:PointerEvent)=>this.down(event,item)} @pointerleave=${()=>this.press.cancel()} @click=${(event:MouseEvent)=>{if(this.press.allowsClick(event))void runAction(this,this.hass!,item.tap_action,item.entity)}}><span class="icon"><ha-icon icon=${item.icon||entityIcon(entity)}></ha-icon></span><span class="name">${item.name||entityName(entity,item.entity)}</span><span class="state">${entityState(this.hass!,entity,item.state_map)}</span></button>`})}</ha-card>`}
+  render(){if(!this.hass||!this.config)return nothing;return html`<ha-card class=${`group ${this.config.compact?"compact":""}`} style=${`--columns:${this.config.columns}`}>${this.config.items.map(item=>{const entity=this.hass!.states[item.entity],active=item.active_states?.includes(entity?.state),tone=active?(item.active_color||"var(--warning-color)"):(item.color||"var(--primary-color)");return html`<button class="interactive" style=${`--tone:${tone};--mix:${active?"9%":"3%"}`} @pointerdown=${(event:PointerEvent)=>this.down(event,item)} @pointerleave=${()=>this.press.cancel()} @click=${(event:MouseEvent)=>{if(this.press.allowsClick(event))void runAction(this,this.hass!,item.tap_action,item.entity)}}><span class="icon"><ha-icon icon=${item.icon||entityIcon(entity)}></ha-icon></span><span class="name">${item.name||entityName(entity,item.entity)}</span>${this.config!.compact?nothing:html`<span class="state">${entityState(this.hass!,entity,item.state_map)}</span>`}</button>`})}</ha-card>`}
 }

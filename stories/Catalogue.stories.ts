@@ -41,6 +41,15 @@ export const ComfortAcWithoutAction=story("custom:luma-comfort-card",comfortConf
 export const ComfortUncomfortableAir=story("custom:luma-comfort-card",comfortConfig,{...comfortEntities,"sensor.pm25":e(18,"µg/m³"),"sensor.heating":e("idle"),"climate.ac":e("off")},430);
 export const ComfortUnavailableActivity=story("custom:luma-comfort-card",comfortConfig,{...comfortEntities,"sensor.heating":e("unavailable"),"climate.ac":e("unavailable",undefined,{hvac_action:"cooling"})},430);
 export const ControlGroup=story("custom:luma-control-group-card",{items:[{entity:"light.ceiling",name:"Ceiling",icon:"mdi:ceiling-light"},{entity:"light.sofa",name:"Sofa",icon:"mdi:floor-lamp"},{entity:"switch.fan",name:"Fan",icon:"mdi:fan"}]},{"light.ceiling":e("on"),"light.sofa":e("off"),"switch.fan":e("on")});
+const scenePresets=[
+  {entity:"scene.movie",name:"Film",icon:"mdi:movie-open-outline",color:"#8f79c9"},
+  {entity:"scene.evening",name:"Esti pihenés",icon:"mdi:weather-night",color:"#bd925b"},
+  {entity:"scene.guests",name:"Vendégek",icon:"mdi:account-group-outline",color:"#b88c5d"},
+  {entity:"scene.cooking",name:"Főzés",icon:"mdi:chef-hat",color:"#6f9e8c"},
+  {entity:"scene.bright",name:"Teljes fény",icon:"mdi:brightness-7",color:"#7195b6"},
+  {entity:"scene.off",name:"Összes le",icon:"mdi:lightbulb-multiple-off-outline",color:"var(--secondary-text-color)"},
+];
+export const CompactSceneSelector=story("custom:luma-control-group-card",{compact:true,columns:3,items:scenePresets.map(item=>({...item,tap_action:{action:"perform-action",perform_action:"scene.turn_on",target:{entity_id:item.entity}},hold_action:{action:"more-info"}}))},Object.fromEntries(scenePresets.map(item=>[item.entity,e("2026-01-01T18:00:00+00:00")])),358);
 export const Disclosure=story("custom:luma-disclosure-card",{name:"Advanced controls",icon:"mdi:tune-variant",summary:"Three optional controls",open:true,cards:[{type:"custom:luma-control-card",entity:"switch.boost",name:"Boost",tap_action:{action:"toggle"}},{type:"custom:luma-metric-card",entity:"sensor.runtime",name:"Runtime"}]},{"switch.boost":e("off"),"sensor.runtime":e(34,"min")});
 export const Discovery=story("custom:luma-discovery-card",{mode:"favorites",limit:5,empty_text:"No matching entities"},{"light.sofa":{...e("on"),labels:["favorite"],area:"Living room"},"switch.garden":{...e("off"),labels:["favorite"],area:"Garden"}});
 export const EnergyFlow=story("custom:luma-energy-flow-card",{solar_entity:"sensor.solar_power",load_entity:"sensor.home_power",grid_entity:"sensor.grid_power",grid_export_positive:false,tap_action:{action:"navigate",navigation_path:"/energy"}},{"sensor.solar_power":e(4380,"W"),"sensor.home_power":e(3140,"W"),"sensor.grid_power":e(-1240,"W")},900);

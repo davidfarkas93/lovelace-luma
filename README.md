@@ -144,6 +144,27 @@ The active-entity list renders the same `luma-control-card` surface for each
 result, so active controls keep identical visuals, tap behavior, and long-press
 More Info access.
 
+`luma-control-group-card` supports `compact: true` for icon-and-name action
+buttons without state text, useful for scene selectors in bottom sheets.
+Set `columns: 3` for six scenes in two rows; labels wrap and touch targets remain
+at least 44 px high. Each item keeps its configured `tap_action` and optional
+`hold_action`. Scene timestamps are not shown or treated as an active scene.
+
+```yaml
+type: custom:luma-control-group-card
+compact: true
+columns: 3
+items:
+  - entity: scene.movie
+    name: Movie
+    icon: mdi:movie-open-outline
+    tap_action:
+      action: perform-action
+      perform_action: scene.turn_on
+      target:
+        entity_id: scene.movie
+```
+
 `luma-metric-card` is the single compact read-only status primitive. It supports
 numeric formatting, secondary entities, mapped states, and direct attribute
 display through `attribute`. The former `luma-status-card` was removed in 0.54;

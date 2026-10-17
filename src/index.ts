@@ -127,7 +127,7 @@ const cards = [
   {
     type: "luma-control-group-card",
     name: "Luma Control Group",
-    description: "A compact one-row group of responsive entity controls.",
+    description: "Responsive entity controls with an optional compact icon-and-name mode for scene selectors.",
   },
   {
     type: "luma-control-card",
@@ -158,7 +158,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.33.1 ",
+  "%c LUMA %c 0.34.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
