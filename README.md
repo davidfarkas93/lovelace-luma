@@ -782,7 +782,11 @@ active tint.
 
 `luma-history-card` uses raw Recorder history for numeric states or a series'
 optional `attribute`. Add `dashed: true` to distinguish a setpoint from a measured
-value. Attribute series require raw history rather than statistics. Use
+value. Use `interpolation: step` on a series whose recorded state persists until
+the next change, such as EV charging power. Both the line and its area hold the
+previous value until the new measurement timestamp, then change vertically;
+unavailable gaps remain gaps. The default `linear` style remains suitable for
+temperature and PV trends. Attribute series require raw history rather than statistics. Use
 `include_zero: false` to fit the vertical axis to room temperatures.
 
 Optional `state_bands` shade the plot for matching recorded states. Each band

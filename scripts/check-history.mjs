@@ -9,7 +9,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../src/history.t
 });
 const exports = {};
 vm.runInNewContext(outputText, { exports, Date });
-const { historyNumber, historyTimestamp, recordTime, recordValue, historyGroups, chartWindow, bucketCenter, bucketStart, shiftBucket, activityIntervals, mergeActivityIntervals, historySegments, tooltipLeft } = exports;
+const { historyNumber, historyTimestamp, recordTime, recordValue, historyGroups, chartWindow, bucketCenter, bucketStart, shiftBucket, activityIntervals, mergeActivityIntervals, historySegments, historyLinePoints, tooltipLeft } = exports;
 const plain = value => JSON.parse(JSON.stringify(value));
 for (const value of [null, undefined, '', ' ', true, 'unknown', 'unavailable', NaN, Infinity]) assert.equal(historyNumber(value), undefined);
 assert.equal(historyNumber('0'), 0);
@@ -48,3 +48,16 @@ assert.equal(tooltipLeft(0,150,300),8);
 assert.equal(tooltipLeft(300,150,300),142);
 assert.equal(tooltipLeft(150,150,300),75);
 console.log('History: recorder timestamps/attributes, calendar buckets/DST, unknown gaps, activity unions and tooltip bounds passed.');
+
+// An old zero followed hours later by the first charging measurement must
+// remain flat until that measurement; area fills use the same stepped path.
+const sparse = [{time:0,value:0},{time:8*3600000,value:4200},{time:9*3600000,value:0}];
+assert.deepEqual(plain(historyLinePoints(sparse,'step')),[
+  {time:0,value:0},{time:8*3600000,value:0},{time:8*3600000,value:4200},
+  {time:9*3600000,value:4200},{time:9*3600000,value:0},
+]);
+assert.deepEqual(plain(historyLinePoints(sparse)),sparse);
+const gapSegments=historySegments([{time:0,value:0},{time:4},{time:8,value:4200}],{start:0,end:10});
+assert.equal(historyLinePoints(gapSegments[0],'step').at(-1).time,4);
+assert.equal(historyLinePoints(gapSegments[1],'step')[0].time,8);
+console.log('History: sparse step changes keep old values until the new measurement and preserve unavailable gaps.');

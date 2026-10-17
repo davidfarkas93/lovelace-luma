@@ -3,9 +3,9 @@ import { customElement, property, state } from "lit/decorators.js";
 import { localized } from "../localize";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
-import { activityIntervals, mergeActivityIntervals, bucketCenter, bucketStart, chartWindow, historyGroups, historyNumber, historySegments, historyTimestamp, recordTime, recordValue, shiftBucket, tooltipLeft, type ActivityInterval, type ActivityPoint, type HistoryPoint, type HistoryWindow } from "../history";
+import { activityIntervals, mergeActivityIntervals, bucketCenter, bucketStart, chartWindow, historyGroups, historyNumber, historySegments, historyLinePoints, historyTimestamp, recordTime, recordValue, shiftBucket, tooltipLeft, type ActivityInterval, type ActivityPoint, type HistoryPoint, type HistoryWindow } from "../history";
 
-interface Series { entity: string; name?: string; color?: string; attribute?: string; dashed?: boolean }
+interface Series { entity: string; name?: string; color?: string; attribute?: string; dashed?: boolean; interpolation?: "linear" | "step" }
 interface StateBand { entity?: string; entities?: string[]; name: string; attribute?: string; active_states: string[]; color?: string }
 interface Range {
   label: string;
@@ -265,7 +265,7 @@ export class LumaHistoryCard extends LitElement implements LovelaceCard {
         return;
       }
       for (const segment of historySegments(points, bounds)) {
-        const coordinates = segment.map(position);
+        const coordinates = historyLinePoints(segment, series.interpolation).map(position);
         // With explicit activity bands, the line remains clear of a second area fill.
         if (!settings.state_bands?.length) {
           const gradient = context.createLinearGradient(0, top, 0, top + plotHeight);

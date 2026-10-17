@@ -120,3 +120,11 @@ export function historySegments(points: HistoryPoint[], window: HistoryWindow): 
 export function tooltipLeft(anchor: number, tooltipWidth: number, containerWidth: number, padding = 8): number {
   return Math.max(padding, Math.min(containerWidth - tooltipWidth - padding, anchor - tooltipWidth / 2));
 }
+
+/** State changes apply at their recorded timestamp, never before it. */
+export function historyLinePoints(points: Required<HistoryPoint>[], interpolation: 'linear' | 'step' = 'linear'): Required<HistoryPoint>[] {
+  if (interpolation === 'linear') return points;
+  return points.flatMap((point, index) => index === 0 ? [point] : [
+    { time: point.time, value: points[index - 1].value }, point,
+  ]);
+}

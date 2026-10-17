@@ -5,7 +5,7 @@ import { createMockHass } from '../storybook/mock-hass';
 import type { HomeAssistant } from '../src/types';
 import { bucketStart, shiftBucket, type HistoryPeriod } from '../src/history';
 
-interface Args { config: Record<string, unknown>; empty: boolean; delay: boolean }
+interface Args { config: Record<string, unknown>; empty: boolean; delay: boolean; sparse: boolean }
 const rooms = ['living', 'bedroom', 'child', 'study'];
 const roomNames = ['Nappali', 'Háló', 'Gyerekszoba', 'Dolgozó'];
 const colors = ['#e9a15b', '#6ba9df', '#a68bd4', '#66b6a0'];
@@ -20,8 +20,8 @@ const energy = {
   ranges:[{label:'14 nap',days_to_show:14,period:'day',statistic:'change',chart_type:'bar'},{label:'12 hónap',days_to_show:365,period:'month',statistic:'change',chart_type:'bar'}],
 };
 const meta: Meta<Args> = {
-  title:'Patterns/History',parameters:{layout:'fullscreen',controls:{disable:true}},args:{config:heating,empty:false,delay:false},
-  render: ({config,empty,delay}) => {
+  title:'Patterns/History',parameters:{layout:'fullscreen',controls:{disable:true}},args:{config:heating,empty:false,delay:false,sparse:false},
+  render: ({config,empty,delay,sparse}) => {
     const hass = createMockHass({});
     hass.callWS = async (message:Record<string,unknown>) => {
       if (delay) await new Promise(resolve=>setTimeout(resolve, message.period==='month'?30:200));
@@ -35,6 +35,12 @@ const meta: Meta<Args> = {
         return {'sensor.ev_energy':records} as never;
       }
       const ids=message.entity_ids as string[];
+      if(sparse)return Object.fromEntries(ids.map(id=>[id,[
+        {s:'0',lu:start/1000},
+        {s:'4290',lu:(now-7*3600000)/1000},
+        {s:'4180',lu:(now-4*3600000)/1000},
+        {s:'0',lu:(now-3*3600000)/1000},
+      ]])) as never;
       return Object.fromEntries(ids.map((id,series)=>[id,Array.from({length:97},(_,index)=>{
         const time=start+(now-start)*index/96;
         if(id.startsWith('climate.'))return {s:index===48?'unavailable':'heat',a:{current_temperature:21+Math.sin(index/8),temperature:22,hvac_action:(index+series*4)%24<8?'heating':'idle'},lu:time/1000,lc:start/1000};
@@ -55,3 +61,5 @@ export const ChargingPower:Story={args:{config:{title:'Teljesítménykövetés',
 export const DailyEnergy:Story={args:{config:energy}};
 export const RangeRace:Story={args:{config:energy,delay:true}};
 export const MissingHistory:Story={args:{config:energy,empty:true}};
+
+export const SparseChargingStep:Story={args:{sparse:true,config:{title:'Tényleges töltés — ritka mérési pontok',hours_to_show:12,unit:'W',series:[{entity:'sensor.ev_power',name:'Tényleges töltés',color:'#48aa9b',interpolation:'step'}]}}};
