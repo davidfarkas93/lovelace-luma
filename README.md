@@ -427,7 +427,10 @@ Set `compact: true` to reduce service tile padding and minimum height. Service
 details, weather forecast day details and configured `luma-popup-card` popups all
 use the same bottom-sheet shell: opaque themed surface, shared header and motion,
 scrollable content, Escape/backdrop/close-button dismissal and drag-down handle.
-On mobile the sheet meets the bottom edge; on desktop it floats above it. Reduced
+On touchscreens, pulling the content down when it is already scrolled to the top
+also dismisses the sheet. Normal scrolling and nested controls keep their native
+behavior. Mobile sheets leave space below the status bar, with a 44px grab area
+and close button. On mobile the sheet meets the bottom edge; on desktop it floats above it. Reduced
 motion preferences are respected. No existing popup configuration needs changing.
 
 ```yaml

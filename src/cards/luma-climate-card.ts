@@ -44,37 +44,54 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
   static styles = [
     lumaTokens,
     css`
-      .thermostat-shell { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+      .thermostat-shell { container-type: inline-size; border: 0; background: transparent; box-shadow: none; overflow: visible; }
       .thermostat {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
         width: 100%;
         height: 80px;
         box-sizing: border-box;
-        padding: 13px 15px;
+        padding: 16px;
         text-align: left;
         color: var(--primary-text-color);
         font: inherit;
-        border: 1px solid color-mix(in srgb, var(--tone) 20%, var(--luma-border));
+        border: 1px solid color-mix(in srgb, var(--tone) var(--border-mix), transparent);
         border-radius: var(--luma-radius-card);
-        background: linear-gradient(135deg, color-mix(in srgb, var(--tone) 10%, var(--luma-surface)), var(--luma-surface));
+        background: linear-gradient(145deg, color-mix(in srgb, var(--tone) var(--mix), var(--luma-surface)), color-mix(in srgb, var(--tone) 2%, var(--luma-surface)) 72%);
+        box-shadow: 0 13px 34px color-mix(in srgb, var(--tone) var(--shadow-mix), transparent);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         cursor: pointer;
       }
-      .thermostat:hover { border-color: var(--tone); }
+      .thermostat:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 28%, transparent); box-shadow: 0 17px 40px color-mix(in srgb, var(--tone) 14%, transparent); }
       .thermostat:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 3px; }
+      .thermostat-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; color: var(--tone); background: color-mix(in srgb, var(--tone) var(--icon-mix), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 8%, transparent); }
+      .thermostat-icon ha-icon { --mdc-icon-size: 23px; }
+      .thermostat-copy { min-width: 0; }
       .thermostat-header { display: flex; align-items: center; gap: 5px; width: 100%; min-width: 0; }
       .thermostat-header .name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .thermostat-header > ha-icon { --mdc-icon-size: 16px; color: var(--tone); flex-shrink: 0; }
       .temperatures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; margin-top: 4px; white-space: nowrap; width: 100%; }
       .temperatures > div { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-      .temperature-label { font-size: 9px; line-height: 1; color: var(--luma-muted); }
-      .temperature-value { font-size: 14px; font-weight: 750; line-height: 1.1; font-variant-numeric: tabular-nums; }
+      .temperature-label { font-size: 8px; line-height: 1; color: var(--luma-muted); }
+      .temperature-value { font-size: 12px; font-weight: var(--luma-weight-strong); line-height: 1.1; font-variant-numeric: tabular-nums; }
       .target .temperature-value { font-weight: 600; }
-      .operation { display: inline-flex; align-items: center; gap: 3px; min-width: 0; max-width: 60%; padding: 3px 5px; border-radius: 999px; font-size: 9px; font-weight: 700; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); }
-      .operation ha-icon { --mdc-icon-size: 11px; flex-shrink: 0; }
+      .operation { display: inline-flex; align-items: center; min-width: 0; max-width: 60%; padding: 3px 5px; border-radius: 999px; font-size: 9px; font-weight: 700; color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, transparent); }
       .operation-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      @media (max-width: 599px) { .thermostat { height: 70px; padding: 8px 12px; } }
+      .operation ha-icon { display: none; --mdc-icon-size: 11px; }
+      @container (max-width: 210px) {
+        .operation-text { display: none; }
+        .operation ha-icon { display: inline-grid; }
+        .operation { padding: 3px; }
+      }
+      @container (max-width: 155px) {
+        .temperature-unit { display: none; }
+        .temperatures { gap: 4px; }
+      }
+      @media (max-width: 599px) {
+        .thermostat { grid-template-columns: 42px minmax(0, 1fr); height: 70px; padding: 13px; }
+        .thermostat-icon { width: 42px; height: 42px; border-radius: 14px; }
+      }
       .card {
         display: grid;
         grid-template-columns: 44px minmax(110px, 1fr) auto;
@@ -285,14 +302,15 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
     const format = (value: number | undefined) => value === undefined ? "—" : value.toLocaleString(hass.locale?.language || "en", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const unit = hass.config?.unit_system?.temperature || "°C";
     const name = config.name || localized(hass, "Heating", "Fűtés");
-    return html`<ha-card class="thermostat-shell"><button class="thermostat" style=${`--tone:${tone}`}
-      aria-label=${`${name} · ${localized(hass, "Settings", "Beállítások")}`}
+    return html`<ha-card class="thermostat-shell"><button class="thermostat" style=${`--tone:${tone};--mix:${summary.active?'13%':'1.5%'};--border-mix:${summary.active?'22%':'7%'};--shadow-mix:${summary.active?'12%':'2%'};--icon-mix:${summary.active?'21%':'6%'}`}
+      aria-label=${`${name} · ${localized(hass, summary.en, summary.hu)} · ${localized(hass, "Now", "Most")}: ${format(summary.current)} ${unit} · ${localized(hass, "Target", "Cél")}: ${format(summary.target)} ${unit} · ${localized(hass, "Settings", "Beállítások")}`}
       @click=${() => runAction(this, hass, { action: "more-info" }, config.entity)}>
-      <div class="thermostat-header"><ha-icon icon=${config.icon || "mdi:radiator"}></ha-icon><span class="name">${name}</span><span class="operation" title=${localized(hass, summary.en, summary.hu)}><ha-icon icon=${summary.icon}></ha-icon><span class="operation-text">${localized(hass, summary.en, summary.hu)}</span></span></div>
+      <span class="thermostat-icon"><ha-icon icon=${config.icon || "mdi:radiator"}></ha-icon></span>
+      <span class="thermostat-copy"><span class="thermostat-header"><span class="name">${name}</span><span class="operation" title=${localized(hass, summary.en, summary.hu)}><ha-icon icon=${summary.icon}></ha-icon><span class="operation-text">${localized(hass, summary.en, summary.hu)}</span></span></span>
       <div class="temperatures">
-        <div><span class="temperature-label">${localized(hass, "Now", "Most")} · ${unit}</span><span class="temperature-value">${format(summary.current)}</span></div>
-        <div class="target"><span class="temperature-label">${localized(hass, "Target", "Cél")} · ${unit}</span><span class="temperature-value">${format(summary.target)}</span></div>
-      </div>
+        <div><span class="temperature-label">${localized(hass, "Now", "Most")}<span class="temperature-unit"> · ${unit}</span></span><span class="temperature-value">${format(summary.current)}</span></div>
+        <div class="target"><span class="temperature-label">${localized(hass, "Target", "Cél")}<span class="temperature-unit"> · ${unit}</span></span><span class="temperature-value">${format(summary.target)}</span></div>
+      </div></span>
     </button></ha-card>`;
   }
 }

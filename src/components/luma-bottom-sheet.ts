@@ -1,5 +1,5 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { customElement, eventOptions, property, query, state } from 'lit/decorators.js';
 import { lumaTokens } from '../styles';
 
 /** Shared modal shell for configured popups and dynamically discovered details. */
@@ -19,6 +19,9 @@ export class LumaBottomSheet extends LitElement {
   private openFrame?:number;
   private dragStartY=0;
   private dragStartTime=0;
+  private contentDragCandidate=false;
+  private dragStartX=0;
+  private contentPointerId?:number;
   static styles=[lumaTokens,css`
     :host{display:block;height:0;min-height:0}
       .layer {
@@ -46,6 +49,7 @@ export class LumaBottomSheet extends LitElement {
         opacity: calc(1 - var(--drag-progress, 0));
       }
       .sheet {
+        box-sizing: border-box;
         position: relative;
         isolation: isolate;
         display: grid;
@@ -87,7 +91,7 @@ export class LumaBottomSheet extends LitElement {
         top: 0;
         left: 0;
         width: 100%;
-        height: 28px;
+        height: 44px;
         cursor: grab;
         touch-action: none;
       }
@@ -96,7 +100,7 @@ export class LumaBottomSheet extends LitElement {
       }
       .handle {
         position: absolute;
-        top: 9px;
+        top: 16px;
         left: 50%;
         width: 34px;
         height: 4px;
@@ -110,10 +114,10 @@ export class LumaBottomSheet extends LitElement {
       }
       header {
         display: grid;
-        grid-template-columns: 42px minmax(0, 1fr) 40px;
+        grid-template-columns: 42px minmax(0, 1fr) 44px;
         align-items: center;
         gap: 12px;
-        padding: 25px 20px 14px;
+        padding: 44px 20px 14px;
         border-bottom: 1px solid
           color-mix(in srgb, var(--primary-text-color) 7%, transparent);
         background: transparent;
@@ -143,8 +147,8 @@ export class LumaBottomSheet extends LitElement {
       .close {
         display: grid;
         place-items: center;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         padding: 0;
         border: 0;
         border-radius: 50%;
@@ -180,7 +184,9 @@ export class LumaBottomSheet extends LitElement {
       @media (max-width: 699px) {
         .sheet {
           width: 100%;
-          max-height: calc(100dvh - 8px);
+          /* Leave a reachable grabber below the iOS status bar, including
+             hosts that do not expose safe-area insets. Only the body scrolls. */
+          max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 24px));
           border-right: 0;
           border-bottom: 0;
           border-left: 0;
@@ -204,7 +210,7 @@ export class LumaBottomSheet extends LitElement {
   protected updated(changed:PropertyValues<this>){
     if(!changed.has('open'))return;
     clearTimeout(this.closeTimer);cancelAnimationFrame(this.openFrame||0);
-    this.dragY=0;this.dragging=false;
+    this.dragY=0;this.dragging=false;this.contentDragCandidate=false;
     if(this.open){
       if(this.dialog&&!this.dialog.open)this.dialog.showModal();
       // Commit the off-screen position before starting the enter transition.
@@ -227,11 +233,57 @@ export class LumaBottomSheet extends LitElement {
   private dragMove(event:PointerEvent){if(this.dragging)this.dragY=Math.max(0,event.clientY-this.dragStartY)}
   private dragEnd(event:PointerEvent){
     if(!this.dragging)return;
-    const dismiss=event.type!=='pointercancel'&&(this.dragY>110||this.dragY/Math.max(1,performance.now()-this.dragStartTime)>.65);
     const target=event.currentTarget as HTMLElement;
     if(target.hasPointerCapture(event.pointerId))target.releasePointerCapture(event.pointerId);
+    this.finishDrag(event.type==='pointercancel');
+  }
+  private finishDrag(cancelled=false){
+    const dismiss=!cancelled&&(this.dragY>110||this.dragY/Math.max(1,performance.now()-this.dragStartTime)>.65);
     this.dragging=false;
     if(dismiss)this.dismiss();else this.dragY=0;
+  }
+  private contentTouchStart(event:TouchEvent){
+    this.contentDragCandidate=false;
+    if(event.touches.length!==1)return;
+    // Preserve native controls and scrolling inside nested cards. A downward
+    // gesture may dismiss only when every scroller under the finger is at top.
+    for(const node of event.composedPath()){
+      if(node instanceof HTMLElement){
+        if(node.matches('input,textarea,select,[contenteditable="true"],[role="slider"]'))return;
+        if(node.scrollTop>0&&node.scrollHeight>node.clientHeight&&/auto|scroll/.test(getComputedStyle(node).overflowY))return;
+      }
+      if(node===event.currentTarget)break;
+    }
+    this.contentDragCandidate=true;
+    this.dragStartX=event.touches[0].clientX;
+    this.dragStartY=event.touches[0].clientY;
+    this.dragStartTime=performance.now();
+  }
+  @eventOptions({passive:false})
+  private contentTouchMove(event:TouchEvent){
+    if(event.touches.length!==1){this.contentTouchEnd(event);return;}
+    if(!this.contentDragCandidate)return;
+    const deltaY=event.touches[0].clientY-this.dragStartY;
+    if(!this.dragging){
+      const deltaX=Math.abs(event.touches[0].clientX-this.dragStartX);
+      if(Math.max(deltaX,Math.abs(deltaY))<8)return;
+      if(deltaY<0||deltaX>Math.abs(deltaY)){this.contentDragCandidate=false;return;}
+      if(deltaY===0)return;
+    }
+    if(!event.cancelable){this.contentTouchEnd(event);return;}
+    event.preventDefault();
+    if(!this.dragging&&this.contentPointerId!==undefined){
+      // Transfer the gesture from the touched card to the sheet. Pointerleave
+      // cancels child long-press timers while the sheet follows the finger.
+      const content=event.currentTarget as HTMLElement;
+      content.setPointerCapture(this.contentPointerId);
+    }
+    this.dragging=true;
+    this.dragY=Math.max(0,deltaY);
+  }
+  private contentTouchEnd(event:TouchEvent){
+    this.contentDragCandidate=false;
+    if(this.dragging)this.finishDrag(event.type!=='touchend');
   }
   render(){return html`<dialog tabindex="-1" autofocus class=${`layer ${this.visible?'open':''} ${this.dragging?'dragging':''}`}
     aria-label=${this.heading} style=${`--drag-y:${this.dragY}px;--drag-progress:${Math.min(.75,this.dragY/420)}`}
@@ -240,7 +292,10 @@ export class LumaBottomSheet extends LitElement {
     <section class="sheet" style=${`--sheet-width:${this.maxWidth}px`}>
       <div class="handle-zone" @pointerdown=${this.dragStart} @pointermove=${this.dragMove} @pointerup=${this.dragEnd} @pointercancel=${this.dragEnd}><div class="handle"></div></div>
       <header><span class="icon"><ha-icon icon=${this.icon}></ha-icon></span><span><div class="title">${this.heading}</div>${this.subtitle?html`<div class="subtitle">${this.subtitle}</div>`:nothing}</span><button class="close" aria-label=${this.closeLabel} @click=${()=>this.dismiss()}><ha-icon icon="mdi:close"></ha-icon></button></header>
-      <div class="content"><slot></slot></div>
+      <div class="content" @touchstart=${this.contentTouchStart} @touchmove=${this.contentTouchMove}
+        @pointerdown=${(event:PointerEvent)=>{this.contentPointerId=event.pointerId}}
+        @pointerup=${()=>{this.contentPointerId=undefined}} @pointercancel=${()=>{this.contentPointerId=undefined}}
+        @touchend=${this.contentTouchEnd} @touchcancel=${this.contentTouchEnd}><slot></slot></div>
     </section>
   </dialog>`}
 }
