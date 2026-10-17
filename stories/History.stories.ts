@@ -2,6 +2,7 @@ import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import '../src/index';
 import { createMockHass } from '../storybook/mock-hass';
+import { renderCard } from '../storybook/render-card';
 import type { HomeAssistant } from '../src/types';
 import { bucketStart, shiftBucket, type HistoryPeriod } from '../src/history';
 
@@ -63,3 +64,8 @@ export const RangeRace:Story={args:{config:energy,delay:true}};
 export const MissingHistory:Story={args:{config:energy,empty:true}};
 
 export const SparseChargingStep:Story={args:{sparse:true,config:{title:'Tényleges töltés — ritka mérési pontok',hours_to_show:12,unit:'W',series:[{entity:'sensor.ev_power',name:'Tényleges töltés',color:'#48aa9b',interpolation:'step'}]}}};
+
+export const ClimateComparison:Story={render:()=>renderCard('custom:luma-layout-card',{columns:2,tablet_columns:1,mobile_columns:1,cards:[
+  {type:'custom:luma-history-card',...heating},
+  {type:'custom:luma-history-card',title:'Benti átlag és időjárás',unit:'°C',decimals:1,include_zero:false,ranges:heating.ranges,series:[{entity:'sensor.average_temperature',name:'Benti átlag',color:colors[0]},{entity:'sensor.outdoor_temperature',name:'Kinti (Weather.com)',color:colors[1]}]},
+]}, {}, 1100)};

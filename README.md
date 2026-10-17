@@ -780,6 +780,10 @@ active tint.
 
 ## History and activity intervals
 
+Groups containing only history cards in `luma-layout-card` use equal-height rows.
+Plot areas align at the bottom even when titles, legends, or activity labels wrap
+differently; stacked mobile charts retain the same comparison height.
+
 `luma-history-card` uses raw Recorder history for numeric states or a series'
 optional `attribute`. Add `dashed: true` to distinguish a setpoint from a measured
 value. Use `interpolation: step` on a series whose recorded state persists until
