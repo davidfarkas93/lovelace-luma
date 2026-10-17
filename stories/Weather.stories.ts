@@ -26,3 +26,14 @@ function page(wet=false,missing=false) {
 export const DryNight: Story = { render:()=>page() };
 export const RainComing: Story = { render:()=>page(true) };
 export const MissingForecast: Story = { render:()=>page(false,true) };
+export const IncompleteDailyRanges: Story = {
+  render:()=>renderCard('custom:luma-weather-forecast-card',{weather_entity:'weather.home'}, {
+    'weather.home': {state:'cloudy',attributes:{temperature_unit:'°C',forecast_daily:[
+      {...daily[0],templow:-5,temperature:5},
+      {...daily[1],templow:0,temperature:0},
+      {...daily[2],templow:undefined,temperature:12},
+      {...daily[3],templow:8,temperature:undefined},
+      {...daily[4],templow:10,temperature:5},
+    ],forecast_hourly:hourly() }},
+  },720),
+};

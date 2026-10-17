@@ -57,7 +57,7 @@ the default.
 | `custom:luma-temperature-card` | Comfort-colored temperature hero and comparable room scale |
 | `custom:luma-energy-flow-card` | Animated solar, optional measured home load, and configurable-sign grid power flow |
 | `custom:luma-energy-mix-card` | Live or session energy-source split with a Luma rail, totals and percentages |
-| `custom:luma-history-card` | Recorder-backed line or aggregated bar chart with optional daily/monthly range switching |
+| `custom:luma-history-card` | Recorder lines, calendar-aligned bars, attribute series and shaded activity intervals |
 | `custom:luma-session-browser-card` | Swipeable completed-session browser combining Recorder events with a retained recent-session fallback |
 | `custom:luma-period-stats-card` | Compact swipeable day/month/year energy and source-attribution summary |
 | `custom:luma-ev-mode-card` | Persistent Off, Solar or Always charging strategy selector with confirmed changes |
@@ -778,14 +778,71 @@ attribute. Room quick-control pills likewise use actual HVAC action for their
 active tint.
 
 
+## History and activity intervals
+
+`luma-history-card` uses raw Recorder history for numeric states or a series'
+optional `attribute`. Add `dashed: true` to distinguish a setpoint from a measured
+value. Attribute series require raw history rather than statistics. Use
+`include_zero: false` to fit the vertical axis to room temperatures.
+
+Optional `state_bands` shade the plot for matching recorded states. Each band
+accepts `entity` or `entities`, optional `attribute`, required `active_states`,
+`name`, and optional `color`. With multiple entities the shaded interval is the
+union: at least one source must explicitly match. Unknown, unavailable, restored
+attribute data, and missing attributes never count as active.
+
+```yaml
+type: custom:luma-history-card
+title: Room temperature and heating demand
+unit: °C
+decimals: 1
+include_zero: false
+series:
+  - entity: climate.room
+    attribute: current_temperature
+    name: Measured
+    color: '#e9a15b'
+  - entity: climate.room
+    attribute: temperature
+    name: Target
+    color: '#6ba9df'
+    dashed: true
+state_bands:
+  - entity: climate.room
+    attribute: hvac_action
+    active_states: [heating]
+    name: Thermostat heating demand
+    color: '#e9a15b'
+ranges:
+  - label: 24 hours
+    hours_to_show: 24
+  - label: 3 days
+    hours_to_show: 72
+```
+
+The shading reports the configured source, such as thermostat demand; it does not
+establish boiler operation. Raw-history retention still applies to attributes.
+Missing numeric data creates a gap, while recorded zero remains zero. A current
+value is never used to invent an unrecorded historical interval.
+
+Ranges accept `hours_to_show` / `days_to_show`, `period`, `statistic`, and
+`chart_type`. `default_range` selects a zero-based initial range (default `0`).
+Daily, weekly, and monthly bars use whole calendar buckets including the current
+bucket, so a 14-day range has 14 slots. Tooltips stay inside the chart; narrow
+charts omit colliding time-axis labels. Statistics `null` is missing, never zero.
+
 ## Weather at a glance
 
-The weather hero summarizes precipitation and temperature over the next 12
-hours. Forecast icons use consistent semantic accents: warm amber for sunshine,
+The weather hero shows current conditions, today's forecast minimum and maximum
+when available, and a precipitation summary for the next 12 hours.
+The compact hourly strip shows time, condition, temperature and rain probability;
+it does not repeat those temperatures in a separate trend chart.
+Forecast icons use consistent semantic accents: warm amber for sunshine,
 slate for cloud/fog, blue for rain, indigo for a clear night, cyan for snow and
-purple for storms. Daily rows use a subtle condition-colored background tint
-with a neutral border. Every condition also has a text label, so color is never the
-only way to read the outlook. Daily temperatures explicitly say **max / min**;
-hourly rain percentages are labelled as probabilities, separate from
+purple for storms. Daily rows show the minimum on the left and maximum on the
+right, with temperature bands on a shared scale across the forecast. Incomplete
+or inverted ranges have no band. Each row opens the existing daily detail sheet.
+Every daily condition also has a text label, so color is never the only way to
+read the outlook. Rain percentages represent probabilities, separate from
 precipitation amounts. Missing measurements remain unknown, including a zero
 degree temperature; incomplete rain data never implies a dry forecast.

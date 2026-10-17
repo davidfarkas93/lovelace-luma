@@ -56,3 +56,20 @@ export function temperatureRange(items: WeatherForecast[]) {
   const values = items.map(item => weatherNumber(item.temperature)).filter((n): n is number => n != null);
   return values.length ? { min: Math.min(...values), max: Math.max(...values) } : undefined;
 }
+
+/** Daily bands share one scale; incomplete/inverted ranges never invent a bar. */
+export function dailyTemperatureBands(items: WeatherForecast[]) {
+  const ranges = items.map(item => {
+    const low = weatherNumber(item.templow), high = weatherNumber(item.temperature);
+    return low != null && high != null && low <= high ? { low, high } : undefined;
+  });
+  const valid = ranges.filter((range): range is { low: number; high: number } => range != null);
+  if (!valid.length) return ranges.map(() => undefined);
+  const min = Math.min(...valid.map(range => range.low));
+  const max = Math.max(...valid.map(range => range.high));
+  return ranges.map(range => range && ({
+    low: range.low, high: range.high,
+    start: max === min ? 50 : (range.low - min) / (max - min) * 100,
+    end: max === min ? 50 : (range.high - min) / (max - min) * 100,
+  }));
+}

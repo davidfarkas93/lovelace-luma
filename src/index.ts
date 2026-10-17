@@ -89,7 +89,7 @@ const cards = [
   { type:"luma-irrigation-hero-card", name:"Luma Irrigation Hero", description:"A contextual irrigation system header." },
   { type:"luma-rack-cooling-card", name:"Luma Rack Cooling", description:"A responsive rack thermal and fan controller summary." },
   { type:"luma-homelab-hero-card", name:"Luma Homelab Hero", description:"A dynamic Homelab health hero aggregating Kuma, Komodo and infrastructure incidents." },
-  { type:"luma-history-card", name:"Luma History", description:"Responsive recorder history chart with gradients and touch inspection." },
+  { type:"luma-history-card", name:"Luma History", description:"Recorder history and calendar statistics with attribute series, activity shading, range selection and touch inspection." },
   { type:"luma-energy-flow-card", name:"Luma Energy Flow", description:"Live solar, home and grid power flow." },
   { type:"luma-energy-mix-card", name:"Luma Energy Mix", description:"A polished live or session energy-source split with totals and percentages." },
   { type:"luma-navigation-card", name:"Luma Navigation", description:"A polished contextual navigation card." },
@@ -158,7 +158,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.30.2 ",
+  "%c LUMA %c 0.31.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

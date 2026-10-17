@@ -8,7 +8,7 @@ const { outputText } = ts.transpileModule(readFileSync(new URL('../src/weather.t
 });
 const exports = {};
 vm.runInNewContext(outputText, { exports });
-const { weatherNumber, precipitationChance, precipitationOutlook, temperatureRange, weatherVisual } = exports;
+const { weatherNumber, precipitationChance, precipitationOutlook, temperatureRange, weatherVisual, dailyTemperatureBands } = exports;
 
 for (const value of [null, undefined, '', ' ', 'unknown', 'unavailable', NaN, Infinity, true]) assert.equal(weatherNumber(value), undefined);
 assert.equal(weatherNumber('0'), 0);
@@ -31,4 +31,14 @@ assert.notEqual(weatherVisual('sunny').tone, weatherVisual('rainy').tone);
 assert.notEqual(weatherVisual('cloudy').tone, weatherVisual('clear-night').tone);
 assert.equal(weatherVisual('sunny', true).label, 'Napos');
 assert.equal(weatherVisual('unavailable', true).label, 'Nincs adat');
-console.log('Weather: missing/zero values, probability vs amount, rain timing and condition semantics passed.');
+const bands = dailyTemperatureBands([{ templow: -5, temperature: 5 }, { templow: 0, temperature: 15 }, {}, { templow: 10, temperature: 5 }]);
+assert.equal(bands[0].start, 0);
+assert.equal(bands[0].end, 50);
+assert.equal(bands[1].start, 25);
+assert.equal(bands[1].end, 100);
+assert.equal(bands[2], undefined);
+assert.equal(bands[3], undefined);
+assert.equal(dailyTemperatureBands([{ templow: 0, temperature: 0 }])[0].start, 50);
+assert.equal(dailyTemperatureBands([{ temperature: 12 }])[0], undefined);
+assert.equal(dailyTemperatureBands([{ templow: null, temperature: 12 }])[0], undefined);
+console.log('Weather: missing/zero values, rain timing, condition semantics and shared daily temperature scale passed.');
