@@ -64,7 +64,8 @@ the default.
 | `custom:luma-ev-control-card` | Temporary Charge Now override with lifecycle-aware handoff to the persistent base mode |
 | `custom:luma-ev-solar-readiness-card` | Canonical Solar recommendation, operational priority overrides and EVCC-style daily Solar-window timeline |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
-| `custom:luma-navbar-card` | Configurable routes with an artwork-aware, switchable active-media dock |
+| `custom:luma-navbar-card` | Primary navigation, grouped menu and switchable active-media dock |
+| `custom:luma-route-tabs-card` | Scrollable section-page links with active-route indication |
 | `custom:luma-homelab-hero-card` | Dynamic Kuma, Komodo and infrastructure health summary |
 | `custom:luma-rack-cooling-card` | Rack thermal delta, fan speed and PWM visualization |
 | `custom:luma-irrigation-hero-card` | Context-aware irrigation status with ad-hoc/program progress and next scheduled run |
@@ -195,6 +196,42 @@ package. Pass Navbar Card-compatible `routes` explicitly, plus an optional
 dock horizontally or tap its subtle page indicator to switch players; tapping
 the dock opens the selected player's configured popup. `app_names` can map
 integration-specific package IDs to friendly labels.
+
+For a consistent five-item primary bar, configure four labelled `routes` and a
+`menu` with named `groups`. The fifth item opens the shared Luma sheet with large,
+grouped links. All URLs, labels, icons and grouping remain dashboard configuration.
+The grouped mode uses native links and buttons; legacy Navbar Card-compatible
+routes remain supported when `menu` is omitted. Modifier-clicks keep native browser
+behavior. Back, Escape, the close button, backdrop and drag dismiss the menu.
+
+`match_paths` optionally assigns explicit paths or `*` patterns to a primary
+route. Without it, only the exact pathname matches (query strings and hashes are
+ignored). This keeps deep pages in the right section without accidental prefix
+matches. Pages outside the four primary sections highlight Menu.
+
+```yaml
+type: custom:luma-navbar-card
+routes:
+  - {url: /lovelace/home, label: Home, icon: 'mdi:home-outline'}
+  - {url: /rooms/overview, label: Rooms, icon: 'mdi:sofa-outline', match_paths: ['/rooms/*']}
+  - {url: /cameras/live, label: Cameras, icon: 'mdi:camera-outline', match_paths: ['/cameras/*']}
+  - {url: /lovelace/energy, label: Energy, icon: 'mdi:lightning-bolt-outline', match_paths: ['/lovelace/energy*']}
+menu:
+  name: Menu
+  hash: navigation
+  groups:
+    - name: Home
+      icon: mdi:home-outline
+      items:
+        - {url: /cleaning/overview, label: Cleaning, icon: 'mdi:robot-vacuum'}
+        - {url: /climate/overview, label: Heating and cooling, icon: 'mdi:home-thermometer-outline'}
+```
+
+Place `custom:luma-route-tabs-card` near the top of a section's pages to keep
+local navigation separate from the primary bar. It takes `name` (accessible
+navigation label) and `routes` in the same URL/label/icon/`match_paths` format.
+The active link stays visible in a horizontally scrollable row on narrow screens.
+These are page links with `aria-current`, rather than in-page ARIA tabs.
 
 ```yaml
 type: custom:luma-navbar-card

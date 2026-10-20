@@ -21,6 +21,7 @@ import "./cards/luma-energy-flow-card";
 import "./cards/luma-energy-mix-card";
 import "./cards/luma-navigation-card";
 import "./cards/luma-navbar-card";
+import "./cards/luma-route-tabs-card";
 import "./cards/luma-history-card";
 import "./cards/luma-homelab-hero-card";
 import "./cards/luma-rack-cooling-card";
@@ -62,7 +63,8 @@ const cards = [
   { type:"luma-storage-card", name:"Luma Storage", description:"Unified disk capacity, temperature and SMART health with configurable state/attribute sources." },
   { type:"luma-service-grid-card", name:"Luma Services", description:"Unified application availability, container counts and confirmed stack operations with runtime discovery." },
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
-  { type:"luma-navbar-card", name:"Luma Navbar", description:"Configurable routes with an artwork-aware, switchable active-media dock." },
+  { type:"luma-navbar-card", name:"Luma Navbar", description:"Consistent primary navigation, a grouped menu and an artwork-aware active-media dock." },
+  { type:"luma-route-tabs-card", name:"Luma Route Tabs", description:"Accessible, scrollable section-page links with active-route matching." },
   { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
   { type:"luma-appliance-card", name:"Luma Appliance", description:"A contextual appliance status card with remaining time and progress." },
@@ -158,7 +160,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.34.0 ",
+  "%c LUMA %c 0.35.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );
