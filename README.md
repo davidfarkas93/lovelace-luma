@@ -208,6 +208,8 @@ behavior. Back, Escape, the close button, backdrop and drag dismiss the menu.
 route. Without it, only the exact pathname matches (query strings and hashes are
 ignored). This keeps deep pages in the right section without accidental prefix
 matches. Pages outside the four primary sections highlight Menu.
+The grouped bar stays at the bottom at every viewport width, reserving space for
+itself and any active-media dock so section content remains unobstructed.
 
 ```yaml
 type: custom:luma-navbar-card
