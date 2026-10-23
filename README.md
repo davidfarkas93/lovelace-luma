@@ -312,6 +312,12 @@ Active appliances can use the same contextual banner area. Timestamp-based
 completion sensors and duration sensors with `s`, `min`, or `h` units are
 interpreted automatically.
 
+When three or more contextual banners are visible, the home hero groups them
+into a collapsed summary with activity icons and a count. Tap or use the keyboard
+to expand the individual statuses and their actions. Incidents stay separate and
+visible. Set `banner_collapse_threshold` to change the minimum count, or `0` to
+always show all banners. Hidden banners do not count toward the threshold.
+
 ```yaml
 appliances:
   - entity: sensor.washer_state

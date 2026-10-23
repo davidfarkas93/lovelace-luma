@@ -139,7 +139,7 @@ const cards = [
   {
     type: "luma-home-hero-card",
     name: "Luma Home Hero",
-    description: "A weather-aware home hero with incident acknowledgement and contextual banners.",
+    description: "A weather-aware home hero with incident acknowledgement and collapsible contextual activities.",
   },
   {
     type: "luma-hero-card",
@@ -160,7 +160,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.35.1 ",
+  "%c LUMA %c 0.36.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

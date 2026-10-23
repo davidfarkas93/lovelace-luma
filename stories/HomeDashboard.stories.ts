@@ -74,3 +74,22 @@ const entities={
 
 export const RealWorldExample:Story={render:()=>renderCard("custom:luma-home-hero-card",config,entities,1080)};
 export const QuietHome:Story={render:()=>renderCard("custom:luma-home-hero-card",{...config,incidents:[]},{...entities,"sensor.notifications":{state:0},"sensor.active_irrigation_program":{state:"none"},"switch.front_lawn":{state:"off"},"light.sofa":{state:"off"},"light.terrace":{state:"off"},"light.terrace_wall":{state:"off"},"media_player.living_room":{state:"off"},"climate.living_room":{state:"off"},"binary_sensor.dryer_running":{state:"off"},"input_boolean.waste_ready":{state:"on"}},1080)};
+
+const busyConfig = {
+  ...config,
+  banners: [
+    {entity:"lawn_mower.garden",label:"Mower",icon:"mdi:mower",state:["mowing","returning"],state_map:{mowing:"Mowing",returning:"Returning"},tap_action:{action:"navigate",navigation_path:"/garden"}},
+    {entity:"sensor.charger_status",label:"EV charger",icon:"mdi:ev-station",state:"Charging",state_map:{Charging:"Charging"},tap_action:{action:"navigate",navigation_path:"/energy/charging"}},
+  ],
+};
+const busyEntities = {
+  ...entities,
+  "binary_sensor.washer_running":{state:"on"},
+  "sensor.washer_state":{state:"spin"},
+  "sensor.washer_remaining":{state:12,attributes:{unit_of_measurement:"min"}},
+  "lawn_mower.garden":{state:"mowing"},
+  "sensor.charger_status":{state:"Charging"},
+};
+export const ManyActivities:Story={render:()=>renderCard("custom:luma-home-hero-card",busyConfig,busyEntities,1080)};
+export const AlwaysExpanded:Story={render:()=>renderCard("custom:luma-home-hero-card",{...busyConfig,banner_collapse_threshold:0},busyEntities,1080)};
+export const HiddenActivities:Story={render:()=>renderCard("custom:luma-home-hero-card",{...busyConfig,irrigation_entity:undefined,irrigation_zone_entities:[],waste_items:[]},{...busyEntities,"binary_sensor.washer_running":{state:"off"},"lawn_mower.garden":{state:"unavailable"},"sensor.charger_status":{state:"unknown"}},1080)};

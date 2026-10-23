@@ -64,6 +64,7 @@ interface LumaHomeHeroConfig {
   active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
   banners?: LumaBannerConfig[];
+  banner_collapse_threshold?: number;
   tap_action?: LumaAction;
 }
 
@@ -484,6 +485,41 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         gap: 8px;
         margin-top: 13px;
       }
+      .banner-group {
+        margin-top: 13px;
+        color: var(--info-color, var(--primary-color));
+      }
+      .banner-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid color-mix(in srgb, currentColor 17%, transparent);
+        border-radius: 14px;
+        background: color-mix(in srgb, currentColor 10%, transparent);
+        cursor: pointer;
+        list-style: none;
+      }
+      .banner-summary::-webkit-details-marker { display: none; }
+      .banner-summary:hover {
+        background: color-mix(in srgb, currentColor 15%, transparent);
+      }
+      .banner-summary:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 3px;
+      }
+      .banner-summary-text {
+        flex: 1;
+        min-width: 0;
+        color: var(--primary-text-color);
+        font-size: 12px;
+        font-weight: 720;
+      }
+      .banner-summary-icons { display: flex; gap: 6px; }
+      .banner-summary ha-icon { --mdc-icon-size: 18px; }
+      .banner-group[open] .banner-chevron { transform: rotate(180deg); }
+      .banner-group .banners { margin-top: 8px; }
       .banner {
         display: grid;
         grid-template-columns: 22px auto minmax(0, 1fr) auto;
@@ -1156,6 +1192,29 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     return html`<div class="sky">${sky}${turbine}</div>`;
   }
 
+  private renderBanners(items: LumaBannerConfig[]) {
+    const visible = items.filter((item) => itemIsVisible(this.hass!, item));
+    if (!visible.length) return nothing;
+    const content = html`<div class="banners">
+      ${visible.map((item) => this.renderBanner(item))}
+    </div>`;
+    const threshold = this.config?.banner_collapse_threshold ?? 3;
+    if (threshold <= 0 || visible.length < threshold) return content;
+    const icons = [...new Set(visible.map((item) => item.icon || "mdi:information-outline"))].slice(0, 4);
+    return html`<details class="banner-group" @click=${(event: Event) => event.stopPropagation()}>
+      <summary class="banner-summary">
+        <span class="banner-summary-icons" aria-hidden="true">
+          ${icons.map((icon) => html`<ha-icon .icon=${icon}></ha-icon>`)}
+        </span>
+        <span class="banner-summary-text">${localized(this.hass,
+          `${visible.length} activity updates`,
+          `${visible.length} állapotjelzés`)}</span>
+        <ha-icon class="banner-chevron" icon="mdi:chevron-down" aria-hidden="true"></ha-icon>
+      </summary>
+      ${content}
+    </details>`;
+  }
+
   private renderBanner(item: LumaBannerConfig) {
     if (!this.hass || !itemIsVisible(this.hass, item)) return nothing;
     const entity = this.hass.states[item.entity],
@@ -1473,11 +1532,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                     </div>`,
                 )}
               </div>`
-            : nothing}${banners.some((b) => itemIsVisible(this.hass!, b))
-            ? html`<div class="banners">
-                ${banners.map((b) => this.renderBanner(b))}
-              </div>`
-            : nothing}
+            : nothing}${this.renderBanners(banners)}
         </div></ha-card
       >${this.alarmPopoverOpen && alarm
         ? html`<button
