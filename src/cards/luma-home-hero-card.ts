@@ -756,10 +756,16 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           opacity: 0.17;
         }
         .banner {
-          grid-template-columns: 20px minmax(0, 1fr) auto;
+          grid-template-columns: 20px minmax(0, auto) minmax(0, 1fr) auto;
+          column-gap: 6px;
         }
         .banner-label {
-          display: none;
+          max-width: 100px;
+          overflow-wrap: anywhere;
+        }
+        .banner-state {
+          white-space: normal;
+          overflow-wrap: anywhere;
         }
         .issue {
           grid-template-columns: 18px minmax(0, 1fr);
