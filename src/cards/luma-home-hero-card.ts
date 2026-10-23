@@ -415,29 +415,23 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       }
       .panel {
         display: grid;
-        gap: 7px;
-        margin-top: 12px;
-        padding: 10px;
-        border-radius: 16px;
-        background: color-mix(
-          in srgb,
-          var(--primary-text-color) 3%,
-          transparent
-        );
+        gap: 8px;
+        margin-top: 13px;
       }
       .issue {
         display: grid;
         grid-template-columns: 18px minmax(0, 1fr) auto;
         align-items: center;
         gap: 8px;
-        min-height: 38px;
-        padding: 6px 8px;
-        border-radius: 12px;
+        min-height: 42px;
+        padding: 8px 11px;
+        border: 1px solid color-mix(in srgb, var(--issue-color) 17%, transparent);
+        border-radius: 14px;
         color: var(--issue-color);
-        background: color-mix(in srgb, var(--issue-color) 8%, transparent);
+        background: color-mix(in srgb, var(--issue-color) 10%, transparent);
       }
       .issue ha-icon {
-        --mdc-icon-size: 17px;
+        --mdc-icon-size: 18px;
       }
       .issue-text {
         min-width: 0;
