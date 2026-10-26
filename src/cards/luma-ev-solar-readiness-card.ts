@@ -109,8 +109,8 @@ export class LumaEvSolarReadinessCard extends LitElement implements LovelaceCard
   private time(date?: Date) {
     return date ? new Intl.DateTimeFormat(this.hass?.locale?.language || undefined, { hour: "2-digit", minute: "2-digit" }).format(date) : "—";
   }
-  private progress(start?: Date, end?: Date, active = false) {
-    if (!active || !start || !end || end <= start) return 0;
+  private progress(start?: Date, end?: Date) {
+    if (!start || !end || end <= start) return 0;
     return Math.max(0, Math.min(100, (Date.now() - start.getTime()) / (end.getTime() - start.getTime()) * 100));
   }
   private timeline(start?: Date, end?: Date) {
@@ -134,11 +134,17 @@ export class LumaEvSolarReadinessCard extends LitElement implements LovelaceCard
     const raw = Number(entity!.state);
     if (!Number.isFinite(raw)) return this.value(entity);
     const unit = String(entity!.attributes.unit_of_measurement || "min").toLowerCase();
-    const minutes = Math.max(0, Math.round(unit === "s" ? raw / 60 : unit === "h" ? raw * 60 : raw));
+    return this.formatMinutes(unit === "s" ? raw / 60 : unit === "h" ? raw * 60 : raw);
+  }
+  private formatMinutes(value: number) {
+    const minutes = Math.max(0, Math.round(value));
     const hours = Math.floor(minutes / 60);
     const rest = minutes % 60;
     if (!hours) return `${rest} min`;
     return localized(this.hass, `${hours} h${rest ? ` ${rest} min` : ""}`, `${hours} ó${rest ? ` ${rest} p` : ""}`);
+  }
+  private intervalDuration(start?: Date, end?: Date) {
+    return start && end && end > start ? this.formatMinutes((end.getTime() - start.getTime()) / 60000) : "—";
   }
 
   render() {
@@ -149,33 +155,54 @@ export class LumaEvSolarReadinessCard extends LitElement implements LovelaceCard
     const end = this.date(this.entity(this.config.window_end_entity));
     const remaining = this.entity(this.config.window_remaining_entity);
     const expected = this.entity(this.config.expected_charge_entity);
-    const usefulLabel = active ? localized(this.hass, "Time remaining", "Hátralévő hasznos idő") : localized(this.hass, "Expected useful duration", "Várható hasznos idő");
     const timeline = this.timeline(start, end);
     const now = new Date();
+    const expired = Boolean(end && now >= end);
+    const future = Boolean(start && now < start);
+    const badge = active
+      ? localized(this.hass, "Window active", "Aktív időablak")
+      : expired
+        ? localized(this.hass, "Today's window ended", "A mai időablak lezárult")
+        : localized(this.hass, "Today's window", "Mai időablak");
+    const windowState = start && end
+      ? expired
+        ? localized(this.hass, "ended today", "ma lezárult")
+        : active
+          ? `${localized(this.hass, "Now", "Most")} ${this.time(now)} · ${localized(this.hass, "in progress", "folyamatban")}`
+          : future
+            ? `${localized(this.hass, "Starts", "Kezdés")} ${this.time(start)}`
+            : localized(this.hass, "today", "ma")
+      : localized(this.hass, "no useful window today", "ma nincs hasznos időablak");
+    const usefulLabel = expired
+      ? localized(this.hass, "Today's window duration", "A mai időablak hossza")
+      : active
+        ? localized(this.hass, "Time remaining", "Hátralévő hasznos idő")
+        : localized(this.hass, "Expected useful duration", "Várható hasznos idő");
+    const usefulValue = expired ? this.intervalDuration(start, end) : this.duration(remaining);
     return html`<ha-card style=${`--tone:${presentation.tone}`}>
       <button class="hero interactive" @click=${() => this.moreInfo(presentation.source)}>
         <span class="hero-icon"><ha-icon icon=${presentation.icon}></ha-icon></span>
         <span class="eyebrow">${this.config.title || localized(this.hass, "Solar recommendation", "Solar ajánlás")}</span>
         <strong class="label">${presentation.label}</strong>
         <span class="detail">${presentation.detail}</span>
-        <span class="badge"><ha-icon icon=${active ? "mdi:weather-sunny" : "mdi:calendar-clock"}></ha-icon>${active ? localized(this.hass, "Window active", "Aktív időablak") : localized(this.hass, "Current / next window", "Aktuális / következő ablak")}</span>
+        <span class="badge"><ha-icon icon=${active ? "mdi:weather-sunny" : expired ? "mdi:weather-sunset-down" : "mdi:calendar-clock"}></ha-icon>${badge}</span>
       </button>
       <div class="window">
-        <div class="window-head"><span class="window-title"><ha-icon icon="mdi:timeline-clock-outline"></ha-icon>${localized(this.hass, "Today's Solar window", "Mai Solar-időablak")}</span><span class="window-state">${start && end ? `${localized(this.hass, "Now", "Most")} ${this.time(now)} · ${active ? localized(this.hass, "in progress", "folyamatban") : localized(this.hass, "forecast", "előrejelzés")}` : localized(this.hass, "none today", "ma már nincs")}</span></div>
+        <div class="window-head"><span class="window-title"><ha-icon icon="mdi:timeline-clock-outline"></ha-icon>${localized(this.hass, "Today's Solar window", "Mai Solar-időablak")}</span><span class="window-state">${windowState}</span></div>
         <div class="timeline">
           ${start && end ? html`
             <span class="edge" style=${`--edge:${timeline.windowStart}%`}><strong>${this.time(start)}</strong><small>${localized(this.hass, "Start", "Kezdés")}</small></span>
             <span class="edge" style=${`--edge:${timeline.windowStart + timeline.windowWidth}%`}><strong>${this.time(end)}</strong><small>${localized(this.hass, "End", "Vége")}</small></span>
           ` : nothing}
           <div class="rail">
-            ${start && end ? html`<span class="solar-band" style=${`--window-start:${timeline.windowStart}%;--window-width:${timeline.windowWidth}%;--window-progress:${this.progress(start, end, active)}%`}><span class="solar-elapsed"></span></span>` : html`<span class="empty-window">${localized(this.hass, "No more useful Solar window today", "Ma már nincs további hasznos Solar-időablak")}</span>`}
+            ${start && end ? html`<span class="solar-band" style=${`--window-start:${timeline.windowStart}%;--window-width:${timeline.windowWidth}%;--window-progress:${this.progress(start, end)}%`}><span class="solar-elapsed"></span></span>` : html`<span class="empty-window">${localized(this.hass, "No useful Solar window today", "Ma nincs hasznos Solar-időablak")}</span>`}
             ${timeline.nowVisible ? html`<span class="now-marker" style=${`--now:${timeline.now}%`} title=${`${localized(this.hass, "Now", "Most")} ${this.time(now)}`}></span>` : nothing}
           </div>
           <div class="axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
         </div>
       </div>
       <div class="metrics">
-        ${this.metric(this.config.window_remaining_entity, "mdi:timer-sand", usefulLabel, this.duration(remaining))}
+        ${this.metric(this.config.window_remaining_entity, "mdi:timer-sand", usefulLabel, usefulValue)}
         ${this.metric(this.config.expected_charge_entity, "mdi:battery-charging-medium", localized(this.hass, "Estimated Solar energy", "Becsült Solar energia"), this.value(expected))}
       </div>
     </ha-card>`;
