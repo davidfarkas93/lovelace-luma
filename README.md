@@ -62,6 +62,7 @@ the default.
 | `custom:luma-period-stats-card` | Compact swipeable day/month/year energy and source-attribution summary |
 | `custom:luma-ev-mode-card` | Persistent Off, Solar or Always charging strategy selector with confirmed changes |
 | `custom:luma-ev-control-card` | Temporary Charge Now override with lifecycle-aware handoff to the persistent base mode |
+| `custom:luma-ev-overview-card` | Context-aware current EV state, Solar opportunity and live PV/grid charging mix |
 | `custom:luma-ev-solar-readiness-card` | Canonical Solar recommendation, operational priority overrides and EVCC-style daily Solar-window timeline |
 | `custom:luma-navigation-card` | Contextual navigation card with shared Luma styling |
 | `custom:luma-navbar-card` | Primary navigation, grouped menu and switchable active-media dock |
