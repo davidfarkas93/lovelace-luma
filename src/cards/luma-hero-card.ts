@@ -9,6 +9,8 @@ import {
   runAction,
 } from "../helpers";
 import { lumaTokens } from "../styles";
+import { localized } from "../localize";
+import { summarizeHeroGroup, type HeroSummaryGroup } from "../hero-status";
 import type {
   HomeAssistant,
   LumaAction,
@@ -30,6 +32,9 @@ interface LumaHeroConfig {
   top_spacing?: number;
   banners?: LumaBannerConfig[];
   tap_action?: LumaAction;
+  state_map?: Record<string,string>;
+  language?: string;
+  summary_groups?: HeroSummaryGroup[];
 }
 
 @customElement("luma-hero-card")
@@ -112,6 +117,9 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 16px;
       }
 
+      .status-summary { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; grid-column: 1 / -1; }
+      .summary-part { display: flex; align-items: flex-start; gap: 6px; min-width: 0; color: var(--summary-tone, var(--luma-muted)); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+      .summary-part ha-icon { --mdc-icon-size: 17px; flex: 0 0 17px; margin-top: 1px; }
       .chips {
         display: flex;
         justify-content: flex-end;
@@ -258,6 +266,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
 
   setConfig(config: LumaHeroConfig): void {
     if (!config) throw new Error("Luma hero requires a configuration.");
+    if (config.summary_groups?.some(group => !group.items?.length)) throw new Error("Hero summary groups require items.");
     this.config = { chips: [], banners: [], ...config };
   }
 
@@ -279,6 +288,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
       ...(this.config.badge ? [this.config.badge] : []),
       ...(this.config.chips || []),
       ...(this.config.banners || []),
+      ...(this.config.summary_groups || []).flatMap(group => group.items),
     ]);
   }
 
@@ -334,11 +344,23 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private renderSummary() {
+    if (!this.hass || !this.config?.summary_groups?.length) return nothing;
+    const languageHass = this.config.language ? { ...this.hass, locale: { ...this.hass.locale, language: this.config.language } } : this.hass;
+    const names = (items: string[]) => `${items.slice(0,2).join(", ")}${items.length > 2 ? ` +${items.length - 2}` : ""}`;
+    return html`<div class="status-summary">${this.config.summary_groups.map(group => {
+      const summary = summarizeHeroGroup(this.hass!.states,group);
+      return html`${summary.clear && group.clear_label ? html`<span class="summary-part"><ha-icon icon="mdi:check-circle-outline"></ha-icon><span>${group.clear_label}</span></span>` : nothing}
+        ${summary.active.length && group.show_active !== false ? html`<span class="summary-part" style="--summary-tone:var(--warning-color)"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><span>${names(summary.active)} · ${group.active_label || localized(languageHass,"active","aktív")}</span></span>` : nothing}
+        ${summary.unavailable.length ? html`<span class="summary-part" style="--summary-tone:var(--warning-color)"><ha-icon icon="mdi:alert-outline"></ha-icon><span>${names(summary.unavailable)} · ${localized(languageHass,"unavailable","nem elérhető")}</span></span>` : nothing}`;
+    })}</div>`;
+  }
+
   render() {
     if (!this.hass || !this.config) return nothing;
     const entity = this.config.entity ? this.hass.states[this.config.entity] : undefined;
     const title = this.config.name || entityName(entity, "Luma");
-    const subtitle = this.config.subtitle || (entity ? entityState(this.hass, entity) : "");
+    const subtitle = this.config.subtitle || (this.config.entity ? entity ? entityState(this.hass, entity, this.config.state_map) : this.config.state_map?.unavailable || localized(this.hass,"Unavailable","Nem elérhető") : "");
     const icon = this.config.icon || entityIcon(entity, "mdi:home-outline");
     const accent = this.config.accent_color || "var(--primary-color)";
     const chips = (this.config.chips || []).filter((item) => itemIsVisible(this.hass!, item));
@@ -362,6 +384,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
           <div class="subtitle">${subtitle}</div>
           ${this.config.badge ? this.renderItem(this.config.badge, "badge") : nothing}
         </div>
+        ${this.renderSummary()}
         ${chips.length ? html`<div class="chips">${chips.map((item) => this.renderItem(item, "chip"))}</div>` : nothing}
         ${banners.length
           ? html`<div class="banners">${banners.map((item) => this.renderBanner(item))}</div>`

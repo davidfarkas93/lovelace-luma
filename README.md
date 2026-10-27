@@ -379,6 +379,19 @@ exclude_types:
   - lowMemory
 ```
 
+## Live hero summaries
+
+`luma-hero-card` can use its primary `entity` as a live subtitle, with an optional
+`state_map` for installation-specific labels. `summary_groups` adds compact
+normal/exception summaries below it. Each group takes `items` (`entity`, optional
+`name`), optional `active_states` (default `[on]`), `inactive_states` (default
+`[off]`), `clear_label`, and `active_label`. Missing, unknown, unavailable or
+unrecognized states prevent a clear summary and are explicitly reported.
+Use `show_active: false` to show only availability problems for that group.
+`language` overrides the summary's built-in labels. Names are shown up to two
+per category, followed by the remaining count; all source entities remain in
+runtime dashboard configuration. Existing hero configs are unaffected.
+
 ## Installation
 
 Add this repository to HACS as a custom **Dashboard** repository and install
