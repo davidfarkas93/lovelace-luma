@@ -343,7 +343,12 @@ timelines compact behind an explicit expand/collapse control. Set `group_seconds
 (e.g. `30`, default `0`) to group related detections from this camera into bounded
 time windows. A specific person/animal/vehicle detection represents related motion
 and line/zone detections; distinct object types and doorbell rings stay separate.
-Expand a group's detection count to play any original recording. `max_items`
+Expand a group's detection count to play any original recording. Set
+`show_group_details: false` to hide that disclosure while retaining grouping.
+For a latest-event preview, combine `max_items: 1`, `show_count: false` and
+`history_path: /your-dashboard/events`; an integrated footer opens the complete
+event view. `history_label` optionally overrides its localized “All events”
+label. The history link remains available for empty or unavailable sources. `max_items`
 applies after grouping. `language` optionally overrides the profile language
 (e.g. `hu`); `subtitle` overrides the supporting copy. Unavailable sources have
 an explicit unavailable state.

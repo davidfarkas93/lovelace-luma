@@ -20,3 +20,6 @@ export const AlarmUnavailable: Story = {args:{cardType:"custom:luma-alarm-card",
 const event = (type:string,offset:number) => ({id:`${type}-${offset}`,type,timestamp:new Date(Date.now()-offset*1000).toISOString(),snapshot:"",url:`/mock-video/${type}-${offset}`});
 export const GroupedEvents: Story = {args:{cardType:"custom:luma-timeline-card",config:{entity:"sensor.events",title:"Bejárat eseményei",language:"hu",group_seconds:30,initial_items:3},entities:{"sensor.events":{state:"7",attributes:{events:[event("smartDetectLine",60),event("motion",63),event("person",64),event("animal",120),event("motion",123),event("ring",240),event("motion",400)]}}}}};
 export const EventsUnavailable: Story = {args:{cardType:"custom:luma-timeline-card",config:{entity:"sensor.events",language:"hu"},entities:{"sensor.events":{state:"unavailable",attributes:{events:[event("person",60)]}}}}};
+
+export const LatestEvent: Story = {args:{...GroupedEvents.args,config:{...GroupedEvents.args!.config,title:"Legutóbbi esemény",subtitle:"Koppints a felvételhez",max_items:1,initial_items:1,show_group_details:false,show_count:false,history_path:"/security/front-door"}}};
+export const LatestEventUnavailable: Story = {args:{...EventsUnavailable.args,config:{...EventsUnavailable.args!.config,show_group_details:false,show_count:false,history_path:"/security/front-door"}}};
