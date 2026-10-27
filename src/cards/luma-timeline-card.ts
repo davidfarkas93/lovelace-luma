@@ -3,14 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { lumaTokens } from "../styles";
 import { localize, localized } from "../localize";
 import type { HomeAssistant, LovelaceCard } from "../types";
-
-interface TimelineEvent {
-  id?: string;
-  timestamp?: string;
-  url?: string;
-  snapshot?: string;
-  type?: string;
-}
+import { groupCameraEvents, type CameraEvent as TimelineEvent, type CameraEventGroup } from "../camera-events";
 
 interface TimelineConfig {
   type: string;
@@ -23,6 +16,8 @@ interface TimelineConfig {
   initial_items?: number;
   columns?: number;
   exclude_types?: string[];
+  group_seconds?: number;
+  language?: string;
 }
 
 const EVENT_META: Record<
@@ -42,6 +37,8 @@ const EVENT_META: Record<
   animal: { label: "Állat", icon: "mdi:paw", color: "#8b5cf6" },
   package: { label: "Csomag", icon: "mdi:package-variant", color: "#10b981" },
   ring: { label: "Csengetés", icon: "mdi:doorbell-video", color: "#ef4444" },
+  smartDetectLine: { label: "Vonalátlépés", icon: "mdi:vector-line", color: "var(--primary-color)" },
+  smartDetectZone: { label: "Zónamozgás", icon: "mdi:motion-sensor", color: "var(--primary-color)" },
   motion: {
     label: "Mozgás",
     icon: "mdi:motion-sensor",
@@ -61,6 +58,9 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
   @state() private playerLoading = false;
   @state() private playerError = false;
   private signingKey = "";
+  private get languageHass() {
+    return this.hass && this.config?.language ? { ...this.hass, locale: { ...this.hass.locale, language: this.config.language } } : this.hass;
+  }
 
   static styles = [
     lumaTokens,
@@ -121,6 +121,12 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
         grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
         gap: 10px;
       }
+      .event-group { min-width: 0; }
+      .event { width: 100%; }
+      .group-details { margin: 5px 4px 0; color: var(--luma-muted); font-size: 11px; }
+      summary { cursor: pointer; padding: 8px 0; }
+      .members { display: grid; gap: 4px; }
+      .members button { min-height: 40px; border: 1px solid var(--luma-border); border-radius: 10px; background: var(--luma-surface); color: inherit; font: inherit; text-align: left; padding: 8px; }
       .event {
         position: relative;
         display: grid;
@@ -431,13 +437,14 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
     if (changed.has("hass")) void this.signThumbnails();
   }
 
-  private events(): TimelineEvent[] {
+  private events(): CameraEventGroup[] {
     if (!this.hass || !this.config) return [];
     const entity = this.hass.states[this.config.entity];
-    const raw = entity?.attributes[this.config.events_attribute || "events"];
+    if (!entity || ["unknown", "unavailable"].includes(entity.state)) return [];
+    const raw = entity.attributes[this.config.events_attribute || "events"];
     const excluded = new Set(this.config.exclude_types || []);
-    return (Array.isArray(raw) ? (raw as TimelineEvent[]) : [])
-      .filter((event) => !excluded.has(event.type || ""))
+    return groupCameraEvents((Array.isArray(raw) ? (raw as TimelineEvent[]) : [])
+      .filter((event) => !excluded.has(event.type || "")), this.config.group_seconds)
       .slice(0, this.config.max_items);
   }
 
@@ -505,9 +512,9 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
   }
 
   private formatTime(value?: string): string {
-    const date = new Date(value || 0);
-    if (Number.isNaN(date.getTime())) return localized(this.hass,"Unknown time","Ismeretlen időpont");
-    return new Intl.DateTimeFormat(this.hass?.locale?.language || "en", {
+    const date = new Date(value || "");
+    if (Number.isNaN(date.getTime())) return localized(this.languageHass,"Unknown time","Ismeretlen időpont");
+    return new Intl.DateTimeFormat(this.languageHass?.locale?.language || "en", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -552,7 +559,7 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
     const title =
       this.config.title ||
       entity?.attributes.friendly_name ||
-      localized(this.hass,"Camera events","Kamera események");
+      localized(this.languageHass,"Camera events","Kamera események");
     return html`
       <ha-card>
         <div class="header">
@@ -561,9 +568,9 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
           ></span>
           <div>
             <h2>${title}</h2>
-            <div class="subtitle">UniFi Protect · ${localized(this.hass,"latest detections","legutóbbi észlelések")}</div>
+            <div class="subtitle">${this.config.subtitle || localized(this.languageHass,"Latest detections · tap to play","Legutóbbi észlelések · koppints a felvételhez")}</div>
           </div>
-          <span class="count">${events.length} ${localized(this.hass,"events","esemény")}</span>
+          <span class="count">${events.length} ${localized(this.languageHass,"events","esemény")}</span>
         </div>
         ${events.length
           ? html`<div
@@ -572,9 +579,10 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
               >
                 ${visibleEvents.map((event) => {
                   const meta = this.meta(event.type);
-                  return html` <button
+                  return html`<div class="event-group"><button
                     class="event"
                     style=${`--tone:${meta.color}`}
+                    ?disabled=${!event.url}
                     @click=${() => void this.openEvent(event)}
                   >
                     <span class="media"
@@ -590,7 +598,7 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
                                       : "mdi:camera-outline"}
                                   ></ha-icon
                                   >${this.failedSnapshots.has(event.snapshot)
-                                    ? html`<span>${localized(this.hass,"UNAVAILABLE","NEM ELÉRHETŐ")}</span>`
+                                    ? html`<span>${localized(this.languageHass,"UNAVAILABLE","NEM ELÉRHETŐ")}</span>`
                                     : nothing}</span
                                 >`
                               : nothing}<img
@@ -606,13 +614,13 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
                             />`
                         : html`<span class="placeholder failed"
                             ><ha-icon icon="mdi:image-off-outline"></ha-icon
-                            ><span>${localized(this.hass,"NO IMAGE","NINCS KÉP")}</span></span
+                            ><span>${localized(this.languageHass,"NO IMAGE","NINCS KÉP")}</span></span
                           >`}</span
                     >
                     <span class="details"
                       ><span class="type"
                         ><ha-icon icon=${meta.icon}></ha-icon
-                        >${localized(this.hass,{Személy:"Person",Jármű:"Vehicle",Állat:"Animal",Csengetés:"Doorbell",Mozgás:"Motion"}[meta.label]||meta.label,meta.label)}</span
+                        >${localized(this.languageHass,{Személy:"Person",Jármű:"Vehicle",Állat:"Animal",Csengetés:"Doorbell",Mozgás:"Motion",Csomag:"Package",Vonalátlépés:"Line crossing",Zónamozgás:"Zone motion"}[meta.label]||meta.label,meta.label)}</span
                       ><span class="time"
                         >${this.formatTime(event.timestamp)}</span
                       ></span
@@ -622,7 +630,7 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
                           ><ha-icon icon="mdi:play"></ha-icon
                         ></span>`
                       : nothing}
-                  </button>`;
+                  </button>${event.members.length > 1 ? html`<details class="group-details"><summary>${event.members.length} ${localized(this.languageHass,"related detections","kapcsolódó észlelés")}</summary><div class="members">${event.members.map(member => html`<button ?disabled=${!member.url} @click=${() => void this.openEvent(member)}>${this.formatTime(member.timestamp)} · ${localized(this.languageHass,{Személy:"Person",Jármű:"Vehicle",Állat:"Animal",Csengetés:"Doorbell",Mozgás:"Motion",Csomag:"Package",Vonalátlépés:"Line crossing",Zónamozgás:"Zone motion"}[this.meta(member.type).label] || this.meta(member.type).label,this.meta(member.type).label)}</button>`)}</div></details>` : nothing}</div>`;
                 })}
               </div>
               ${events.length > initial
@@ -636,11 +644,11 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
                         : "mdi:chevron-down"}
                     ></ha-icon
                     >${this.expanded
-                      ? localize(this.hass, "less")
-                      : `${localize(this.hass, "more")} · ${events.length - initial}`}
+                      ? localize(this.languageHass, "less")
+                      : `${localize(this.languageHass, "more")} · ${events.length - initial}`}
                   </button>`
                 : nothing}`
-          : html`<div class="empty">${localized(this.hass,"No camera events to display.","Nincs megjeleníthető kameraesemény.")}</div>`}
+          : html`<div class="empty">${!entity || ["unknown","unavailable"].includes(entity.state) ? localized(this.languageHass,"Camera events unavailable.","A kameraesemények nem elérhetők.") : localized(this.languageHass,"No camera events to display.","Nincs megjeleníthető kameraesemény.")}</div>`}
       </ha-card>
       ${this.selected?.url
         ? html`<div
@@ -652,7 +660,7 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
             }}
           >
             <div class="player">
-              <button class="close" aria-label=${localize(this.hass, "dismiss")} @click=${this.close}>
+              <button class="close" aria-label=${localize(this.languageHass, "dismiss")} @click=${this.close}>
                 <ha-icon icon="mdi:close"></ha-icon></button
               >${this.playerLoading || this.playerError
                 ? html`<span
@@ -664,8 +672,8 @@ export class LumaTimelineCard extends LitElement implements LovelaceCard {
                     ></ha-icon
                     ><span
                       >${this.playerError
-                        ? localized(this.hass,"VIDEO UNAVAILABLE","A VIDEÓ NEM ELÉRHETŐ")
-                        : localized(this.hass,"LOADING VIDEO","VIDEÓ BETÖLTÉSE")}</span
+                        ? localized(this.languageHass,"VIDEO UNAVAILABLE","A VIDEÓ NEM ELÉRHETŐ")
+                        : localized(this.languageHass,"LOADING VIDEO","VIDEÓ BETÖLTÉSE")}</span
                     ></span
                   >`
                 : nothing}<video

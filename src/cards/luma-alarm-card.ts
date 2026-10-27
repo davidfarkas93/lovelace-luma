@@ -18,6 +18,7 @@ interface Config {
   name?: string;
   modes?: Mode[];
   compact_mobile?: boolean;
+  language?: string;
 }
 
 const stateLabelsHu: Record<string, string> = {
@@ -53,6 +54,8 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
   @state() private config?: Config;
   @state() private pending?: Mode["mode"];
   private timer?: number;
+  private get languageHass() { return this.hass && this.config?.language ? { ...this.hass, locale: { ...this.hass.locale, language: this.config.language } } : this.hass; }
+  disconnectedCallback() { clearTimeout(this.timer); this.pending = undefined; super.disconnectedCallback(); }
 
   static styles = [
     lumaTokens,
@@ -212,17 +215,18 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config) return nothing;
     const entity = this.hass.states[this.config.entity];
     const current = entity?.state || "unavailable";
+    const unavailable = ["unknown", "unavailable"].includes(current);
     const triggered = current === "triggered";
     const transitioning = ["arming", "pending"].includes(current);
     const disarmed = current === "disarmed";
-    const tone = triggered
+    const tone = unavailable ? "var(--warning-color)" : triggered
       ? "var(--error-color)"
       : transitioning
         ? "var(--warning-color)"
         : disarmed
           ? "var(--secondary-text-color)"
           : "var(--success-color)";
-    const icon = triggered
+    const icon = unavailable ? "mdi:shield-alert-outline" : triggered
       ? "mdi:shield-alert"
       : disarmed
         ? "mdi:shield-off-outline"
@@ -231,17 +235,17 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
           : current === "armed_home"
             ? "mdi:shield-home"
             : "mdi:shield-lock";
-    const hint = triggered
-      ? localized(this.hass,"Immediate attention required","Azonnali figyelmet igényel")
+    const hint = unavailable ? localized(this.languageHass,"Alarm status unavailable","A riasztó állapota nem elérhető") : triggered
+      ? localized(this.languageHass,"Immediate attention required","Azonnali figyelmet igényel")
       : transitioning
-        ? localized(this.hass,"The system is changing state","A rendszer állapotot vált")
+        ? localized(this.languageHass,"The system is changing state","A rendszer állapotot vált")
         : disarmed
-          ? localized(this.hass,"The system is currently disarmed","A rendszer jelenleg nincs élesítve")
-          : localized(this.hass,"Security system active","Biztonsági rendszer aktív");
+          ? localized(this.languageHass,"The system is currently disarmed","A rendszer jelenleg nincs élesítve")
+          : localized(this.languageHass,"Security system active","Biztonsági rendszer aktív");
     const modes = this.config.modes || [
-      {mode:"away",name:localized(this.hass,"Away","Távol"),subtitle:localized(this.hass,"Full protection","Teljes védelem")},
-      {mode:"night",name:localized(this.hass,"Night","Éjszaka"),subtitle:localized(this.hass,"Night zones","Éjszakai zónák")},
-      {mode:"disarm",name:localized(this.hass,"Disarm","Kikapcsolás"),subtitle:localized(this.hass,"Disable protection","Védelem leállítása")},
+      {mode:"away",name:localized(this.languageHass,"Away","Távol"),subtitle:localized(this.languageHass,"Full protection","Teljes védelem")},
+      {mode:"night",name:localized(this.languageHass,"Night","Éjszaka"),subtitle:localized(this.languageHass,"Night zones","Éjszakai zónák")},
+      {mode:"disarm",name:localized(this.languageHass,"Disarm","Kikapcsolás"),subtitle:localized(this.languageHass,"Disable protection","Védelem leállítása")},
     ];
 
     return html`
@@ -249,10 +253,10 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
         <button class="summary" @click=${() => runAction(this, this.hass!, { action: "more-info" }, this.config!.entity)}>
           <span class="icon"><ha-icon icon=${icon}></ha-icon></span>
           <span class="copy">
-            <span class="name">${this.config.name || localized(this.hass,"Alarm","Riasztó")}</span>
+            <span class="name">${this.config.name || localized(this.languageHass,"Alarm","Riasztó")}</span>
             <div class="hint">${hint}</div>
           </span>
-          <span class="status"><span class="dot"></span>${localizedMap(this.hass,stateLabelsEn,stateLabelsHu,current) || entityState(this.hass, entity)}</span>
+          <span class="status"><span class="dot"></span>${localizedMap(this.languageHass,stateLabelsEn,stateLabelsHu,current) || entityState(this.hass, entity)}</span>
         </button>
         <div class="actions" style=${`--count:${modes.length}`}>
           ${modes.map((mode) => {
@@ -263,7 +267,7 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
               || ((triggered || transitioning) && mode.mode !== "disarm");
             const confirming = this.pending === mode.mode;
             const modeTone = mode.mode === "disarm"
-              ? "var(--error-color)"
+              ? (active ? "var(--secondary-text-color)" : "var(--error-color)")
               : mode.mode === "night"
                 ? "var(--info-color,var(--primary-color))"
                 : "var(--success-color)";
@@ -277,7 +281,7 @@ export class LumaAlarmCard extends LitElement implements LovelaceCard {
                 @click=${() => this.activate(mode.mode, disabled)}
               >
                 <ha-icon icon=${confirming ? "mdi:check" : mode.icon || modeIcon[mode.mode]}></ha-icon>
-                <span class="label">${confirming ? localize(this.hass, "confirm") : mode.name}</span>
+                <span class="label">${confirming ? localize(this.languageHass, "confirm") : mode.name}</span>
               </button>
             `;
           })}

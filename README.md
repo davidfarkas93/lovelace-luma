@@ -339,7 +339,25 @@ while Luma owns presentation. The attribute name, visible item count, column
 count, and excluded event types remain configurable at runtime. Snapshot tiles
 show a tone-aware shimmer while authenticated images load and a clear fallback
 when an image is missing or unavailable. Set `initial_items` to keep long
-timelines compact behind an explicit expand/collapse control.
+timelines compact behind an explicit expand/collapse control. Set `group_seconds`
+(e.g. `30`, default `0`) to group related detections from this camera into bounded
+time windows. A specific person/animal/vehicle detection represents related motion
+and line/zone detections; distinct object types and doorbell rings stay separate.
+Expand a group's detection count to play any original recording. `max_items`
+applies after grouping. `language` optionally overrides the profile language
+(e.g. `hu`); `subtitle` overrides the supporting copy. Unavailable sources have
+an explicit unavailable state.
+
+`luma-sensor-grid-card` accepts `collapsible: true` to show a compact summary,
+active binary sensors and unavailable/missing entities by default. Its Details
+button reveals every configured item. Use `clear_label` for a domain-specific
+normal-state summary, `language` for a language override, and per-item `state_map`
+for installation-specific state names. Normal sensors stay neutral; active and
+unavailable sensors remain visible with warning color.
+
+`luma-alarm-card` also accepts `language`. A disarmed mode uses a neutral tone;
+unknown/unavailable alarm state is explicitly marked as unavailable. All mode
+actions retain the inline second-tap confirmation.
 
 Event video uses Home Assistant's chunked UniFi Protect proxy directly. The
 player requests data eagerly, starts as soon as the first playable MP4 data is
