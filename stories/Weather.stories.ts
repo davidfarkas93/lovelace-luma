@@ -37,3 +37,6 @@ export const IncompleteDailyRanges: Story = {
     ],forecast_hourly:hourly() }},
   },720),
 };
+
+export const DailyOverview: Story = {render:()=>renderCard("custom:luma-weather-forecast-card",{weather_entity:"weather.home",days:7},{"weather.home":{state:"sunny",attributes:{temperature_unit:"°C",forecast_daily:daily,forecast_hourly:hourly(true)}}},900)};
+export const DailyLongConditions: Story = {render:()=>renderCard("custom:luma-weather-forecast-card",{weather_entity:"weather.home",days:7},{"weather.home":{state:"rainy",attributes:{temperature_unit:"°C",forecast_daily:daily.map((day,i)=>({...day,condition:i%2?"exceptional":"lightning-rainy",precipitation_probability:i===2?undefined:i===0?0:85})),forecast_hourly:hourly(true)}}},900)};

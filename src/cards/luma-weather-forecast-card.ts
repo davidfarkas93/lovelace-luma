@@ -23,21 +23,34 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
   get hass() { return this._hass; }
 
   static styles = [lumaTokens, css`
-    ha-card { padding:16px; border:1px solid var(--luma-border); border-radius:22px; background:var(--luma-surface); box-shadow:var(--luma-shadow); }
-    .days { display:grid; gap:4px; }
-    .day { display:grid; grid-template-columns:52px 44px minmax(0,1fr); align-items:center; gap:12px; min-width:0; padding:12px 6px; border:0; border-bottom:1px solid var(--luma-border); color:inherit; background:color-mix(in srgb,var(--weather-tone) 4%,var(--luma-surface)); font:inherit; text-align:left; cursor:pointer; border-radius:10px; transition:background .18s ease; }
+    :host { display:block; min-width:0; container-type:inline-size; }
+    ha-card { padding:12px; border:1px solid var(--luma-border); border-radius:var(--luma-radius-card); background:linear-gradient(145deg,color-mix(in srgb,var(--primary-color) 3%,var(--luma-surface)),var(--luma-surface) 65%); box-shadow:var(--luma-shadow); }
+    .days { display:grid; }
+    .day { display:grid; grid-template-columns:76px minmax(136px,1fr) minmax(140px,280px) 58px 16px; grid-template-areas:"date sky temps rain arrow"; align-items:center; gap:12px; min-width:0; width:100%; min-height:78px; padding:12px; border:0; border-bottom:1px solid var(--luma-border); border-radius:0; color:inherit; background:transparent; font:inherit; text-align:left; cursor:pointer; transition:background .18s ease; }
     .day:last-child { border-bottom-color:transparent; }
-    .day:hover { background:color-mix(in srgb,var(--weather-tone) 7%,var(--luma-surface)); }
-    .date { font-size:12px; font-weight:var(--luma-weight-strong); text-transform:capitalize; }
-    .sky { display:grid; justify-items:center; gap:4px; }
-    .icon { color:var(--weather-tone); --mdc-icon-size:27px; }
-    .day-copy { min-width:0; }
-    .temps { display:grid; grid-template-columns:34px minmax(32px,1fr) 34px; align-items:center; gap:8px; font-size:15px; font-weight:var(--luma-weight-strong); font-variant-numeric:tabular-nums; }
-    .low { color:var(--luma-muted); text-align:right; font-weight:var(--luma-weight-medium); }
-    .track { position:relative; height:5px; border-radius:99px; background:color-mix(in srgb,var(--primary-text-color) 7%,transparent); }
-    .band { position:absolute; top:0; bottom:0; left:min(var(--range-start),calc(100% - 5px)); width:calc(var(--range-end) - var(--range-start)); min-width:5px; max-width:100%; border-radius:inherit; background:linear-gradient(90deg,#65a9c4,#d7b14e); }
-    .condition { display:block; margin-top:5px; color:var(--luma-muted); font-size:11px; line-height:1.4; overflow-wrap:anywhere; }
-    .rain { color:var(--luma-muted); font-size:10px; font-variant-numeric:tabular-nums; }.rain.likely { color:var(--info-color,#3184bf); font-weight:700; }
+    .day.today { border-radius:var(--luma-radius-control); background:color-mix(in srgb,var(--primary-color) 5%,transparent); box-shadow:inset 3px 0 0 color-mix(in srgb,var(--primary-color) 45%,transparent); }
+    .day:hover { background:color-mix(in srgb,var(--primary-color) 6%,transparent); }
+    .date { grid-area:date; display:grid; gap:4px; min-width:0; }
+    .date-label { font-size:13px; font-weight:var(--luma-weight-strong); text-transform:capitalize; }
+    .today .date-label { color:var(--primary-color); }
+    .calendar-date { color:var(--luma-muted); font-size:11px; font-variant-numeric:tabular-nums; }
+    .sky { grid-area:sky; display:flex; align-items:center; gap:10px; min-width:0; }
+    .weather-icon { display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px; border-radius:var(--luma-radius-control); color:var(--weather-tone); background:color-mix(in srgb,var(--weather-tone) 10%,transparent); }
+    .icon { --mdc-icon-size:25px; }
+    .condition { color:var(--primary-text-color); font-size:12px; line-height:1.4; overflow-wrap:anywhere; }
+    .temps { grid-area:temps; display:grid; grid-template-columns:34px minmax(32px,1fr) 38px; align-items:center; gap:10px; min-width:0; font-variant-numeric:tabular-nums; }
+    .low { color:var(--luma-muted); text-align:right; font-size:14px; font-weight:var(--luma-weight-medium); }
+    .high { text-align:right; font-size:19px; font-weight:var(--luma-weight-title); }
+    .track { position:relative; height:6px; border-radius:99px; background:color-mix(in srgb,var(--primary-text-color) 6%,transparent); }
+    .track.no-data { background:transparent; }
+    .band { position:absolute; top:0; bottom:0; left:min(var(--range-start),calc(100% - 6px)); width:calc(var(--range-end) - var(--range-start)); min-width:6px; max-width:100%; border-radius:inherit; background:linear-gradient(90deg,#65a9c4,#d7b14e); }
+    .rain { grid-area:rain; display:flex; align-items:center; justify-content:flex-end; gap:4px; color:var(--luma-muted); font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .rain ha-icon { --mdc-icon-size:15px; }
+    .rain.likely { color:var(--info-color,#3184bf); font-weight:var(--luma-weight-strong); }
+    .arrow { grid-area:arrow; color:var(--luma-muted); --mdc-icon-size:16px; opacity:.65; }
+    .day:hover .arrow { color:var(--primary-color); opacity:1; }
+    .range-key { display:flex; align-items:center; gap:6px; padding:10px 12px 2px; color:var(--luma-muted); font-size:10px; line-height:1.5; }
+    .range-key ha-icon { --mdc-icon-size:15px; }
     .loading { display:grid; place-items:center; min-height:104px; color:var(--luma-muted); font-size:12px; }
     .facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .fact { display:grid; grid-template-columns:28px minmax(0,1fr); align-items:center; gap:8px; padding:10px; border-radius:15px; background:color-mix(in srgb,var(--primary-color) 7%,var(--luma-surface)); }
@@ -51,11 +64,20 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
     .hour ha-icon { color:var(--weather-tone,var(--primary-color)); --mdc-icon-size:20px; }
     .hour-temp { font-size:11px; font-weight:720; }
     .hour-rain { color:var(--info-color,var(--primary-color)); font-size:8px; }
+    @container(max-width:640px) {
+      ha-card { padding:8px; }
+      .day { grid-template-columns:58px minmax(0,1fr) 46px 14px; grid-template-areas:"date sky rain arrow" "date temps temps arrow"; gap:7px 9px; min-height:88px; padding:12px 10px; }
+      .sky { gap:8px; }
+      .weather-icon { flex-basis:30px; width:30px; height:30px; border-radius:10px; }
+      .day .icon { --mdc-icon-size:21px; }
+      .temps { grid-template-columns:28px minmax(32px,1fr) 34px; gap:8px; }
+      .high { font-size:18px; }
+      .low { font-size:13px; }
+      .rain { font-size:11px; }
+      .date-label { font-size:12px; }
+      .calendar-date { font-size:10px; }
+    }
     @media(max-width:599px) {
-      ha-card { padding:11px; }
-      .day { grid-template-columns:46px 36px minmax(0,1fr); gap:7px; padding:11px 2px; }
-      .day .icon { --mdc-icon-size:25px; }
-      .temps { grid-template-columns:29px minmax(24px,1fr) 29px; gap:6px; font-size:14px; }
       .facts { grid-template-columns:1fr 1fr; }
       .hourly { grid-template-columns:repeat(4,minmax(0,1fr)); overflow-x:auto; }
     }
@@ -120,27 +142,31 @@ export class LumaWeatherForecastCard extends LitElement implements LovelaceCard 
     const hours = this.dayHours(selected);
     const bands = dailyTemperatureBands(this.forecast);
     return html`<ha-card><div class="days" style=${`--days:${this.forecast.length}`}>${this.forecast.map((item, index) => {
-      const date = item.datetime ? new Intl.DateTimeFormat(lang, { weekday:"short" }).format(new Date(item.datetime)) : "—";
+      const dayDate = item.datetime && Number.isFinite(Date.parse(item.datetime)) ? new Date(item.datetime) : undefined;
+      const date = dayDate ? new Intl.DateTimeFormat(lang, { weekday:"short" }).format(dayDate) : "—";
+      const calendarDate = dayDate ? new Intl.DateTimeFormat(lang, { month:"short", day:"numeric" }).format(dayDate) : "—";
       const chance = precipitationChance(item);
       const visual = weatherVisual(item.condition,isHungarian(this.hass));
       const today = new Date().toLocaleDateString("sv-SE");
       const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
       const tomorrow = tomorrowDate.toLocaleDateString("sv-SE");
-      const dayKey = item.datetime ? new Date(item.datetime).toLocaleDateString("sv-SE") : "";
+      const dayKey = dayDate ? dayDate.toLocaleDateString("sv-SE") : "";
       const dateLabel = dayKey === today ? localized(this.hass,"Today","Ma") : dayKey === tomorrow ? localized(this.hass,"Tomorrow","Holnap") : date;
       const band = bands[index];
       const low = weatherNumber(item.templow), high = weatherNumber(item.temperature);
       const format = (value: number | undefined) => value == null ? "—" : new Intl.NumberFormat(lang, { maximumFractionDigits: 0 }).format(value);
       const unit = String(weatherAttrs.temperature_unit || "°C");
-      const label = `${dateLabel} · ${visual.label} · ${localized(this.hass,"Minimum","Minimum")}: ${format(low)} ${unit} · ${localized(this.hass,"Maximum","Maximum")}: ${format(high)} ${unit}${chance == null ? "" : ` · ${localized(this.hass,"Chance of precipitation","Csapadék esélye")}: ${chance}%`}`;
-      return html`<button class="day interactive" aria-label=${label} style=${`--weather-tone:${visual.tone}`} @click=${() => {this.selected = item;this.detailsOpen=true;}}>
-        <span class="date">${dateLabel}</span>
-        <span class="sky"><ha-icon class="icon" icon=${visual.icon}></ha-icon>${chance != null ? html`<span class=${`rain ${chance >= 30 ? "likely" : ""}`}>${chance}%</span>` : nothing}</span>
-        <span class="day-copy"><span class="temps"><span class="low">${format(low)}°</span><span class="track" aria-hidden="true">${band ? html`<span class="band" style=${`--range-start:${band.start}%;--range-end:${band.end}%`}></span>` : nothing}</span><span>${format(high)}°</span></span><span class="condition">${visual.label}</span></span>
+      const label = `${dateLabel} · ${calendarDate} · ${visual.label} · ${localized(this.hass,"Minimum","Minimum")}: ${format(low)} ${unit} · ${localized(this.hass,"Maximum","Maximum")}: ${format(high)} ${unit}${chance == null ? "" : ` · ${localized(this.hass,"Chance of precipitation","Csapadék esélye")}: ${chance}%`}`;
+      return html`<button type="button" class=${`day interactive ${dayKey === today ? "today" : ""}`} aria-current=${dayKey === today ? "date" : nothing} aria-label=${label} style=${`--weather-tone:${visual.tone}`} @click=${() => {this.selected = item;this.detailsOpen=true;}}>
+        <span class="date"><span class="date-label">${dateLabel}</span><time class="calendar-date" datetime=${dayDate?.toISOString() || nothing}>${calendarDate}</time></span>
+        <span class="sky"><span class="weather-icon"><ha-icon class="icon" icon=${visual.icon}></ha-icon></span><span class="condition">${visual.label}</span></span>
+        <span class="temps"><span class="low">${low == null ? "—" : `${format(low)}°`}</span><span class=${`track ${band ? "" : "no-data"}`} aria-hidden="true">${band ? html`<span class="band" style=${`--range-start:${band.start}%;--range-end:${band.end}%`}></span>` : nothing}</span><span class="high">${high == null ? "—" : `${format(high)}°`}</span></span>
+        <span class=${`rain ${chance != null && chance >= 30 ? "likely" : ""}`} title=${localized(this.hass,"Chance of precipitation","Csapadék esélye")}><ha-icon icon="mdi:water-outline"></ha-icon><span>${chance == null ? "—" : `${chance}%`}</span></span>
+        <ha-icon class="arrow" icon="mdi:chevron-right" aria-hidden="true"></ha-icon>
       </button>`;
-    })}</div></ha-card>
+    })}</div><div class="range-key"><ha-icon icon="mdi:thermometer"></ha-icon><span>${localized(this.hass,"Daily low and high · shared weekly scale","Napi minimum és maximum · közös heti skála")}</span></div></ha-card>
     <luma-bottom-sheet .open=${this.detailsOpen}
-      .heading=${selected?.datetime ? new Intl.DateTimeFormat(lang,{weekday:"long",month:"long",day:"numeric"}).format(new Date(selected.datetime)) : localized(this.hass,"Details","Részletek")}
+      .heading=${selected?.datetime && Number.isFinite(Date.parse(selected.datetime)) ? new Intl.DateTimeFormat(lang,{weekday:"long",month:"long",day:"numeric"}).format(new Date(selected.datetime)) : localized(this.hass,"Details","Részletek")}
       .subtitle=${weatherVisual(selected?.condition,isHungarian(this.hass)).label}
       .icon=${weatherVisual(selected?.condition).icon} .maxWidth=${560}
       .closeLabel=${localized(this.hass,"Close","Bezárás")} @sheet-dismiss=${()=>this.detailsOpen=false}

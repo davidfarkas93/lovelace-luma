@@ -89,7 +89,7 @@ the default.
 | `custom:luma-appliance-card` | Appliance state, remaining time and cycle progress |
 | `custom:luma-entity-grid-card` | Fast runtime-filtered responsive entity collection without `auto-entities` templates |
 | `custom:luma-service-grid-card` | One card per application: availability, container counts, metrics and confirmed management in a detail sheet |
-| `custom:luma-weather-forecast-card` | Responsive daily forecast with an hourly, data-rich per-day detail sheet |
+| `custom:luma-weather-forecast-card` | Daily forecast with dated rows, a subtle Today highlight, shared temperature bands, precipitation chance and per-day detail sheets |
 | `custom:luma-weather-hourly-card` | Scrollable 24-hour temperature, precipitation and wind outlook |
 | `custom:luma-weather-details-card` | Current atmospheric, recent rain, optional air-quality and sun details |
 
