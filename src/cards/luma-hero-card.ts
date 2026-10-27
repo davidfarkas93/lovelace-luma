@@ -117,9 +117,6 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 16px;
       }
 
-      .status-summary { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; grid-column: 1 / -1; }
-      .summary-part { display: flex; align-items: flex-start; gap: 6px; min-width: 0; color: var(--summary-tone, var(--luma-muted)); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-      .summary-part ha-icon { --mdc-icon-size: 17px; flex: 0 0 17px; margin-top: 1px; }
       .chips {
         display: flex;
         justify-content: flex-end;
@@ -348,12 +345,12 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config?.summary_groups?.length) return nothing;
     const languageHass = this.config.language ? { ...this.hass, locale: { ...this.hass.locale, language: this.config.language } } : this.hass;
     const names = (items: string[]) => `${items.slice(0,2).join(", ")}${items.length > 2 ? ` +${items.length - 2}` : ""}`;
-    return html`<div class="status-summary">${this.config.summary_groups.map(group => {
+    return html`${this.config.summary_groups.map(group => {
       const summary = summarizeHeroGroup(this.hass!.states,group);
-      return html`${summary.clear && group.clear_label ? html`<span class="summary-part"><ha-icon icon="mdi:check-circle-outline"></ha-icon><span>${group.clear_label}</span></span>` : nothing}
-        ${summary.active.length && group.show_active !== false ? html`<span class="summary-part" style="--summary-tone:var(--warning-color)"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><span>${names(summary.active)} · ${group.active_label || localized(languageHass,"active","aktív")}</span></span>` : nothing}
-        ${summary.unavailable.length ? html`<span class="summary-part" style="--summary-tone:var(--warning-color)"><ha-icon icon="mdi:alert-outline"></ha-icon><span>${names(summary.unavailable)} · ${localized(languageHass,"unavailable","nem elérhető")}</span></span>` : nothing}`;
-    })}</div>`;
+      return html`${summary.clear && group.clear_label ? html`<span class="chip summary-part" style="--item-color:var(--secondary-text-color)"><ha-icon icon="mdi:check-circle-outline"></ha-icon><span>${group.clear_label}</span></span>` : nothing}
+        ${summary.active.length && group.show_active !== false ? html`<span class="chip summary-part" style="--item-color:var(--warning-color)"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><span>${names(summary.active)} · ${group.active_label || localized(languageHass,"active","aktív")}</span></span>` : nothing}
+        ${summary.unavailable.length ? html`<span class="chip summary-part" style="--item-color:var(--warning-color)"><ha-icon icon="mdi:alert-outline"></ha-icon><span>${names(summary.unavailable)} · ${localized(languageHass,"unavailable","nem elérhető")}</span></span>` : nothing}`;
+    })}`;
   }
 
   render() {
@@ -384,8 +381,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
           <div class="subtitle">${subtitle}</div>
           ${this.config.badge ? this.renderItem(this.config.badge, "badge") : nothing}
         </div>
-        ${this.renderSummary()}
-        ${chips.length ? html`<div class="chips">${chips.map((item) => this.renderItem(item, "chip"))}</div>` : nothing}
+        ${chips.length || this.config.summary_groups?.length ? html`<div class="chips">${chips.map((item) => this.renderItem(item, "chip"))}${this.renderSummary()}</div>` : nothing}
         ${banners.length
           ? html`<div class="banners">${banners.map((item) => this.renderBanner(item))}</div>`
           : nothing}

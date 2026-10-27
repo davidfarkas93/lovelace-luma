@@ -383,7 +383,9 @@ exclude_types:
 
 `luma-hero-card` can use its primary `entity` as a live subtitle, with an optional
 `state_map` for installation-specific labels. `summary_groups` adds compact
-normal/exception summaries below it. Each group takes `items` (`entity`, optional
+normal/exception chips to the same row as `chips`. Use `chips_inline: true`
+to align the shared chip row beside the title on desktop; it wraps naturally
+on narrow screens. Each group takes `items` (`entity`, optional
 `name`), optional `active_states` (default `[on]`), `inactive_states` (default
 `[off]`), `clear_label`, and `active_label`. Missing, unknown, unavailable or
 unrecognized states prevent a clear summary and are explicitly reported.
