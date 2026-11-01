@@ -41,6 +41,16 @@ submission, and honors their limits and step. The mode selector adapts to its
 container width and keeps the selected mode explanation visible. All three EV
 cards accept optional `language: hu` or `language: en`; otherwise they follow HA.
 
+The session browser, period statistics and energy mix also accept `language` and
+adapt to their container width, including desktop half-columns. Session history
+supports `completed_only: true` to keep an active charge out of the completed
+history list. Gray segments have an explicit **Unclassified** value and explanation:
+measured energy for which no reliable source attribution exists. Energy-mix shares
+use the measured total (when supplied) rather than normalizing missing energy away;
+missing source measurements display a dash. Period and session cards use the same
+gray-segment convention. `Remote` stop reasons are labelled remote stops because
+the OCPP value alone does not identify who sent the command.
+
 | Card | Purpose |
 | --- | --- |
 | `custom:luma-home-hero-card` | Weather-aware home hero, dynamic greeting, incidents, acknowledgements, alarm, waste and irrigation context |

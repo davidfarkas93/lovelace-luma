@@ -21,6 +21,7 @@ interface Config {
   type: string;
   title?: string;
   subtitle?: string;
+  language?: string;
   unit?: string;
   decimals?: number;
   periods: Period[];
@@ -34,12 +35,15 @@ export class LumaPeriodStatsCard extends LitElement implements LovelaceCard {
   private dragStart?: number;
 
   static styles = [lumaTokens, css`
+    :host{display:block;min-width:0;container-type:inline-size}button:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+
     ha-card{padding:17px;border:1px solid color-mix(in srgb,var(--primary-color) 13%,transparent);border-radius:22px;background:linear-gradient(145deg,color-mix(in srgb,var(--primary-color) 5%,var(--luma-surface)),var(--luma-surface) 70%);box-shadow:var(--luma-shadow);touch-action:pan-y;user-select:none}
-    .head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.copy{min-width:0}.title{font-size:14px;font-weight:var(--luma-weight-title)}.subtitle{margin-top:2px;color:var(--luma-muted);font-size:10px}.tabs{display:flex;flex:0 0 auto;padding:3px;border-radius:999px;background:color-mix(in srgb,var(--primary-color) 7%,transparent)}.tab{display:flex;align-items:center;gap:5px;min-height:28px;padding:6px 10px;border:0;border-radius:999px;background:transparent;color:var(--luma-muted);font:680 10px/1 sans-serif;cursor:pointer;transition:.18s ease}.tab ha-icon{--mdc-icon-size:14px}.tab:hover{color:var(--primary-color)}.tab.active{background:var(--luma-surface);color:var(--primary-color);box-shadow:0 3px 10px rgba(0,0,0,.08)}
+    .head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.copy{min-width:0}.title{font-size:14px;font-weight:var(--luma-weight-title)}.subtitle{margin-top:2px;color:var(--luma-muted);font-size:10px}.tabs{display:flex;flex:0 0 auto;padding:3px;border-radius:999px;background:color-mix(in srgb,var(--primary-color) 7%,transparent)}.tab{display:flex;align-items:center;gap:5px;min-height:44px;padding:6px 10px;border:0;border-radius:999px;background:transparent;color:var(--luma-muted);font:680 10px/1 sans-serif;cursor:pointer;transition:.18s ease}.tab ha-icon{--mdc-icon-size:14px}.tab:hover{color:var(--primary-color)}.tab.active{background:var(--luma-surface);color:var(--primary-color);box-shadow:0 3px 10px rgba(0,0,0,.08)}
     .summary{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:stretch}.main{display:grid;grid-template-columns:46px minmax(0,1fr);grid-template-areas:"icon period" "icon total" "rail rail";align-items:center;gap:2px 11px;padding:14px;border-radius:18px;background:color-mix(in srgb,var(--primary-color) 5%,transparent)}.period-icon{grid-area:icon;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:color-mix(in srgb,var(--primary-color) 11%,transparent);color:var(--primary-color)}.period-icon ha-icon{--mdc-icon-size:23px}.period{grid-area:period;color:var(--luma-muted);font-size:10px;font-weight:720;text-transform:uppercase;letter-spacing:.04em}.total{grid-area:total;font-size:25px;font-weight:760;line-height:1.05}.total small{display:block;margin-top:5px;color:var(--luma-muted);font-size:9px;font-weight:580}.rail{grid-area:rail;display:flex;height:12px;margin-top:12px;padding:3px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--primary-text-color) 7%,transparent)}.rail span{min-width:0;height:100%;border-radius:999px;box-shadow:inset 0 0 0 1px color-mix(in srgb,white 18%,transparent)}.rail span+span{margin-left:3px}.pv{background:#58b984}.grid{background:#f4a62a}.unknown{background:color-mix(in srgb,var(--primary-text-color) 10%,transparent)}
     .details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{display:grid;grid-template-columns:30px minmax(0,1fr);grid-template-areas:"i l" "i v";align-items:center;gap:1px 8px;min-height:58px;padding:9px;border-radius:15px;background:color-mix(in srgb,var(--tone) 7%,transparent)}.metric .i{grid-area:i;display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:color-mix(in srgb,var(--tone) 14%,transparent);color:var(--tone)}.metric ha-icon{--mdc-icon-size:17px}.metric .label{grid-area:l;color:var(--luma-muted);font-size:9px}.metric .value{grid-area:v;overflow:hidden;font-size:14px;font-weight:720;text-overflow:ellipsis;white-space:nowrap}
     .hint{display:none;margin-top:9px;color:var(--luma-muted);font-size:9px;text-align:center}
-    @media(max-width:650px){ha-card{padding:13px}.head{display:grid;margin-bottom:12px}.tabs{width:100%}.tab{flex:1;justify-content:center}.summary{grid-template-columns:1fr}.main{padding:12px}.hint{display:block}}
+    .unclassified{margin-top:10px;color:var(--luma-muted);font-size:12px;line-height:1.5}.subtitle{line-height:1.5}.metric .label{font-size:11px}.metric .value{white-space:normal;overflow-wrap:anywhere}.tabs{flex-wrap:wrap}.metric{min-height:52px}
+    @container(max-width:650px){ha-card{padding:13px}.head{display:grid;margin-bottom:12px}.tabs{width:100%;box-sizing:border-box}.tab{flex:1;justify-content:center}.summary{grid-template-columns:1fr}.main{padding:12px}.hint{display:block}}
   `];
 
   setConfig(config: Config) {
@@ -48,16 +52,21 @@ export class LumaPeriodStatsCard extends LitElement implements LovelaceCard {
     this.page = Math.min(this.page, config.periods.length - 1);
   }
 
+  private get languageHass() {
+    return this.config?.language && this.hass ? { ...this.hass, locale: { ...this.hass.locale, language: this.config.language } } : this.hass;
+  }
   getCardSize() { return 3; }
 
   private entity(id?: string): HassEntity | undefined { return id ? this.hass?.states[id] : undefined; }
   private numeric(id?: string) {
-    const value = Number(this.entity(id)?.state);
+    const entity = this.entity(id);
+    if (!entity || ["", "unknown", "unavailable"].includes(entity.state) || entity.attributes.restored === true) return undefined;
+    const value = Number(entity.state);
     return Number.isFinite(value) ? value : undefined;
   }
   private value(id?: string, decimals = this.config?.decimals ?? 2, unit = this.config?.unit || "") {
     const value = this.numeric(id);
-    return value === undefined ? "—" : `${value.toFixed(decimals)}${unit ? ` ${unit}` : ""}`;
+    return value === undefined ? "—" : `${value.toLocaleString(this.languageHass?.locale?.language || undefined,{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}${unit ? ` ${unit}` : ""}`;
   }
   private select(page: number) {
     if (!this.config) return;
@@ -74,39 +83,43 @@ export class LumaPeriodStatsCard extends LitElement implements LovelaceCard {
   render() {
     if (!this.hass || !this.config) return nothing;
     const period = this.config.periods[this.page];
-    const total = this.numeric(period.total_entity) || 0;
-    const pv = this.numeric(period.pv_entity) || 0;
-    const grid = this.numeric(period.grid_entity) || 0;
+    const measured = this.numeric(period.total_entity);
+    const pvValue = this.numeric(period.pv_entity), gridValue = this.numeric(period.grid_entity);
+    const total = measured ?? 0;
+    const pv = pvValue ?? 0;
+    const grid = gridValue ?? 0;
     const known = Math.max(total, pv + grid, 0);
     const pvPct = known > 0 ? Math.max(0, pv / known * 100) : 0;
     const gridPct = known > 0 ? Math.max(0, grid / known * 100) : 0;
-    const unknownPct = Math.max(0, 100 - pvPct - gridPct);
+    const unknownPct = known > 0 ? Math.max(0, 100 - pvPct - gridPct) : 0;
+    const unclassified = Math.max(0,total-pv-grid);
     const share = this.numeric(period.share_entity);
     const sessions = this.numeric(period.sessions_entity);
     const cost = this.numeric(period.cost_entity);
     return html`
       <ha-card @pointerdown=${this.pointerDown} @pointerup=${this.pointerUp}>
         <div class="head">
-          <div class="copy"><div class="title">${this.config.title || localized(this.hass,"Charging statistics","Töltési statisztika")}</div>${this.config.subtitle ? html`<div class="subtitle">${this.config.subtitle}</div>` : nothing}</div>
+          <div class="copy"><div class="title">${this.config.title || localized(this.languageHass,"Charging statistics","Töltési statisztika")}</div>${this.config.subtitle ? html`<div class="subtitle">${this.config.subtitle}</div>` : nothing}</div>
           <div class="tabs" role="tablist">${this.config.periods.map((item,index)=>html`<button class=${`tab ${index===this.page?"active":""}`} role="tab" aria-selected=${index===this.page} @click=${()=>this.select(index)}><ha-icon icon=${item.icon||"mdi:calendar-outline"}></ha-icon>${item.label}</button>`)}</div>
         </div>
         <div class="summary">
           <div class="main">
             <span class="period-icon"><ha-icon icon=${period.icon||"mdi:chart-donut"}></ha-icon></span>
             <span class="period">${period.label}</span>
-            <span class="total">${this.value(period.total_entity)}<small>${sessions===undefined?"—":`${Math.round(sessions)} ${localized(this.hass,"sessions","session")}`}</small></span>
+            <span class="total">${this.value(period.total_entity)}<small>${sessions===undefined?"—":`${Math.round(sessions)} ${localized(this.languageHass,"charges","töltés")}`}</small></span>
             <span class="rail"><span class="pv" style=${`width:${pvPct}%`}></span><span class="grid" style=${`width:${gridPct}%`}></span><span class="unknown" style=${`width:${unknownPct}%`}></span></span>
           </div>
           <div class="details">
-            ${this.metric("mdi:solar-power",localized(this.hass,"Solar","Napenergia"),this.value(period.pv_entity),"#58b984")}
-            ${this.metric("mdi:transmission-tower-import",localized(this.hass,"Grid","Hálózat"),this.value(period.grid_entity),"#f4a62a")}
-            ${this.metric("mdi:chart-donut",localized(this.hass,"Solar share","PV arány"),share===undefined?"—":`${share.toFixed(1)} %`,"#58b984")}
+            ${this.metric("mdi:solar-power",localized(this.languageHass,"Solar","Napenergia"),this.value(period.pv_entity),"#58b984")}
+            ${this.metric("mdi:transmission-tower-import",localized(this.languageHass,"Grid","Hálózat"),this.value(period.grid_entity),"#f4a62a")}
+            ${this.metric("mdi:chart-donut",localized(this.languageHass,"Solar share","PV arány"),share===undefined?"—":`${share.toFixed(1)} %`,"#58b984")}
             ${cost===undefined
-              ? this.metric("mdi:chart-timeline-variant",localized(this.hass,"Per session","Sessionönként"),sessions?`${(total/sessions).toFixed(2)} ${this.config.unit}`:"—","var(--primary-color)")
-              : this.metric("mdi:cash",period.cost_label||localized(this.hass,"Estimated cost","Becsült költség"),`${cost.toFixed(0)} ${period.cost_unit||"Ft"}`,"var(--warning-color)")}
+              ? this.metric("mdi:chart-timeline-variant",localized(this.languageHass,"Per charge","Töltésenként"),sessions&&measured!==undefined?`${(total/sessions).toFixed(2)} ${this.config.unit}`:"—","var(--primary-color)")
+              : this.metric("mdi:cash",period.cost_label||localized(this.languageHass,"Estimated cost","Becsült költség"),`${cost.toFixed(0)} ${period.cost_unit||"Ft"}`,"var(--warning-color)")}
           </div>
         </div>
-        <div class="hint">${localized(this.hass,"Swipe to change period","Lapozz az időszakok között")}</div>
+        ${unclassified>0.0005?html`<div class="unclassified">${localized(this.languageHass,"Unclassified","Nem besorolt")} · ${unclassified.toLocaleString(this.languageHass?.locale?.language||undefined,{maximumFractionDigits:2})} ${this.config.unit} · ${unknownPct.toFixed(1)}%<br>${localized(this.languageHass,"The gray segment has no reliable Solar/grid breakdown.","A szürke részhez nincs megbízható napenergia/hálózat bontás.")}</div>`:nothing}
+        <div class="hint">${localized(this.languageHass,"Swipe to change period","Lapozz az időszakok között")}</div>
       </ha-card>`;
   }
 
