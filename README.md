@@ -32,6 +32,15 @@ the default.
 
 ## Cards
 
+The EV overview emphasizes actual charging power and the PV/grid mix. Set its
+optional `stop_entity` to an HA button entity for an inline, confirmed stop action.
+When using that stop control, set `hide_stop: true` on the EV control card to avoid
+duplicating it; other installations retain the control card's stop button by default.
+The control card edits power directly in kW, converts W-backed number entities on
+submission, and honors their limits and step. The mode selector adapts to its
+container width and keeps the selected mode explanation visible. All three EV
+cards accept optional `language: hu` or `language: en`; otherwise they follow HA.
+
 | Card | Purpose |
 | --- | --- |
 | `custom:luma-home-hero-card` | Weather-aware home hero, dynamic greeting, incidents, acknowledgements, alarm, waste and irrigation context |
