@@ -213,7 +213,7 @@ export function attentionCoverageRows(rows: AttentionEntry[], hass: HomeAssistan
       if (!existing.affectedRules!.includes(row.rule)) existing.affectedRules!.push(row.rule);
       continue;
     }
-    const entry = { ...row, affectedRules: [row.rule], message: row.reason === "source_unavailable" ? localized(hass,"No reliable state is available","Nincs megbízható állapotadat") : row.message };
+    const entry = { ...row, affectedRules: [row.rule], message: row.reason === "source_unavailable" && row.kind !== "update" ? localized(hass,"No reliable state is available","Nincs megbízható állapotadat") : row.message };
     missing.set(row.source, entry);
     result.push(entry);
   }

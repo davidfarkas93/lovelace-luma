@@ -51,6 +51,7 @@ const gapView=model.attentionCoverageRows(gapRows,hass);
 assert.equal(gapView.filter(x=>x.status==='unavailable').length,3,'five failed rule evaluations must show three unavailable sources');
 assert.deepEqual([...gapView[0].affectedRules],['warning','critical'],'merged sources retain every affected rule');
 assert.equal(gapView[0].message,'Nincs megbízható állapotadat','missing telemetry must not assert a critical certificate expiry');
+assert.equal(gapView.find(x=>x.kind==='update').message,get('update.missing').message,'update category labels must survive unavailable grouping');
 assert.equal(gapRows[0].affectedRules,undefined,'presentation grouping must not mutate the rule snapshot');
 assert.equal(model.attentionCoverageRows([get('update.shelly_new'),get('update.shelly_new')],hass).length,2,'active alerts retain their existing grouping semantics');
 clock+=6*60000;rows=model.attentionSnapshot(hass,policy,{},clock);assert.equal(get('sensor.watched').status,'active','deadline progresses without a source change');
