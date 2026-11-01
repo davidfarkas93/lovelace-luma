@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
-import { activeAttention, attentionAckValue, attentionSummaries, type AttentionEntry } from "../attention";
+import { activeAttention, attentionAckValue, attentionCoverageRows, attentionSummaries, type AttentionEntry } from "../attention";
 import { AttentionSubscription, attentionPolicy, policyRows } from "../attention-runtime";
 import { localized } from "../localize";
 import { runAction } from "../helpers";
@@ -45,7 +45,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
   }
   private row(row:AttentionEntry){
     const tone=row.status==="active"&&!row.snoozedUntil?(row.tone==="error"?"var(--error-color)":"var(--warning-color)"):row.status==="inactive"?"var(--success-color)":"var(--secondary-text-color)";
-    return html`<button class="item" style=${`--tone:${tone}`} @click=${()=>this.selected=row.id}><ha-icon icon=${row.kind==="update"?"mdi:update":row.status==="inactive"?"mdi:check-circle-outline":"mdi:information-outline"}></ha-icon><span><span class="name">${row.name}</span><span class="message">${this.config?.mode==="diagnostics"?this.reason(row):row.message}</span></span><span class="badge">${this.status(row)}</span></button>`;
+    return html`<button class="item" style=${`--tone:${tone}`} @click=${()=>this.selected=row.id}><ha-icon icon=${row.kind==="update"?"mdi:update":row.status==="inactive"?"mdi:check-circle-outline":"mdi:information-outline"}></ha-icon><span><span class="name">${row.name}</span><span class="message">${this.config?.mode==="diagnostics"?this.reason(row):row.message}${(row.affectedRules?.length||0)>1?localized(this.hass,` · ${row.affectedRules!.length} affected rules`,` · ${row.affectedRules!.length} érintett szabály`):nothing}</span></span><span class="badge">${this.status(row)}</span></button>`;
   }
   private async unsnooze(row:AttentionEntry){
     const id=attentionPolicy(this.config?.policy)?.acknowledgements_entity;if(!id||!this.hass)return;
@@ -58,13 +58,13 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     if(!this.hass||!this.config)return nothing;
     const policy=attentionPolicy(this.config.policy),all=policyRows(this.config.policy,this.hass).filter(x=>!this.config?.scope||x.scope===this.config.scope||x.scope==="system");
     const mode=this.config.mode;
-    const relevant=all.filter(x=>mode==="diagnostics"||(mode==="updates"?(x.kind==="update"||x.scope==="system"):x.kind!=="update"));
+    const relevant=attentionCoverageRows(all.filter(x=>mode==="diagnostics"||(mode==="updates"?(x.kind==="update"||x.scope==="system"):x.kind!=="update")),this.hass);
     const active=activeAttention(relevant,undefined,true),missing=relevant.filter(x=>x.status==="unavailable"),snoozed=relevant.filter(x=>x.snoozedUntil);
     const missingCount=new Set(missing.map(x=>x.source)).size;
     let rows=mode==="diagnostics"?relevant:mode==="updates"?relevant.filter(x=>["active","installing","unavailable"].includes(x.status)):attentionSummaries(relevant,undefined,true);
     if(mode==="diagnostics")rows=rows.filter(x=>this.filter==="all"?true:this.filter==="snoozed"?!!x.snoozedUntil:this.filter==="active"?["active","installing"].includes(x.status):x.status===this.filter);
-    const query=this.query.trim().toLowerCase();if(query)rows=rows.filter(x=>`${x.name} ${x.source} ${x.rule} ${x.category} ${x.message} ${x.reason}`.toLowerCase().includes(query));
-    const selected=all.find(x=>x.id===this.selected);
+    const query=this.query.trim().toLowerCase();if(query)rows=rows.filter(x=>`${x.name} ${x.source} ${x.rule} ${x.affectedRules?.join(" ")||""} ${x.category} ${x.message} ${x.reason}`.toLowerCase().includes(query));
+    const selected=relevant.find(x=>x.id===this.selected);
     const title=this.config.title||localized(this.hass,mode==="updates"?"Available updates":mode==="diagnostics"?"Notification coverage":"Incidents",mode==="updates"?"Elérhető frissítések":mode==="diagnostics"?"Értesítési lefedettség":"Incidensek");
     return html`<ha-card><div class="header"><span class="title">${title}</span><span class="muted">${active.length} ${localized(this.hass,"active sources","aktív forrás")} · ${missingCount} ${localized(this.hass,"unavailable","nem elérhető")} · ${new Set(snoozed.map(x=>x.key)).size} ${localized(this.hass,"snoozed","szüneteltetve")}</span></div>
       ${mode==="diagnostics"?html`<div class="filters"><input aria-label=${localized(this.hass,"Search sources","Források keresése")} placeholder=${localized(this.hass,"Search entity, rule or device","Entitás, szabály vagy eszköz keresése")} .value=${this.query} @input=${(e:Event)=>{this.query=(e.target as HTMLInputElement).value;this.limit=50}}><select aria-label=${localized(this.hass,"Status filter","Állapotszűrő")} .value=${this.filter} @change=${(e:Event)=>{this.filter=(e.target as HTMLSelectElement).value;this.limit=50}}>${[["active","Active","Aktív"],["snoozed","Snoozed","Szüneteltetett"],["unavailable","Unavailable","Nem elérhető"],["pending","Grace period","Türelmi idő"],["inactive","Clear","Rendben"],["excluded","Excluded","Kizárt"],["event","Events","Esemény"],["all","All","Összes"]].map(([value,en,hu])=>html`<option value=${value}>${localized(this.hass,en,hu)}</option>`)}</select></div>`:nothing}
@@ -73,7 +73,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
       ${mode!=="updates"&&rows.length>this.limit?html`<button class="more" @click=${()=>this.limit+=50}>${localized(this.hass,"Show more","Továbbiak")} (${rows.length-this.limit})</button>`:nothing}
       ${mode==="diagnostics"?html`<div class="muted">${policy?.revision||"—"} · ${all.length} ${localized(this.hass,"source/rule evaluations","forrás/szabály kiértékelés")}</div>`:nothing}
     </ha-card><luma-bottom-sheet .open=${!!selected} .heading=${selected?.name||""} .closeLabel=${localized(this.hass,"Close","Bezárás")} @sheet-dismiss=${()=>this.selected=undefined}>
-      ${selected?html`<div class="detail"><strong>${this.status(selected)}</strong><pre>${selected.message}</pre><div>${this.reason(selected)}</div>${selected.snoozedUntil?html`<div>${localized(this.hass,"Snoozed until","Szüneteltetve eddig")}: ${new Date(selected.snoozedUntil*1000).toLocaleString(this.hass.locale?.language)}</div>`:nothing}<div class="muted">${selected.source}<br>${selected.rule} · ${selected.category}</div><div class="actions">${this.hass.states[selected.source]?html`<button class="action" @click=${()=>runAction(this,this.hass!,{action:"more-info"},selected.source)}>${localized(this.hass,"Entity history","Entitás és előzmények")}</button>`:nothing}${selected.snoozedUntil?html`<button class="action" ?disabled=${this.saving} @click=${()=>this.unsnooze(selected)}>${localized(this.hass,"Show alert again","Jelzés visszaállítása")}</button>`:nothing}${selected.path&&selected.path!==policy?.diagnostics_path?html`<button class="action" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:selected.path!})}>${localized(this.hass,"Open details","Részletes nézet")}</button>`:nothing}</div>${this.error?html`<div class="error" role="alert">${this.error}</div>`:nothing}</div>`:nothing}
+      ${selected?html`<div class="detail"><strong>${this.status(selected)}</strong><pre>${selected.message}</pre><div>${this.reason(selected)}</div>${selected.snoozedUntil?html`<div>${localized(this.hass,"Snoozed until","Szüneteltetve eddig")}: ${new Date(selected.snoozedUntil*1000).toLocaleString(this.hass.locale?.language)}</div>`:nothing}<div class="muted">${selected.source}<br>${selected.affectedRules?html`${localized(this.hass,"Affected rules","Érintett szabályok")}: ${selected.affectedRules.join(", ")}`:selected.rule} · ${selected.category}</div><div class="actions">${this.hass.states[selected.source]?html`<button class="action" @click=${()=>runAction(this,this.hass!,{action:"more-info"},selected.source)}>${localized(this.hass,"Entity history","Entitás és előzmények")}</button>`:nothing}${selected.snoozedUntil?html`<button class="action" ?disabled=${this.saving} @click=${()=>this.unsnooze(selected)}>${localized(this.hass,"Show alert again","Jelzés visszaállítása")}</button>`:nothing}${selected.path&&selected.path!==policy?.diagnostics_path?html`<button class="action" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:selected.path!})}>${localized(this.hass,"Open details","Részletes nézet")}</button>`:nothing}</div>${this.error?html`<div class="error" role="alert">${this.error}</div>`:nothing}</div>`:nothing}
     </luma-bottom-sheet>`;
   }
 }

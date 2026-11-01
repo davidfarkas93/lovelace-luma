@@ -1049,6 +1049,9 @@ Its modes are `diagnostics` (searchable source/rule coverage and snooze restorat
 `incidents` (factual active conditions, including snoozed warnings) and `updates`
 (grouped update cards). Optional fields are `title` and `scope`. Coverage separates
 active, pending, unavailable, excluded, snoozed and informational event rows.
+Unavailable rows are grouped by source, matching summary counts even when several
+threshold rules depend on the same sensor. Their details retain all affected rule
+IDs, and searching by any of those IDs still finds the source.
 Update installation remains an explicit, confirmed action; changing the target
 version requires confirmation again.
 

@@ -39,6 +39,7 @@ export interface AttentionEntry {
   path?: string;
   dismissible: boolean;
   snoozedUntil?: number;
+  affectedRules?: string[];
 }
 export interface AttentionExternal {
   notifications?: Array<{ notification_id: string; title: string; message: string; created_at?: string }>;
@@ -200,6 +201,24 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
 
 export const activeAttention = (rows: AttentionEntry[], scope?: string, includeSnoozed = false) => rows.filter(x =>
   (!scope || x.scope === scope || x.scope === "system") && ["active", "installing"].includes(x.status) && (includeSnoozed || !x.snoozedUntil));
+
+/** Presentation only: one unavailable source, even when several rules use it. */
+export function attentionCoverageRows(rows: AttentionEntry[], hass: HomeAssistant): AttentionEntry[] {
+  const missing = new Map<string, AttentionEntry>();
+  const result: AttentionEntry[] = [];
+  for (const row of rows) {
+    if (row.status !== "unavailable") { result.push(row); continue; }
+    const existing = missing.get(row.source);
+    if (existing) {
+      if (!existing.affectedRules!.includes(row.rule)) existing.affectedRules!.push(row.rule);
+      continue;
+    }
+    const entry = { ...row, affectedRules: [row.rule], message: row.reason === "source_unavailable" ? localized(hass,"No reliable state is available","Nincs megbízható állapotadat") : row.message };
+    missing.set(row.source, entry);
+    result.push(entry);
+  }
+  return result;
+}
 
 export function groupAttention(rows: AttentionEntry[], policy: AttentionPolicy, hass: HomeAssistant, now = Date.now()): AttentionEntry[] {
   const grouped = new Map<string, AttentionEntry[]>(), ack = attentionAckMap(policy.acknowledgements_entity ? hass.states[policy.acknowledgements_entity]?.state : "");
