@@ -1045,6 +1045,12 @@ policy: home
 mode: diagnostics
 ```
 
+Set `embedded: true` inside a Luma popup when the popup already supplies the
+heading and surface. Discovery cards use this presentation automatically.
+Nonzero summary pills provide quick status filters in diagnostics; source/rule
+IDs and policy revision live in the detail sheet's expandable Technical details
+section. Data gaps stay distinct from active alerts, including in empty states.
+
 Its modes are `diagnostics` (searchable source/rule coverage and snooze restoration),
 `incidents` (factual active conditions, including snoozed warnings) and `updates`
 (grouped update cards). Optional fields are `title` and `scope`. Coverage separates

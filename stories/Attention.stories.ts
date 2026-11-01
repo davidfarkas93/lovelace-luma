@@ -35,5 +35,18 @@ export const Mobile:Story={args:{width:358}};
 export const Updates:Story={args:{config:{policy:"demo",mode:"updates"}}};
 export const Incidents:Story={args:{config:{policy:"demo",mode:"incidents"}}};
 export const MissingPolicy:Story={args:{config:{policy:"not-registered",mode:"diagnostics"}}};
+export const Embedded:Story={args:{config:{policy:"demo",mode:"diagnostics",embedded:true},width:620}};
+export const LongLabels:Story={args:{width:358,entities:{...entities,
+ "sensor.host_alerts":{...entities["sensor.host_alerts"],attributes:{friendly_name:"Hálózati tároló és háttérszolgáltatások riasztásai"}},
+ "sensor.backup_certificate_days":{...entities["sensor.backup_certificate_days"],attributes:{friendly_name:"Biztonsági mentések tanúsítványának hátralévő érvényessége"}},
+}}};
+export const Clear:Story={args:{config:{policy:"demo",mode:"updates"},entities:Object.fromEntries(Object.entries(entities).map(([id,value])=>[id,id.startsWith("update.")?{...value,state:"off",attributes:{...value.attributes,restored:false}}:value]))}};
+export const DataGapsOnly:Story={args:{entities:{...entities,
+ "sensor.host_alerts":{...entities["sensor.host_alerts"],state:""},
+ "sensor.rack_temperature":{...entities["sensor.rack_temperature"],state:20},
+ "binary_sensor.boiler_fault":{...entities["binary_sensor.boiler_fault"],state:"off"},
+ "update.new_shelly":{...entities["update.new_shelly"],state:"off"},
+ "update.new_vendor":{...entities["update.new_vendor"],state:"off"},
+}}};
 export const HomeSummary:Story={render:()=>renderCard("custom:luma-home-hero-card",{weather_entity:"weather.demo",attention_policy:"demo",acknowledgements_entity:"input_text.ack"},{...entities,"weather.demo":{state:"sunny",attributes:{temperature:21,temperature_unit:"°C"}}},1050)};
 export const HomelabSummary:Story={render:()=>renderCard("custom:luma-homelab-hero-card",{attention_policy:"demo",attention_scope:"homelab"},entities,1050)};

@@ -500,7 +500,7 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
       const c=this.config;
       return html`<luma-attention-card .hass=${this.hass} ${ref(node=>{
         const card=node as HTMLElement&LovelaceCard,signature=`${c.attention_policy}|${c.attention_scope||""}|${c.mode}`;
-        if(card&&card.dataset.policy!==signature){card.setConfig({type:"custom:luma-attention-card",policy:c.attention_policy,scope:c.attention_scope,mode:c.mode==="infrastructure-updates"?"updates":"incidents"});card.dataset.policy=signature;}
+        if(card&&card.dataset.policy!==signature){card.setConfig({type:"custom:luma-attention-card",policy:c.attention_policy,scope:c.attention_scope,embedded:true,mode:c.mode==="infrastructure-updates"?"updates":"incidents"});card.dataset.policy=signature;}
       })}></luma-attention-card>`;
     }
     switch (this.config.mode) {

@@ -421,6 +421,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         gap: 8px;
         margin-top: 13px;
       }
+      .coverage-link{display:grid;grid-template-columns:36px minmax(0,1fr) 18px;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--luma-border);border-radius:var(--luma-radius-control);background:color-mix(in srgb,var(--primary-color) 5%,transparent);color:var(--primary-text-color);font:inherit;font-size:var(--luma-text-sm);text-align:left;cursor:pointer}
+      .coverage-link>ha-icon:first-child{box-sizing:border-box;padding:8px;width:36px;height:36px;border-radius:12px;--mdc-icon-size:20px;color:var(--primary-color);background:color-mix(in srgb,var(--primary-color) 10%,transparent)}
+      .coverage-link strong{display:block;font-weight:var(--luma-weight-strong)}.coverage-link small{display:block;margin-top:3px;color:var(--luma-muted);font-size:11px}.coverage-link>ha-icon:last-child{--mdc-icon-size:18px;color:var(--luma-muted)}.coverage-link:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}
       .issue {
         display: grid;
         grid-template-columns: 18px minmax(0, 1fr) auto;
@@ -1499,7 +1502,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                     ? "mdi:alert-octagon"
                     : issues.length
                       ? "mdi:alert-circle-outline"
-                      : "mdi:check-circle-outline"}
+                      : missing ? "mdi:cloud-question-outline" : snoozed ? "mdi:bell-sleep-outline" : "mdi:check-circle-outline"}
                 ></ha-icon
                 ><span
                   >${issues.length
@@ -1554,7 +1557,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                         : nothing}
                     </div>`,
                 )}
-                ${this.config.attention_policy && (snoozed || missing) ? html`<button class="attention" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:attentionPolicy(this.config!.attention_policy)?.diagnostics_path||"/config"})}>${localized(this.hass,`${snoozed} snoozed · ${missing} unavailable · Details`,`${snoozed} szüneteltetve · ${missing} nem elérhető · Részletek`)}</button>` : nothing}
+                ${this.config.attention_policy && (snoozed || missing) ? html`<button class="coverage-link" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:attentionPolicy(this.config!.attention_policy)?.diagnostics_path||"/config"})}><ha-icon icon="mdi:bell-cog-outline"></ha-icon><span><strong>${localized(this.hass,"Notification coverage","Jelzések áttekintése")}</strong><small>${[missing?localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`):"",snoozed?localized(this.hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`):""].filter(Boolean).join(" · ")}</small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>` : nothing}
               </div>`
             : nothing}${this.renderBanners(banners)}
         </div></ha-card
