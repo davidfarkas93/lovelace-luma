@@ -48,6 +48,7 @@ import "./cards/luma-entity-grid-card";
 import "./cards/luma-service-grid-card";
 import "./cards/luma-storage-card";
 import "./cards/luma-discovery-card";
+import "./cards/luma-attention-card";
 import "./cards/luma-period-stats-card";
 import "./cards/luma-session-browser-card";
 import "./cards/luma-ev-control-card";
@@ -56,6 +57,7 @@ import "./cards/luma-ev-overview-card";
 import "./cards/luma-ev-solar-readiness-card";
 
 const cards = [
+  { type:"luma-attention-card", name:"Luma Attention", description:"Shared policy incidents, automatically discovered updates and source coverage with explicit snoozed, pending and unavailable states." },
   { type:"luma-ev-overview-card", name:"Luma EV Overview", description:"Context-aware EV charging state, Solar opportunity and live charging-source overview." },
   { type:"luma-ev-solar-readiness-card", name:"Luma EV Solar Readiness", description:"Canonical EV Solar recommendation with operational overrides and the current or next useful charging window." },
   { type:"luma-ev-mode-card", name:"Luma EV Mode", description:"Persistent EV charging strategy selector with confirmed mode changes." },
@@ -162,7 +164,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.42.0 ",
+  "%c LUMA %c 0.43.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

@@ -987,3 +987,82 @@ Every daily condition also has a text label, so color is never the only way to
 read the outlook. Rain percentages represent probabilities, separate from
 precipitation amounts. Missing measurements remain unknown, including a zero
 degree temperature; incomplete rain data never implies a dry forecast.
+
+## Shared attention policy
+
+Register an installation-owned policy in a separate dashboard module resource.
+Entity IDs, thresholds, exceptions and routes belong here, outside the Luma bundle:
+
+```js
+window.lumaAttentionPolicies = {
+  ...window.lumaAttentionPolicies,
+  home: {
+    version: 1,
+    revision: "2026-11-01",
+    acknowledgements_entity: "input_text.dashboard_snoozes",
+    diagnostics_path: "/dashboard-system/operations#attention-coverage",
+    ignore_labels: ["attention_ignore"],
+    ignored: { "update.retired_device": "Retired duplicate" },
+    platforms: { shelly: { scope: "homelab" } },
+    rules: [{
+      id: "rack_connection", entity: "binary_sensor.rack_connected",
+      state: "off", for_minutes: 3, unavailable_after_minutes: 5,
+      scope: "homelab", message: "Rack connection lost", dismissible: false
+    }],
+    problems: { enabled: true },
+    updates: {
+      enabled: true, path: "/dashboard-system/operations",
+      groups: [{ id: "firmware", name: "Infrastructure firmware", platforms: ["shelly", "esphome"] }]
+    },
+    adapters: { notifications: true, repairs: true, integrations: true }
+  }
+};
+window.dispatchEvent(new Event("luma-attention-policy-changed"));
+```
+
+All live `update.*` entities are discovered without a label allowlist. New vendors
+appear under Other updates. Disabled, restored and explicitly excluded sources
+remain explainable in coverage. Hiding an entity in HA is not a monitoring opt-out.
+Automatic problem discovery covers binary `problem`, `safety` and `tamper` device
+classes; connectivity and other application-specific meanings need explicit rules.
+
+Rules use the existing incident selectors and conditions (`entity`, glob patterns,
+device classes, label, state/state_not, above/below, grace and aggregation), plus
+`platform`, `platforms`, `exclude_platforms`, `domain`, `unit`, `scope`, `category`,
+`identity` (`state`, `version` or `condition`) and `unavailable_after_minutes`.
+Keep rule IDs stable. Unknown/missing data is distinct from an inactive condition;
+missing or incompatible policies produce an explicit error.
+
+Use `attention_policy: home` on Home and Homelab heroes and on discovery cards in
+`homelab-incidents` or `infrastructure-updates` mode. Optional `attention_scope`
+limits a surface to a scope; policy/metadata failures always remain visible.
+Legacy inline rules continue to work when no policy is supplied. The coverage
+component can also be placed directly in a view or popup:
+
+```yaml
+type: custom:luma-attention-card
+policy: home
+mode: diagnostics
+```
+
+Its modes are `diagnostics` (searchable source/rule coverage and snooze restoration),
+`incidents` (factual active conditions, including snoozed warnings) and `updates`
+(grouped update cards). Optional fields are `title` and `scope`. Coverage separates
+active, pending, unavailable, excluded, snoozed and informational event rows.
+Update installation remains an explicit, confirmed action; changing the target
+version requires confirmation again.
+
+Acknowledgements use a HA `input_text` helper with max length 255. Compact keys
+include the affected members, error identity and version, so changed faults wake
+the notice. Error/non-dismissible conditions cannot be snoozed. Dashboard deadlines
+reevaluate every 15 seconds, even without a source state change. Numeric threshold
+recoveries observed by an open dashboard start new locally persisted episodes;
+recoveries and recurrences while every dashboard is closed require a future HA-side
+incident registry for exact tracking.
+
+Optional read-only adapters poll HA persistent notifications, Repairs and failed
+integration setup at most once per 30 seconds per browser. Adapter failures are
+reported as unavailable. `notification_exclude` accepts notification-ID globs, and
+`events` accepts event entity IDs shown as historical information, never fabricated
+active fault totals. This frontend policy does not replace independent phone/push
+automations or create a browser-independent notification service.

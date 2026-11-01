@@ -41,12 +41,16 @@ export const incidentSourceIds = (
   if (rule.entity) sources = [rule.entity];
   else if (rule.entity_patterns) sources = ids.filter((id) => rule.entity_patterns!.some((pattern) => glob(pattern, id)));
   else if (rule.entity_pattern) sources = ids.filter((id) => glob(rule.entity_pattern!, id));
-  else if (rule.device_classes) sources = ids;
+  else if (rule.device_classes || rule.platform || rule.platforms || rule.domain || rule.label) sources = ids;
   return sources.filter((id) => {
     const entity = hass.states[id];
     if (!entity) return false;
     if (rule.exclude?.some((pattern) => glob(pattern, id))) return false;
     if (rule.platform && hass.entities?.[id]?.platform !== rule.platform) return false;
+    if (rule.platforms && !rule.platforms.includes(hass.entities?.[id]?.platform || "")) return false;
+    if (rule.exclude_platforms?.includes(hass.entities?.[id]?.platform || "")) return false;
+    if (rule.domain && id.split(".")[0] !== rule.domain) return false;
+    if (rule.unit && entity.attributes.unit_of_measurement !== rule.unit) return false;
     if (rule.label && !hass.entities?.[id]?.labels?.includes(rule.label)) return false;
     if (rule.device_classes?.length && !rule.device_classes.includes(String(entity.attributes.device_class || ""))) return false;
     return true;

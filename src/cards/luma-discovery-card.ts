@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 import "./luma-update-card";
+import "./luma-attention-card";
 import type { LumaUpdateCard } from "./luma-update-card";
 import { entityAreaName, entityName, runAction } from "../helpers";
 import { matchingIncidentIds } from "../incidents";
@@ -27,6 +28,8 @@ interface Config {
   empty_text?: string;
   exclude?: string[];
   incident_rules?: DiscoveryIncidentRule[];
+  attention_policy?:string;
+  attention_scope?:string;
 }
 interface DiscoveryIncidentRule extends LumaIncidentRule { name?:string; subtitle?:string; icon?:string; strip_name?:string }
 interface Favorite {
@@ -270,8 +273,8 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
   setConfig(c: Config) {
     if (!c?.mode) throw Error("Discovery mode required.");
     if (c.mode === "favorite-lights" && !c.source_entity) throw Error("favorite-lights mode requires source_entity");
-    if (c.mode === "infrastructure-updates" && !c.label) throw Error("infrastructure-updates mode requires label");
-    if (c.mode === "homelab-incidents" && !c.incident_rules) throw Error("homelab-incidents mode requires incident_rules");
+    if (c.mode === "infrastructure-updates" && !c.label && !c.attention_policy) throw Error("infrastructure-updates mode requires label or attention_policy");
+    if (c.mode === "homelab-incidents" && !c.incident_rules && !c.attention_policy) throw Error("homelab-incidents mode requires incident_rules or attention_policy");
     this.config = { limit: 5, ...c };
   }
   getCardSize() {
@@ -493,6 +496,13 @@ export class LumaDiscoveryCard extends LitElement implements LovelaceCard {
 
   render() {
     if (!this.hass || !this.config) return nothing;
+    if (this.config.attention_policy && ["homelab-incidents","infrastructure-updates"].includes(this.config.mode)) {
+      const c=this.config;
+      return html`<luma-attention-card .hass=${this.hass} ${ref(node=>{
+        const card=node as HTMLElement&LovelaceCard,signature=`${c.attention_policy}|${c.attention_scope||""}|${c.mode}`;
+        if(card&&card.dataset.policy!==signature){card.setConfig({type:"custom:luma-attention-card",policy:c.attention_policy,scope:c.attention_scope,mode:c.mode==="infrastructure-updates"?"updates":"incidents"});card.dataset.policy=signature;}
+      })}></luma-attention-card>`;
+    }
     switch (this.config.mode) {
       case "favorite-lights":
         return this.favorites();

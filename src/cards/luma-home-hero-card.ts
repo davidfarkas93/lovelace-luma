@@ -13,7 +13,9 @@ import {
 } from "../appliance";
 import { localize, localized, localizedMap } from "../localize";
 import { lumaTokens } from "../styles";
-import { glob, matchingIncidentIds } from "../incidents";
+import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
+import { attentionAckValue, attentionSummaries } from "../attention";
+import { AttentionSubscription, attentionPolicy, policyRows } from "../attention-runtime";
 import type {
   HassEntity,
   HomeAssistant,
@@ -63,6 +65,7 @@ interface LumaHomeHeroConfig {
   active_exclude?: string[];
   active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
+  attention_policy?: string;
   banners?: LumaBannerConfig[];
   banner_collapse_threshold?: number;
   tap_action?: LumaAction;
@@ -811,6 +814,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   protected updated(): void {
+    this.attentionSubscription.update(this.hass,this.config?.attention_policy);
     // Incident actions live inside the otherwise clickable weather hero.
     // Stop their click from reaching the hero after the child action runs.
     this.renderRoot
@@ -819,9 +823,13 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private stopIncidentClick = (event: Event): void => event.stopPropagation();
+  private attentionSubscription = new AttentionSubscription(()=>this.requestUpdate());
+  private get acknowledgementsEntity() { return this.config?.acknowledgements_entity || attentionPolicy(this.config?.attention_policy)?.acknowledgements_entity; }
+  connectedCallback() { super.connectedCallback(); this.attentionSubscription.connect(); }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.attentionSubscription.disconnect();
     this.detachAlarmListeners();
   }
 
@@ -891,6 +899,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     if (!changed.has("hass")) return true;
     const old = changed.get("hass") as HomeAssistant | undefined;
     if (!old || !this.hass) return true;
+    if (this.config?.attention_policy || old.entities !== this.hass.entities) return true;
     return this.watchedIds.some(
       (id) => old.states[id] !== this.hass!.states[id],
     );
@@ -902,7 +911,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       this.config.weather_entity,
       this.config.alarm_entity,
       this.config.notifications_entity,
-      this.config.acknowledgements_entity,
+      this.acknowledgementsEntity,
       this.config.irrigation_entity,
       ...(this.config.irrigation_zone_entities || []).map((item) =>
         typeof item === "string" ? item : item.entity,
@@ -938,6 +947,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         ...(fixed.filter(Boolean) as string[]),
         ...dynamic,
         ...related,
+        ...(this.config.incidents || []).flatMap(rule=>[rule.entity,...incidentSourceIds(this.hass!,rule)]).filter(Boolean) as string[],
         ...active,
         ...(this.config.banners || []).map((b) => b.entity),
       ]),
@@ -1032,8 +1042,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private ackMap(): Record<string, number> {
-    const raw = this.config?.acknowledgements_entity
-      ? this.hass?.states[this.config.acknowledgements_entity]?.state || ""
+    const raw = this.acknowledgementsEntity
+      ? this.hass?.states[this.acknowledgementsEntity]?.state || ""
       : "";
     const result: Record<string, number> = {};
     for (const item of raw.split(",")) {
@@ -1062,6 +1072,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   private incidentCandidates(): Incident[] {
     if (!this.hass || !this.config) return [];
+    if (this.config.attention_policy) return attentionSummaries(policyRows(this.config.attention_policy,this.hass),undefined,true).map(row=>({
+      key:row.key,message:row.message,tone:row.tone,path:row.path,entity:this.hass!.states[row.source]?row.source:undefined,dismissible:row.dismissible,
+    })).sort((a,b)=>Number(b.tone==="error")-Number(a.tone==="error"));
     const found: Incident[] = [];
     for (const rule of this.config.incidents || []) {
       const matches = matchingIncidentIds(this.hass, rule);
@@ -1116,7 +1129,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     const ack = this.ackMap(),
       now = Date.now() / 1000;
     return this.incidentCandidates().filter(
-      (issue) => issue.tone === "error" || !(ack[issue.key] > now),
+      (issue) => !issue.dismissible || issue.tone === "error" || !(ack[issue.key] > now),
     );
   }
 
@@ -1126,7 +1139,14 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     event: Event,
   ): Promise<void> {
     event.stopPropagation();
-    if (!this.hass || !this.config?.acknowledgements_entity) return;
+    if (!this.hass || !this.acknowledgementsEntity) return;
+    if (this.config?.attention_policy) {
+      const entity=this.hass.states[this.acknowledgementsEntity];
+      const now=Date.now()/1000;
+      const value=attentionAckValue(entity?.state,issue.key,Math.round(now+days*86400),now,Number(entity?.attributes.max||255));
+      await this.hass.callService("input_text","set_value",{value},{entity_id:this.acknowledgementsEntity});
+      return;
+    }
     const now = Date.now() / 1000;
     const validKeys = new Set(this.incidentCandidates().map((item) => item.key));
     const ack = Object.fromEntries(
@@ -1137,7 +1157,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     ack[issue.key] = Math.floor(now + days * 86400);
 
     const maxLength = Number(
-      this.hass.states[this.config.acknowledgements_entity]?.attributes.max ||
+      this.hass.states[this.acknowledgementsEntity]?.attributes.max ||
         255,
     );
     const ordered = Object.entries(ack).sort(([keyA, expiryA], [keyB, expiryB]) =>
@@ -1158,7 +1178,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       "input_text",
       "set_value",
       { value },
-      { entity_id: this.config.acknowledgements_entity },
+      { entity_id: this.acknowledgementsEntity },
     );
   }
 
@@ -1257,11 +1277,14 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       state = weather?.state || "unknown",
       a = weather?.attributes || {},
       wind = Number(a.wind_speed) || 0;
+    const attentionRows = this.config.attention_policy ? policyRows(this.config.attention_policy,this.hass) : [];
+    const snoozed = new Set(attentionRows.filter(x=>x.snoozedUntil).map(x=>x.key)).size;
+    const missing = new Set(attentionRows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
     const issues = this.incidents(),
       critical = issues.some((x) => x.tone === "error"),
       attentionColor = critical
         ? "var(--error-color)"
-        : issues.length
+        : issues.length || missing
           ? "var(--warning-color)"
           : "var(--success-color)",
       active = this.activeCount(),
@@ -1274,7 +1297,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       wind ? `${localized(this.hass,"wind","szél")} ${wind} ${a.wind_speed_unit || "km/h"}` : "",
       issues.length
         ? localized(this.hass,`${issues.length} warnings`,`${issues.length} figyelmeztetés`)
-        : localized(this.hass,"all systems operational","minden rendszer rendben"),
+        : missing ? localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`) : localized(this.hass,"all systems operational","minden rendszer rendben"),
     ]
       .filter(Boolean)
       .join(" • ");
@@ -1481,12 +1504,12 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                 ><span
                   >${issues.length
                     ? localized(this.hass,`${issues.length} notices`,`${issues.length} jelzés`)
-                    : localized(this.hass,"All good","Rendben")}</span
+                    : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : snoozed ? localized(this.hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`) : localized(this.hass,"All good","Rendben")}</span
                 >
               </button>
             </div>
           </div>
-          ${this.detailsOpen && issues.length
+          ${this.detailsOpen && (issues.length || snoozed || missing)
             ? html`<div class="panel">
                 ${issues.map(
                   (issue) =>
@@ -1531,6 +1554,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                         : nothing}
                     </div>`,
                 )}
+                ${this.config.attention_policy && (snoozed || missing) ? html`<button class="attention" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:attentionPolicy(this.config!.attention_policy)?.diagnostics_path||"/config"})}>${localized(this.hass,`${snoozed} snoozed · ${missing} unavailable · Details`,`${snoozed} szüneteltetve · ${missing} nem elérhető · Részletek`)}</button>` : nothing}
               </div>`
             : nothing}${this.renderBanners(banners)}
         </div></ha-card

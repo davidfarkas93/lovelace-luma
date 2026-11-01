@@ -1,0 +1,238 @@
+import { glob, incidentSourceIds, matchesIncidentRule } from "./incidents";
+import { localized } from "./localize";
+import type { HassEntity, HomeAssistant, LumaIncidentRule, LumaIncidentTone } from "./types";
+
+export interface AttentionRule extends LumaIncidentRule {
+  id: string;
+  scope?: string;
+  category?: string;
+  identity?: "state" | "version" | "condition";
+  unavailable_after_minutes?: number;
+}
+export interface AttentionPolicy {
+  version: 1;
+  revision: string;
+  acknowledgements_entity?: string;
+  diagnostics_path?: string;
+  rules: AttentionRule[];
+  ignored?: Record<string, string>;
+  ignore_labels?: string[];
+  platforms?: Record<string, { scope: string; path?: string }>;
+  problems?: { enabled: boolean; exclude?: string[] };
+  updates?: { enabled: boolean; path?: string; groups?: Array<{ id: string; name: string; platforms: string[] }> };
+  adapters?: { notifications?: boolean; repairs?: boolean; integrations?: boolean; notification_exclude?: string[]; events?: string[] };
+}
+export interface AttentionEntry {
+  id: string;
+  key: string;
+  rule: string;
+  source: string;
+  name: string;
+  message: string;
+  summary?: string;
+  scope: string;
+  category: string;
+  kind: "incident" | "update" | "notification" | "repair" | "integration" | "event";
+  status: "active" | "inactive" | "pending" | "unavailable" | "excluded" | "installing" | "event";
+  reason: string;
+  tone: LumaIncidentTone;
+  path?: string;
+  dismissible: boolean;
+  snoozedUntil?: number;
+}
+export interface AttentionExternal {
+  notifications?: Array<{ notification_id: string; title: string; message: string; created_at?: string }>;
+  repairs?: { issues: Array<{ domain: string; issue_id: string; severity?: string; is_persistent?: boolean; is_fixable?: boolean; dismissed_version?: string; translation_key?: string }> };
+  integrations?: Array<{ entry_id: string; domain: string; title: string; state: string; disabled_by?: string | null }>;
+  errors?: Record<string, string>;
+}
+export const attentionHash = (value: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) { hash ^= value.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+  return (hash >>> 0).toString(36);
+};
+export const attentionAckMap = (raw = ""): Record<string, number> => Object.fromEntries(raw.split(",").flatMap(entry => {
+  const i = entry.lastIndexOf(":");
+  const expiry = Number(entry.slice(i + 1));
+  return i > 0 && Number.isFinite(expiry) ? [[entry.slice(0, i), expiry]] : [];
+}));
+const available = (e?: HassEntity) => !!e && !["", "unknown", "unavailable"].includes(e.state) && e.attributes.restored !== true;
+export const updateInstalling = (e: HassEntity) => e.attributes.in_progress === true || (typeof e.attributes.in_progress === "number" && e.attributes.in_progress >= 0);
+const normal = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+export function attentionPolicyErrors(policy: AttentionPolicy | undefined): string[] {
+  if (!policy || policy.version !== 1 || !Array.isArray(policy.rules)) return ["Policy unavailable or incompatible"];
+  const errors:string[]=[],ids=new Set<string>();
+  for(const r of policy.rules){
+    if(!r.id||ids.has(r.id))errors.push(`Missing/duplicate rule id: ${r.id||"?"}`);ids.add(r.id);
+    if(typeof r.message!=="string")errors.push(`Missing message: ${r.id}`);
+    if(!r.entity&&!r.entity_pattern&&!r.entity_patterns?.length&&!r.device_classes?.length&&!r.platform&&!r.platforms?.length&&!r.domain&&!r.label)errors.push(`Missing selector: ${r.id}`);
+    if(r.above!==undefined&&r.below!==undefined&&r.above>=r.below)errors.push(`Invalid numeric range: ${r.id}`);
+    if(r.for_minutes!==undefined&&(!Number.isFinite(r.for_minutes)||r.for_minutes<0))errors.push(`Invalid grace: ${r.id}`);
+  }
+  return errors;
+}
+
+/** One deterministic snapshot for all surfaces. No services, storage or rendering. */
+export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, external: AttentionExternal = {}, now = Date.now()): AttentionEntry[] {
+  const result: AttentionEntry[] = [];
+  const ack = attentionAckMap(policy.acknowledgements_entity ? hass.states[policy.acknowledgements_entity]?.state : "");
+  const expected = new Set<string>();
+  const names = (e: HassEntity | undefined, source: string) => String(e?.attributes.friendly_name || source);
+  const ignored = (source: string) => {
+    const registry = hass.entities?.[source];
+    if (policy.ignored?.[source]) return policy.ignored[source];
+    if (registry?.disabled || registry?.disabled_by) return "disabled";
+    if (hass.states[source]?.attributes.restored === true) return "restored";
+    if (policy.ignore_labels?.some(label => registry?.labels?.includes(label))) return "ignored_label";
+    return "";
+  };
+  const add = (entry: AttentionEntry, fingerprint: string) => {
+    entry.key = `a${attentionHash(`${entry.rule}|${entry.source}|${fingerprint}`)}`;
+    const until = ack[entry.key];
+    if (entry.dismissible && entry.tone !== "error" && until > now / 1000) entry.snoozedUntil = until;
+    result.push(entry);
+  };
+  const base = (source: string, rule: string, scope = "home", category = "home"): AttentionEntry => ({
+    id: `${rule}:${source}`, key: "", rule, source, name: names(hass.states[source], source), message: "", scope, category,
+    kind: "incident", status: "inactive", reason: "condition_not_met", tone: "warning", dismissible: true,
+  });
+  if(!hass.entities){const entry=base("registry","metadata","system");entry.status="unavailable";entry.reason="metadata_unavailable";entry.message=localized(hass,"Entity registry metadata is not ready","Az entitás-regiszter metaadatai még nem érhetők el");entry.dismissible=false;add(entry,"metadata");}
+  for (const rule of policy.rules) {
+    const sources = rule.entity ? [rule.entity] : incidentSourceIds(hass, { ...rule, for_minutes: undefined });
+    for (const source of sources) {
+      expected.add(source);
+      const evaluated = rule.related_suffix ? source.replace(rule.related_suffix.from, rule.related_suffix.to) : source;
+      const e = hass.states[evaluated], entry = base(source, rule.id, rule.scope, rule.category);
+      entry.tone = rule.tone || "warning"; entry.dismissible = rule.dismissible !== false;
+      entry.path = rule.navigation_path;
+      entry.message = rule.message.replaceAll("{name}", entry.name).replaceAll("{count}", "1")
+        .replaceAll("{value}", e?.state || "—").replaceAll("{remaining}", available(e) && Number.isFinite(Number(e!.state)) ? String(Math.max(0, 100 - Number(e!.state))) : "—");
+      const exclusion = ignored(source);
+      if (exclusion) { entry.status = "excluded"; entry.reason = exclusion; }
+      else {
+        const blankAllowed = [rule.state,rule.state_not].flatMap(x=>Array.isArray(x)?x:x===undefined?[]:[x]).includes("");
+        const noData = !e || ["unknown","unavailable"].includes(e.state) || e.attributes.restored === true || e.state === "" && !blankAllowed;
+        // Explicit unknown/unavailable rules are intentional (e.g. five-minute UPS outage).
+        const explicitMissing = noData && rule.state !== undefined && (Array.isArray(rule.state) ? rule.state : [rule.state]).some(x => normal(x) === normal(e?.state));
+        if (noData && !explicitMissing) {
+          entry.status = "unavailable"; entry.reason = "source_unavailable";
+          const age = e ? now - new Date(e.last_changed).getTime() : 0;
+          if (rule.unavailable_after_minutes !== undefined && age >= rule.unavailable_after_minutes * 60000) {
+            entry.status = "active"; entry.message = localized(hass,`${entry.name}: no fresh state`,`${entry.name}: nincs friss állapotadat`); entry.reason = "source_unavailable";
+          }
+        } else if (matchesIncidentRule(e, { ...rule, for_minutes: undefined })) {
+          const age = now - new Date(e!.last_changed).getTime();
+          entry.status = rule.for_minutes && age < rule.for_minutes * 60000 ? "pending" : "active";
+          entry.reason = entry.status === "pending" ? "grace_period" : "condition_met";
+        }
+      }
+      const identity = rule.identity || (rule.above !== undefined || rule.below !== undefined ? "condition" : "state");
+      const fingerprint = identity === "version" ? String(e?.attributes.latest_version || "") : identity === "state" ? `${e?.state}|${e?.last_changed}` : "threshold";
+      add(entry, fingerprint);
+    }
+  }
+  for (const e of Object.values(hass.states)) {
+    const registry = hass.entities?.[e.entity_id];
+    const platform = registry?.platform || "unknown";
+    const classification = policy.platforms?.[platform];
+    const exclusion = ignored(e.entity_id);
+    if (policy.updates?.enabled && e.entity_id.startsWith("update.")) {
+      const group = policy.updates.groups?.find(g => g.platforms.includes(platform));
+      const entry = base(e.entity_id, "updates", classification?.scope || "homelab", group?.id || "other_updates");
+      entry.kind = "update"; entry.path = policy.updates.path; entry.message = group?.name || localized(hass,"Other updates","Egyéb frissítések");
+      entry.status = exclusion ? "excluded" : !available(e) ? "unavailable" : updateInstalling(e) ? "installing" : e.state === "on" ? "active" : "inactive";
+      entry.reason = exclusion || (entry.status === "unavailable" ? "source_unavailable" : entry.status === "active" ? "update_available" : entry.status === "installing" ? "installing" : "up_to_date");
+      add(entry, String(e.attributes.latest_version || "unknown-version"));
+    } else if (policy.problems?.enabled && e.entity_id.startsWith("binary_sensor.") && ["problem", "safety", "tamper"].includes(String(e.attributes.device_class)) && !expected.has(e.entity_id)) {
+      const entry = base(e.entity_id, "problems", classification?.scope, platform);
+      entry.path = classification?.path; entry.message = entry.name; entry.tone = "error"; entry.dismissible = false;
+      const excluded = exclusion || (policy.problems.exclude?.some(p => glob(p, e.entity_id)) ? "policy_exception" : "");
+      entry.status = excluded ? "excluded" : !available(e) ? "unavailable" : e.state === "on" ? "active" : "inactive";
+      entry.reason = excluded || (entry.status === "unavailable" ? "source_unavailable" : "problem_signal");
+      add(entry, `${e.state}|${e.last_changed}`);
+    }
+  }
+  for (const n of policy.adapters?.notifications ? external.notifications || [] : []) {
+    if (policy.adapters?.notification_exclude?.some(p => glob(p, n.notification_id))) continue;
+    const entry = base(`notification:${n.notification_id}`, "persistent_notifications");
+    entry.kind = "notification"; entry.name = n.title; entry.message = n.message; entry.status = "active"; entry.reason = "persistent_notification";
+    entry.path = policy.diagnostics_path;
+    add(entry, `${n.created_at || ""}|${n.message}`);
+  }
+  for (const issue of policy.adapters?.repairs ? external.repairs?.issues || [] : []) {
+    if (issue.dismissed_version) continue;
+    const entry = base(`repair:${issue.domain}:${issue.issue_id}`, "repairs", "homelab");
+    entry.kind = "repair"; entry.name = `${issue.domain}: ${issue.translation_key || issue.issue_id}`; entry.message = entry.name;
+    entry.status = "active"; entry.reason = "repair_issue"; entry.path = "/config/repairs";
+    entry.tone = issue.severity === "error" || issue.severity === "critical" ? "error" : "warning";
+    add(entry, issue.issue_id);
+  }
+  for (const integration of policy.adapters?.integrations ? external.integrations || [] : []) {
+    if (integration.disabled_by || !["setup_retry", "setup_error", "migration_error", "failed_unload"].includes(integration.state)) continue;
+    const entry = base(`integration:${integration.entry_id}`, "integrations", "homelab", integration.domain);
+    entry.kind = "integration"; entry.name = integration.title || integration.domain; entry.message = `${entry.name}: ${integration.state}`;
+    entry.status = "active"; entry.reason = "integration_error"; entry.path = "/config/integrations"; entry.dismissible = false;
+    add(entry, integration.state);
+  }
+  for (const source of policy.adapters?.events || []) {
+    const e = hass.states[source];
+    const entry = base(source, "events", "homelab"); entry.kind = "event";
+    entry.status = available(e) ? "event" : "unavailable"; entry.reason = "latest_event_only";
+    entry.name = String(e?.attributes.title || entry.name); entry.message = String(e?.attributes.subject || e?.attributes.description || "—");
+    entry.tone = normal(e?.attributes.importance) === "alert" ? "error" : "warning";
+    add(entry, e?.state || "");
+  }
+  for (const [adapter, error] of Object.entries(external.errors || {})) {
+    if (!policy.adapters?.[adapter as "notifications" | "repairs" | "integrations"]) continue;
+    const entry = base(`adapter:${adapter}`, "adapter_health", "homelab");
+    entry.name = adapter; entry.message = error; entry.status = "unavailable"; entry.reason = "adapter_unavailable"; entry.dismissible = false;
+    add(entry, adapter);
+  }
+  // Overlapping threshold tiers select the most severe active signal per source.
+  const winner = new Map<string, AttentionEntry>();
+  for (const row of result.filter(x => x.status === "active")) {
+    const key = `${row.kind}:${row.source}`, old = winner.get(key);
+    if (!old || row.tone === "error" && old.tone !== "error") winner.set(key, row);
+  }
+  return result.map(row => row.status === "active" && winner.get(`${row.kind}:${row.source}`) !== row ? { ...row, status: "excluded", reason: "covered_by_stronger_rule" } : row);
+}
+
+export const activeAttention = (rows: AttentionEntry[], scope?: string, includeSnoozed = false) => rows.filter(x =>
+  (!scope || x.scope === scope || x.scope === "system") && ["active", "installing"].includes(x.status) && (includeSnoozed || !x.snoozedUntil));
+
+export function groupAttention(rows: AttentionEntry[], policy: AttentionPolicy, hass: HomeAssistant, now = Date.now()): AttentionEntry[] {
+  const grouped = new Map<string, AttentionEntry[]>(), ack = attentionAckMap(policy.acknowledgements_entity ? hass.states[policy.acknowledgements_entity]?.state : "");
+  for (const row of rows.filter(x=>["active","installing"].includes(x.status))) {
+    const rule = policy.rules.find(r=>r.id===row.rule);
+    const id = row.kind === "update" ? `update:${row.category}` : rule?.aggregate ? `rule:${row.rule}` : row.id;
+    const group = grouped.get(id)||[]; group.push(row); grouped.set(id,group);
+  }
+  const copies = new Map<string, AttentionEntry>();
+  for (const [id, members] of grouped) {
+    const key = `a${attentionHash(`${id}|${members.map(x=>x.key).sort().join(",")}`)}`;
+    const rule = policy.rules.find(r=>r.id===members[0].rule);
+    const message = members[0].kind === "update" ? `${members.length} ${members[0].message}` : rule?.aggregate ? rule.message.replaceAll("{count}",String(members.length)) : members[0].message;
+    for (const row of members) {
+      const copy = {...row,key};
+      // The summary is separate from each source's own diagnostic explanation.
+      copy.summary = message;
+      delete copy.snoozedUntil;
+      if (row.dismissible && row.tone !== "error" && ack[key] > now/1000) copy.snoozedUntil=ack[key];
+      copies.set(row.id,copy);
+    }
+  }
+  return rows.map(x=>copies.get(x.id)||x);
+}
+
+export const attentionSummaries = (rows: AttentionEntry[], scope?: string, includeSnoozed = false) => [...new Map(activeAttention(rows,scope,includeSnoozed).map(x=>[x.key,{...x,message:x.summary||x.message}])).values()];
+
+/** Fixed-size legacy input_text storage, compact keys, no truncation of a record. */
+export function attentionAckValue(raw: string, key: string, expiry: number | null, now: number, max = 255) {
+  const map = attentionAckMap(raw); delete map[key];
+  const entries = Object.entries(map).filter(([, end]) => end > now).sort((a,b)=>b[1]-a[1]);
+  if (expiry !== null) entries.unshift([key, expiry]);
+  const result: string[] = [];
+  for (const [id, end] of entries) { const item = `${id}:${end}`; if ([...result,item].join(",").length <= max) result.push(item); }
+  return result.join(",");
+}

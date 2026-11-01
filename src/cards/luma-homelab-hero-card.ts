@@ -3,16 +3,22 @@ import { customElement, property, state } from "lit/decorators.js";
 import { runAction } from "../helpers";
 import { incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { localized } from "../localize";
+import { attentionSummaries } from "../attention";
+import { AttentionSubscription, policyRows } from "../attention-runtime";
 import { lumaTokens } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard, LumaIncidentRule } from "../types";
 
 type StatusRule = Omit<LumaIncidentRule,"message"> & { category:string; monitored?:boolean };
-interface Config { type:string; name?:string; icon?:string; tap_action?:LumaAction; status_rules?:StatusRule[] }
+interface Config { type:string; name?:string; icon?:string; tap_action?:LumaAction; status_rules?:StatusRule[]; attention_policy?:string; attention_scope?:string }
 
 @customElement("luma-homelab-hero-card")
 export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
   @property({attribute:false}) hass?:HomeAssistant;
   @state() private config?:Config;
+  private subscription = new AttentionSubscription(()=>this.requestUpdate());
+  connectedCallback(){super.connectedCallback();this.subscription.connect()}
+  disconnectedCallback(){super.disconnectedCallback();this.subscription.disconnect()}
+  protected updated(){this.subscription.update(this.hass,this.config?.attention_policy)}
   static styles=[lumaTokens,css`
     ha-card{display:grid;grid-template-columns:58px minmax(0,1fr) auto;grid-template-areas:"icon title badge" "icon subtitle badge";align-items:center;gap:4px 17px;padding:25px;border:1px solid color-mix(in srgb,var(--tone) 22%,transparent);border-radius:24px;background:linear-gradient(135deg,color-mix(in srgb,var(--tone) 14%,var(--luma-surface)),var(--luma-surface) 62%);box-shadow:0 18px 50px rgba(0,0,0,.075);transition:.18s ease}ha-card:hover{transform:translateY(-2px);box-shadow:0 22px 56px color-mix(in srgb,var(--tone) 12%,transparent)}
     .icon{grid-area:icon;display:grid;place-items:center;width:58px;height:58px;border-radius:19px;color:var(--tone);background:color-mix(in srgb,var(--tone) 15%,transparent)}.icon ha-icon{--mdc-icon-size:30px}.title{grid-area:title;align-self:end;font-size:clamp(21px,4vw,27px);font-weight:740;letter-spacing:-.035em}.subtitle{grid-area:subtitle;align-self:start;color:var(--luma-muted);font-size:12px}.badge{grid-area:badge;padding:7px 11px;border-radius:999px;color:var(--tone);background:color-mix(in srgb,var(--tone) 13%,transparent);font-size:11px;font-weight:720;white-space:nowrap}
@@ -21,6 +27,11 @@ export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
   setConfig(config:Config){this.config=config}
   getCardSize(){return 2}
   private summary(){
+    if(this.config?.attention_policy){
+      const rows=policyRows(this.config.attention_policy,this.hass!).filter(x=>(!this.config?.attention_scope||x.scope===this.config.attention_scope||x.scope==="system")&&x.kind!=="update");
+      const active=attentionSummaries(rows,undefined,true),missing=new Set(rows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
+      return {total:active.length,tone:active.some(x=>x.tone==="error")?"var(--error-color)":active.length||missing?"var(--warning-color)":"var(--success-color)",subtitle:active.length?localized(this.hass,`${active.length} incidents · ${missing} unavailable sources`,`${active.length} incidens · ${missing} nem elérhető forrás`):missing?localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`):localized(this.hass,"All monitored sources are clear","A felügyelt források rendben"),badge:!active.length&&missing?localized(this.hass,"DATA UNAVAILABLE","ADATHIÁNY"):undefined};
+    }
     const rules=this.config?.status_rules||[],groups=new Map<string,number>();
     let total=0,critical=0;
     const monitored=new Set<string>();
@@ -32,7 +43,7 @@ export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
       groups.set(rule.category,(groups.get(rule.category)||0)+count);
     }
     const parts=[...groups].map(([name,count])=>`${count} ${name}`);
-    return{total,tone:critical>0?"var(--error-color)":total>0?"var(--warning-color)":"var(--success-color)",subtitle:total?`${parts.join(" · ")} ${localized(this.hass,"need attention","figyelmet kér")}`:`${monitored.size} ${localized(this.hass,"services monitored · all systems operational","szolgáltatás felügyelve · minden rendszer működik")}`};
+    return{total,tone:critical>0?"var(--error-color)":total>0?"var(--warning-color)":"var(--success-color)",subtitle:total?`${parts.join(" · ")} ${localized(this.hass,"need attention","figyelmet kér")}`:`${monitored.size} ${localized(this.hass,"services monitored · all systems operational","szolgáltatás felügyelve · minden rendszer működik")}`,badge:undefined};
   }
-  render(){if(!this.hass||!this.config)return nothing;const status=this.summary();return html`<ha-card class="interactive" style=${`--tone:${status.tone}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action)}><span class="icon"><ha-icon icon=${this.config.icon||"mdi:server-security"}></ha-icon></span><span class="title">${this.config.name||"Homelab Control Center"}</span><span class="subtitle">${status.subtitle}</span><span class="badge">${status.total?`${status.total} ${localized(this.hass,"incidents","incidens")}`:localized(this.hass,"ALL GOOD","RENDBEN")}</span></ha-card>`}
+  render(){if(!this.hass||!this.config)return nothing;const status=this.summary();return html`<ha-card class="interactive" style=${`--tone:${status.tone}`} @click=${()=>runAction(this,this.hass!,this.config?.tap_action)}><span class="icon"><ha-icon icon=${this.config.icon||"mdi:server-security"}></ha-icon></span><span class="title">${this.config.name||"Homelab Control Center"}</span><span class="subtitle">${status.subtitle}</span><span class="badge">${status.badge|| (status.total?`${status.total} ${localized(this.hass,"incidents","incidens")}`:localized(this.hass,"ALL GOOD","RENDBEN"))}</span></ha-card>`}
 }
