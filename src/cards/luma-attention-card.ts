@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 import { activeAttention, attentionAckValue, attentionCoverageRows, attentionSummaries, type AttentionEntry } from "../attention";
-import { AttentionSubscription, attentionPolicy, policyRows } from "../attention-runtime";
+import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows } from "../attention-runtime";
 import { localized } from "../localize";
 import { runAction } from "../helpers";
 import { lumaTokens } from "../styles";
@@ -59,6 +59,8 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     .empty{display:grid;justify-items:center;gap:8px;padding:32px 18px;text-align:center}.empty>.icon{width:48px;height:48px;margin-bottom:4px}.empty strong{font-size:var(--luma-text-md);font-weight:var(--luma-weight-title)}.empty p{max-width:440px;margin:0;font-size:var(--luma-text-sm);line-height:1.6;color:var(--luma-muted)}
     .action{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 15px;border:1px solid color-mix(in srgb,var(--primary-color) 18%,transparent);border-radius:999px;background:color-mix(in srgb,var(--primary-color) 9%,transparent);color:var(--primary-color);font:inherit;font-size:var(--luma-text-sm);font-weight:var(--luma-weight-strong);cursor:pointer}.action ha-icon{--mdc-icon-size:18px}.action.secondary{color:var(--luma-muted);background:transparent;border-color:var(--luma-border)}.action:disabled{opacity:.5;cursor:default}.more{margin-top:14px;width:100%}
     .detail{display:grid;gap:18px;min-width:0}.detail-status{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.detail-message{margin:0;font-size:var(--luma-text-md);line-height:1.7;white-space:pre-line;overflow-wrap:anywhere}.explanation{margin:0;padding:14px 16px;border-left:2px solid color-mix(in srgb,var(--primary-color) 35%,transparent);border-radius:0 var(--luma-radius-control) var(--luma-radius-control) 0;background:color-mix(in srgb,var(--primary-color) 4%,transparent);color:var(--luma-muted);font-size:var(--luma-text-sm);line-height:1.6}.actions{display:flex;gap:8px;flex-wrap:wrap}
+    .context{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.context-item{min-width:0;padding:14px;border:1px solid var(--luma-border);border-radius:var(--luma-radius-control);background:color-mix(in srgb,var(--primary-color) 4%,transparent);color:var(--primary-text-color);font:inherit;text-align:left;overflow-wrap:anywhere}.context-item span{display:block;font-size:11px;color:var(--luma-muted);line-height:1.5}.context-item strong{display:block;margin-top:6px;font-size:var(--luma-text-md);font-weight:var(--luma-weight-strong);line-height:1.5}button.context-item{cursor:pointer;min-height:44px}
+    .context>div{grid-column:1/-1}
     .technical{border-top:1px solid var(--luma-border);padding-top:14px}.technical summary{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--luma-muted);font-size:var(--luma-text-sm);font-weight:var(--luma-weight-strong);cursor:pointer}.technical summary::after{content:"+";margin-left:auto;font-size:18px}.technical[open] summary::after{content:"−"}.technical summary ha-icon{--mdc-icon-size:18px}
     dl{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px 16px;margin:12px 0 0;font-size:var(--luma-text-sm);line-height:1.6}dt{color:var(--luma-muted)}dd{margin:0;min-width:0;overflow-wrap:anywhere}dd code{font-size:11px}.error{margin:0;color:var(--error-color);font-size:var(--luma-text-sm);line-height:1.6}
     button:focus-visible,summary:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}
@@ -171,6 +173,13 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     } catch { this.error = this.t("Could not restore the alert. Try again.", "Nem sikerült visszaállítani a jelzést. Próbáld újra."); }
     finally { this.saving = false; }
   }
+  private async dismissNotification(row: AttentionEntry) {
+    if (!this.hass || !row.notificationId || this.saving) return;
+    this.saving = true; this.error = "";
+    try { await dismissAttentionNotification(this.hass, row.notificationId); this.detailsOpen = false; }
+    catch { this.error = this.t("Could not dismiss the Home Assistant notification. Try again.", "Nem sikerült törölni a Home Assistant értesítését. Próbáld újra."); }
+    finally { this.saving = false; }
+  }
   private empty(missing: number) {
     const searching = !!this.query.trim();
     const attentionView = this.config?.mode !== "diagnostics" || this.filter === "active";
@@ -187,8 +196,10 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     return html`<div class="detail">
       <div class="detail-status"><span class="pill" style=${`--tone:${this.tone(row)}`}>${this.status(row)}</span>${row.snoozedUntil ? html`<span class="muted">${this.t("Until", "Eddig")}: ${new Date(row.snoozedUntil * 1000).toLocaleString(this.hass?.locale?.language)}</span>` : nothing}</div>
       <p class="detail-message">${description}</p>
+      ${row.context?.length ? html`<div class="context">${row.context.map(item=>item.entity ? html`<button class="context-item" @click=${()=>runAction(this,this.hass!,{action:"more-info"},item.entity)}><span>${item.label}</span><strong>${item.value}</strong></button>` : html`<div class="context-item"><span>${item.label}</span><strong>${item.value}</strong></div>`)}</div>` : nothing}
       ${description !== explanation ? html`<p class="explanation">${explanation}</p>` : nothing}
       <div class="actions">
+        ${row.notificationId ? html`<button class="action" ?disabled=${this.saving} @click=${() => this.dismissNotification(row)}><ha-icon icon="mdi:bell-remove-outline"></ha-icon>${this.t("Dismiss in Home Assistant", "Törlés a Home Assistantból")}</button>` : nothing}
         ${row.path && row.path !== policy?.diagnostics_path ? html`<button class="action" @click=${() => runAction(this, this.hass!, { action: "navigate", navigation_path: row.path! })}><ha-icon icon="mdi:arrow-top-right"></ha-icon>${this.t("Open details", "Részletes nézet")}</button>` : nothing}
         ${this.hass?.states[row.source] ? html`<button class="action secondary" @click=${() => runAction(this, this.hass!, { action: "more-info" }, row.source)}><ha-icon icon="mdi:chart-timeline-variant"></ha-icon>${this.t("Entity & history", "Entitás és előzmények")}</button>` : nothing}
         ${row.snoozedUntil ? html`<button class="action" ?disabled=${this.saving} @click=${() => this.unsnooze(row)}><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${this.t("Show alert again", "Jelzés visszaállítása")}</button>` : nothing}
@@ -196,6 +207,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
       ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
       <details class="technical"><summary><ha-icon icon="mdi:tune-variant"></ha-icon>${this.t("Technical details", "Technikai részletek")}</summary><dl>
         <dt>${this.t("Source", "Forrás")}</dt><dd><code>${row.source}</code></dd>
+        ${row.sourceState !== undefined ? html`<dt>${this.t("Source state", "Forrás állapota")}</dt><dd>${row.sourceState || "—"}</dd>` : nothing}
         <dt>${this.t("Rules", "Szabályok")}</dt><dd>${(row.affectedRules || [row.rule]).map(rule => html`<div><code>${rule}</code></div>`)}</dd>
         <dt>${this.t("Category", "Kategória")}</dt><dd>${row.category}</dd>
         ${row.message !== description ? html`<dt>${this.t("Source message", "Forrás jelzése")}</dt><dd>${row.message}</dd>` : nothing}

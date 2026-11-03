@@ -8,6 +8,8 @@ export interface AttentionRule extends LumaIncidentRule {
   category?: string;
   identity?: "state" | "version" | "condition";
   unavailable_after_minutes?: number;
+  state_labels?: Record<string, string>;
+  context?: Array<{label:string; entity?:string; entity_pattern?:string; value?:string; source?:string; states?:string[]; decimals?:number}>;
 }
 export interface AttentionPolicy {
   version: 1;
@@ -40,6 +42,9 @@ export interface AttentionEntry {
   dismissible: boolean;
   snoozedUntil?: number;
   affectedRules?: string[];
+  notificationId?: string;
+  sourceState?: string;
+  context?: Array<{label:string; value:string; entity?:string}>;
 }
 export interface AttentionExternal {
   notifications?: Array<{ notification_id: string; title: string; message: string; created_at?: string }>;
@@ -70,6 +75,12 @@ export function attentionPolicyErrors(policy: AttentionPolicy | undefined): stri
     if(!r.entity&&!r.entity_pattern&&!r.entity_patterns?.length&&!r.device_classes?.length&&!r.platform&&!r.platforms?.length&&!r.domain&&!r.label)errors.push(`Missing selector: ${r.id}`);
     if(r.above!==undefined&&r.below!==undefined&&r.above>=r.below)errors.push(`Invalid numeric range: ${r.id}`);
     if(r.for_minutes!==undefined&&(!Number.isFinite(r.for_minutes)||r.for_minutes<0))errors.push(`Invalid grace: ${r.id}`);
+    if(r.state_labels && (typeof r.state_labels !== "object" || Object.values(r.state_labels).some(value=>typeof value !== "string")))errors.push(`Invalid state labels: ${r.id}`);
+    if(r.context !== undefined && !Array.isArray(r.context))errors.push(`Invalid context: ${r.id}`);
+    else for(const item of r.context || []) {
+      if(!item || typeof item.label !== "string" || [item.entity,item.entity_pattern,item.value].filter(value=>value !== undefined).length !== 1)errors.push(`Invalid context source: ${r.id}`);
+      if(item?.decimals !== undefined && (!Number.isInteger(item.decimals) || item.decimals < 0 || item.decimals > 6))errors.push(`Invalid context precision: ${r.id}`);
+    }
   }
   return errors;
 }
@@ -105,10 +116,25 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
       expected.add(source);
       const evaluated = rule.related_suffix ? source.replace(rule.related_suffix.from, rule.related_suffix.to) : source;
       const e = hass.states[evaluated], entry = base(source, rule.id, rule.scope, rule.category);
+      const codes = (e?.state || "").split(/[,\n]+/).map(code=>code.trim()).filter(Boolean);
+      const value = rule.state_labels ? codes.map(code=>rule.state_labels?.[code] || code).join(" · ") : e?.state;
+      entry.sourceState = e?.state;
       entry.tone = rule.tone || "warning"; entry.dismissible = rule.dismissible !== false;
       entry.path = rule.navigation_path;
       entry.message = rule.message.replaceAll("{name}", entry.name).replaceAll("{count}", "1")
-        .replaceAll("{value}", e?.state || "—").replaceAll("{remaining}", available(e) && Number.isFinite(Number(e!.state)) ? String(Math.max(0, 100 - Number(e!.state))) : "—");
+        .replaceAll("{value}", value || "—").replaceAll("{remaining}", available(e) && Number.isFinite(Number(e!.state)) ? String(Math.max(0, 100 - Number(e!.state))) : "—");
+      entry.context = (rule.context || []).filter(item=>(!item.source || item.source === source) && (!item.states || item.states.some(code=>codes.includes(code)))).map(item=>{
+        if (item.value !== undefined) return {label:item.label,value:item.value};
+        const device = hass.entities?.[source]?.device_id;
+        // Pattern bindings are local to this source's device; never borrow a
+        // similarly named metric from another server if metadata is missing.
+        const id = item.entity || (device && item.entity_pattern ? Object.keys(hass.states).find(id=>hass.entities?.[id]?.device_id === device && glob(item.entity_pattern!,id)) : undefined);
+        const metric = id ? hass.states[id] : undefined;
+        const numeric = metric && available(metric) ? Number(metric.state) : NaN;
+        const formatted = Number.isFinite(numeric) ? numeric.toLocaleString(hass.locale?.language || "en", {maximumFractionDigits:item.decimals ?? 2}) : available(metric) ? metric!.state : localized(hass,"No data","Nincs adat");
+        const unit = available(metric) ? String(metric?.attributes.unit_of_measurement || "") : "";
+        return {label:item.label,value:`${formatted}${unit ? ` ${unit}` : ""}`,entity:id};
+      });
       const exclusion = ignored(source);
       if (exclusion) { entry.status = "excluded"; entry.reason = exclusion; }
       else {
@@ -158,6 +184,7 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
     if (policy.adapters?.notification_exclude?.some(p => glob(p, n.notification_id))) continue;
     const entry = base(`notification:${n.notification_id}`, "persistent_notifications");
     entry.kind = "notification"; entry.name = n.title; entry.message = n.message; entry.status = "active"; entry.reason = "persistent_notification";
+    entry.notificationId = n.notification_id; entry.dismissible = false;
     entry.path = policy.diagnostics_path;
     add(entry, `${n.created_at || ""}|${n.message}`);
   }

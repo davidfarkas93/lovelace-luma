@@ -4,11 +4,41 @@ import type { HomeAssistant } from "./types";
 declare global { interface Window { lumaAttentionPolicies?: Record<string, AttentionPolicy> } }
 const external: AttentionExternal = {};
 let lastFetch = 0, fetching = false, externalVersion = 0;
+let notificationRequest = 0;
 const listeners = new Set<() => void>();
 const cache = new Map<string, { hass: HomeAssistant; policy: AttentionPolicy | undefined; bucket: number; version: number; rows: AttentionEntry[] }>();
 const episodes = new Map<string, { active: boolean; started: number }>();
 let episodesLoaded = false;
 const changed = () => { cache.clear(); for (const listener of listeners) listener(); };
+
+async function readNotifications(hass: HomeAssistant) {
+  if (!hass.callWS) return;
+  const request = ++notificationRequest;
+  try {
+    const value = await hass.callWS<NonNullable<AttentionExternal["notifications"]>>({type:"persistent_notification/get"});
+    if (request !== notificationRequest) return;
+    if (!Array.isArray(value)) throw Error("Invalid notification response");
+    external.notifications = value;
+    if (external.errors) delete external.errors.notifications;
+  } catch {
+    if (request !== notificationRequest) return;
+    external.errors ||= {}; external.errors.notifications = "The notification source could not be read";
+    delete external.notifications;
+  } finally { if (request === notificationRequest) { externalVersion++; changed(); } }
+}
+
+/** Dismiss exactly one HA notification. Never write a Luma snooze record. */
+export async function dismissAttentionNotification(hass: HomeAssistant, notificationId: string) {
+  if (!notificationId.trim()) throw Error("Notification id required");
+  await hass.callService("persistent_notification", "dismiss", {notification_id:notificationId});
+  // A completed HA service removes the notice. Invalidate older reads so a late
+  // pre-dismiss response cannot resurrect it in this browser's shared cache.
+  notificationRequest++;
+  external.notifications = external.notifications?.filter(row => row.notification_id !== notificationId);
+  externalVersion++; changed();
+  // Re-read immediately: a producer may legitimately create a new notice again.
+  await readNotifications(hass);
+}
 export const attentionPolicy = (name?: string) => name ? window.lumaAttentionPolicies?.[name] : undefined;
 export function policyRows(name: string, hass: HomeAssistant): AttentionEntry[] {
   const policy = attentionPolicy(name), now = Date.now(), bucket = Math.floor(now / 15000), hit = cache.get(name);
@@ -62,6 +92,7 @@ async function refreshAdapters(hass: HomeAssistant, policy?: AttentionPolicy) {
   fetching = true; lastFetch = Date.now();
   try {
     for (const [key,type] of calls) {
+      if (key === "notifications") { await readNotifications(hass); continue; }
       try {
         const value = await hass.callWS({type});
         Object.assign(external,{[key]:value});

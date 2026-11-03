@@ -1051,6 +1051,41 @@ Nonzero summary pills provide quick status filters in diagnostics; source/rule
 IDs and policy revision live in the detail sheet's expandable Technical details
 section. Data gaps stay distinct from active alerts, including in empty states.
 
+Home Assistant persistent notifications have a native **Dismiss in Home Assistant**
+action in the Home summary and detail sheet. It calls `persistent_notification.dismiss`
+for that notification ID and refreshes the shared list immediately. These notices
+do not offer the 7/30-day Luma snooze; deleting one removes it from HA as well.
+If an integration creates a new notice afterward, it appears again. Service errors
+leave the original notice visible and show feedback.
+
+Rules can explain coded states with `state_labels` (a map from raw code to display
+text; comma-separated codes are handled individually and unknown codes stay visible).
+Use `{value}` in the rule message and disable `aggregate` when each host needs its
+own meaningful subject. Optional `context` rows add supporting measurements:
+
+```yaml
+state_labels:
+  ServerDisk: Disk space is running low
+message: '{name}: {value}'
+aggregate: false
+context:
+  - label: Disk usage
+    entity_pattern: sensor.*_disk_usage
+    states: [ServerDisk]
+    decimals: 1
+  - label: Capacity
+    entity_pattern: sensor.*_disk_total
+    states: [ServerDisk]
+```
+
+Each context item selects exactly one of `entity`, `entity_pattern`, or a static
+`value`. Pattern matching is restricted to the alert source's HA device; missing
+metadata or measurements show No data rather than borrowing a different server's
+reading. Optional `source` limits a context item to one alert entity; `states`
+limits it to the specified raw codes. Metric rows open their actual source's More
+Info. Codes and raw source state remain available in Technical details. Live metric
+changes do not create new snooze identities.
+
 Its modes are `diagnostics` (searchable source/rule coverage and snooze restoration),
 `incidents` (factual active conditions, including snoozed warnings) and `updates`
 (grouped update cards). Optional fields are `title` and `scope`. Coverage separates

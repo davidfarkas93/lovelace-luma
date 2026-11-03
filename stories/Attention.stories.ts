@@ -12,6 +12,13 @@ const policy:AttentionPolicy={version:1,revision:"Demo policy",acknowledgements_
   {id:"certificate-critical",entity_pattern:"sensor.*_certificate_days",below:7,message:"Certificate expires critically soon",tone:"error",scope:"homelab"},
 ],problems:{enabled:true},updates:{enabled:true,groups:[{id:"firmware",name:"Firmware updates",platforms:["shelly","esphome"]},{id:"software",name:"Software updates",platforms:["hacs","komodo"]}]},ignored:{"update.retired":"Retired duplicate"}};
 window.lumaAttentionPolicies={...window.lumaAttentionPolicies,demo:policy};
+window.lumaAttentionPolicies["demo-notifications"]={version:1,revision:"Native notification demo",rules:[],adapters:{notifications:true}};
+window.lumaAttentionPolicies["demo-host-alerts"]={...policy,rules:[{...policy.rules[0],message:"{name}: {value}",aggregate:false,state_labels:{ServerDisk:"Disk space is running low"},context:[
+ {label:"Filesystem",value:"Docker image (/var/lib/docker)",states:["ServerDisk"]},
+ {label:"Disk usage",entity_pattern:"sensor.*_disk_usage",states:["ServerDisk"],decimals:1},
+ {label:"Free space",entity_pattern:"sensor.*_disk_free",states:["ServerDisk"]},
+ {label:"Capacity",entity_pattern:"sensor.*_disk_total",states:["ServerDisk"]},
+]}]};
 window.dispatchEvent(new Event("luma-attention-policy-changed"));
 const entities:Record<string,EntityDefinition>={
  "input_text.ack":{state:"",attributes:{max:255}},
@@ -35,6 +42,13 @@ export const Mobile:Story={args:{width:358}};
 export const Updates:Story={args:{config:{policy:"demo",mode:"updates"}}};
 export const Incidents:Story={args:{config:{policy:"demo",mode:"incidents"}}};
 export const MissingPolicy:Story={args:{config:{policy:"not-registered",mode:"diagnostics"}}};
+export const NativeNotification:Story={args:{config:{policy:"demo-notifications",mode:"incidents"},entities:{},width:620}};
+export const HostAlert:Story={args:{config:{policy:"demo-host-alerts",mode:"incidents"},entities:{
+ "sensor.host_alerts":{state:"ServerDisk",platform:"komodo",device:"Tower",attributes:{friendly_name:"Tower"}},
+ "sensor.host_disk_usage":{state:83.9,device:"Tower",attributes:{unit_of_measurement:"%"}},
+ "sensor.host_disk_free":{state:4.83,device:"Tower",attributes:{unit_of_measurement:"GB"}},
+ "sensor.host_disk_total":{state:30,device:"Tower",attributes:{unit_of_measurement:"GB"}},
+},width:620}};
 export const Embedded:Story={args:{config:{policy:"demo",mode:"diagnostics",embedded:true},width:620}};
 export const LongLabels:Story={args:{width:358,entities:{...entities,
  "sensor.host_alerts":{...entities["sensor.host_alerts"],attributes:{friendly_name:"Hálózati tároló és háttérszolgáltatások riasztásai"}},
@@ -49,4 +63,5 @@ export const DataGapsOnly:Story={args:{entities:{...entities,
  "update.new_vendor":{...entities["update.new_vendor"],state:"off"},
 }}};
 export const HomeSummary:Story={render:()=>renderCard("custom:luma-home-hero-card",{weather_entity:"weather.demo",attention_policy:"demo",acknowledgements_entity:"input_text.ack"},{...entities,"weather.demo":{state:"sunny",attributes:{temperature:21,temperature_unit:"°C"}}},1050)};
+export const HomeNativeNotification:Story={render:()=>renderCard("custom:luma-home-hero-card",{weather_entity:"weather.demo",attention_policy:"demo-notifications"},{"weather.demo":{state:"sunny",attributes:{temperature:21,temperature_unit:"°C"}}},620)};
 export const HomelabSummary:Story={render:()=>renderCard("custom:luma-homelab-hero-card",{attention_policy:"demo",attention_scope:"homelab"},entities,1050)};

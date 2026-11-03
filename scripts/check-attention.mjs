@@ -71,6 +71,8 @@ assert.equal(rows.find(x=>x.rule==='temp-warning').status,'inactive');assert.equ
 let ext={notifications:[{notification_id:'robot-warning',title:'Robot',message:'Camera warning',created_at:'2026-11-01T10:00:00Z'}],repairs:{issues:[{domain:'test',issue_id:'needs-repair',severity:'error'}]},integrations:[{entry_id:'1',domain:'bluetooth',title:'Adapter',state:'setup_retry'},{entry_id:'2',domain:'test',title:'Disabled',state:'setup_error',disabled_by:'user'},{entry_id:'3',domain:'test',title:'Not loaded',state:'not_loaded'}]};
 rows=model.attentionSnapshot(hass,policy,ext,clock);
 assert.equal(rows.filter(x=>x.kind==='notification').length,1);assert.equal(rows.filter(x=>x.kind==='repair').length,1);assert.equal(rows.filter(x=>x.kind==='integration').length,1);
+assert.equal(rows.find(x=>x.kind==='notification').notificationId,'robot-warning');
+assert.equal(rows.find(x=>x.kind==='notification').dismissible,false,'native notifications must not offer a Luma-only snooze');
 assert.equal(rows.find(x=>x.source==='event.notifications').status,'unavailable');
 rows=model.attentionSnapshot(hass,{...policy,adapters:{}},ext,clock);assert.equal(rows.filter(x=>['notification','repair','integration'].includes(x.kind)).length,0,'adapters must be explicitly enabled per policy');
 const max=model.attentionAckValue('', 'a123',clock/1000+100,clock/1000,255);assert.match(max,/^a123:/);
@@ -89,4 +91,37 @@ hass.states['sensor.temp']=entity('sensor.temp','46');clock+=16000;const after=r
 assert.notEqual(before,after,'an observed threshold recovery starts a new episode');
 assert.equal(runtime.policyRows('missing',hass)[0].reason,'policy_unavailable');
 let ticks=0;const sub=new runtime.AttentionSubscription(()=>ticks++);sub.connect();interval();assert.equal(ticks,1);sub.disconnect();
+const contextPolicy={...policy,rules:[{...policy.rules[0],aggregate:false,message:'{name}: {value}',state_labels:{ServerDisk:'High disk usage',ServerMem:'High memory usage'},context:[
+ {label:'Mount',value:'/var/lib/docker',source:'sensor.host_alerts',states:['ServerDisk']},
+ {label:'Used',entity_pattern:'sensor.*_disk_usage',states:['ServerDisk'],decimals:1},
+ {label:'Free',entity_pattern:'sensor.*_disk_free',states:['ServerDisk']},
+]}]};
+hass.states['sensor.host_alerts']=entity('sensor.host_alerts','ServerDisk, FutureAlert');hass.entities['sensor.host_alerts'].device_id='host-a';
+add('sensor.other_disk_usage','99','komodo');hass.entities['sensor.other_disk_usage'].device_id='host-b';
+add('sensor.host_disk_usage','83.94','komodo',{unit_of_measurement:'%'});hass.entities['sensor.host_disk_usage'].device_id='host-a';
+let detail=model.attentionSnapshot(hass,contextPolicy,{},clock).find(x=>x.source==='sensor.host_alerts');
+assert.match(detail.message,/High disk usage · FutureAlert/,'known codes are explained and unknown codes remain visible');
+assert.equal(detail.context[1].entity,'sensor.host_disk_usage','context never borrows another server metric');
+assert.equal(detail.context[1].value,'83,9 %');assert.equal(detail.context[2].value,'Nincs adat');
+assert.equal(detail.sourceState,'ServerDisk, FutureAlert');
+const noRegistry=model.attentionSnapshot({...hass,entities:{}},contextPolicy,{},clock).find(x=>x.source==='sensor.host_alerts');
+assert.equal(noRegistry,undefined,'platform discovery needs registry metadata');
+assert.ok(model.attentionPolicyErrors({...contextPolicy,rules:[{...contextPolicy.rules[0],context:[{label:'Bad',entity:'a',value:'b'}]}]}).length);
+let notices=[{notification_id:'robot-warning',title:'Robot',message:'Camera warning'},{notification_id:'keep',title:'Keep',message:'Unrelated'}];
+const oldNotices=[...notices],calls=[];let resolveOld,reads=0;
+const nativeHass={...hass,callService:async(...args)=>{calls.push(args);notices=notices.filter(n=>n.notification_id!==args[2].notification_id)},callWS:async({type})=>{
+ if(type==='persistent_notification/get'){reads++;return reads===1?new Promise(resolve=>resolveOld=resolve):[...notices]}
+ return type==='repairs/list_issues'?{issues:[]}:[];
+}};
+const nativeRuntime=compile('../src/attention-runtime.ts',()=>model,{window:win,localStorage:{getItem:()=>null,setItem:()=>{}},clearInterval:()=>{}});
+const watcher=new nativeRuntime.AttentionSubscription(()=>{});watcher.update(nativeHass,'test');watcher.connect();
+assert.equal(reads,1);
+await nativeRuntime.dismissAttentionNotification(nativeHass,'robot-warning');
+assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),['persistent_notification','dismiss',{notification_id:'robot-warning'}]);
+resolveOld(oldNotices);for(let i=0;i<8;i++)await Promise.resolve();
+let nativeRows=nativeRuntime.policyRows('test',nativeHass).filter(x=>x.kind==='notification');
+assert.deepEqual([...nativeRows.map(x=>x.notificationId)],['keep'],'a stale in-flight read must not resurrect a dismissed notice');
+await assert.rejects(nativeRuntime.dismissAttentionNotification({...nativeHass,callService:async()=>{throw Error('Denied')}},'keep'));
+assert.equal(nativeRuntime.policyRows('test',nativeHass).filter(x=>x.kind==='notification').length,1,'failed dismissal leaves the notice visible');
+await assert.rejects(nativeRuntime.dismissAttentionNotification(nativeHass,''));watcher.disconnect();
 console.log('Attention: discovery, metadata, fault semantics, grace, per-source/version identity, recurrence, snooze expiry, adapter gating, missing policy and storage bounds passed.');

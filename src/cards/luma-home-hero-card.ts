@@ -15,7 +15,7 @@ import { localize, localized, localizedMap } from "../localize";
 import { lumaTokens } from "../styles";
 import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { attentionAckValue, attentionSummaries } from "../attention";
-import { AttentionSubscription, attentionPolicy, policyRows } from "../attention-runtime";
+import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows } from "../attention-runtime";
 import type {
   HassEntity,
   HomeAssistant,
@@ -78,6 +78,7 @@ interface Incident {
   path?: string;
   entity?: string;
   dismissible: boolean;
+  notificationId?: string;
 }
 
 const weatherLabelsHu: Record<string, string> = {
@@ -124,6 +125,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config?: LumaHomeHeroConfig;
   @state() private detailsOpen = false;
+  @state() private dismissingNotification?: string;
+  @state() private notificationError = "";
   @state() private alarmPopoverOpen = false;
   @state() private alarmPending?: "away" | "night" | "home" | "disarm";
   private alarmTimer?: number;
@@ -1076,7 +1079,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   private incidentCandidates(): Incident[] {
     if (!this.hass || !this.config) return [];
     if (this.config.attention_policy) return attentionSummaries(policyRows(this.config.attention_policy,this.hass),undefined,true).map(row=>({
-      key:row.key,message:row.message,tone:row.tone,path:row.path,entity:this.hass!.states[row.source]?row.source:undefined,dismissible:row.dismissible,
+      key:row.key,message:row.message,tone:row.tone,path:row.path,entity:this.hass!.states[row.source]?row.source:undefined,dismissible:row.dismissible,notificationId:row.notificationId,
     })).sort((a,b)=>Number(b.tone==="error")-Number(a.tone==="error"));
     const found: Incident[] = [];
     for (const rule of this.config.incidents || []) {
@@ -1136,12 +1139,22 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     );
   }
 
+  private async dismissNotification(issue: Incident, event: Event) {
+    event.stopPropagation();
+    if (!this.hass || !issue.notificationId || this.dismissingNotification) return;
+    this.dismissingNotification = issue.notificationId; this.notificationError = "";
+    try { await dismissAttentionNotification(this.hass, issue.notificationId); }
+    catch { this.notificationError = localized(this.hass,"Could not dismiss the Home Assistant notification. Try again.","Nem sikerült törölni a Home Assistant értesítését. Próbáld újra."); }
+    finally { this.dismissingNotification = undefined; }
+  }
+
   private async dismiss(
     issue: Incident,
     days: number,
     event: Event,
   ): Promise<void> {
     event.stopPropagation();
+    if (issue.notificationId) return;
     if (!this.hass || !this.acknowledgementsEntity) return;
     if (this.config?.attention_policy) {
       const entity=this.hass.states[this.acknowledgementsEntity];
@@ -1542,7 +1555,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                                 )
                               : undefined}
                         >${issue.message}</span
-                      >${issue.dismissible && issue.tone !== "error"
+                      >${issue.notificationId ? html`<span class="issue-actions"><button ?disabled=${!!this.dismissingNotification} title=${localized(this.hass,"Dismiss this notification in Home Assistant","Az értesítés törlése a Home Assistantból")} @click=${(event: Event) => this.dismissNotification(issue,event)}>${localized(this.hass,"Dismiss","Elvetés")}</button></span>` : issue.dismissible && issue.tone !== "error"
                         ? html`<span class="issue-actions"
                             ><button
                               @click=${(e: Event) => this.dismiss(issue, 7, e)}
@@ -1557,6 +1570,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                         : nothing}
                     </div>`,
                 )}
+                ${this.notificationError ? html`<div role="alert" style="color:var(--error-color);font-size:12px">${this.notificationError}</div>` : nothing}
                 ${this.config.attention_policy && (snoozed || missing) ? html`<button class="coverage-link" @click=${()=>runAction(this,this.hass!,{action:"navigate",navigation_path:attentionPolicy(this.config!.attention_policy)?.diagnostics_path||"/config"})}><ha-icon icon="mdi:bell-cog-outline"></ha-icon><span><strong>${localized(this.hass,"Notification coverage","Jelzések áttekintése")}</strong><small>${[missing?localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`):"",snoozed?localized(this.hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`):""].filter(Boolean).join(" · ")}</small></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>` : nothing}
               </div>`
             : nothing}${this.renderBanners(banners)}

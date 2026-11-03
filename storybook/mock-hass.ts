@@ -43,6 +43,7 @@ export const createMockHass = (
   const areas: NonNullable<HomeAssistant["areas"]> = {};
   const entities: NonNullable<HomeAssistant["entities"]> = {};
   const devices: NonNullable<HomeAssistant["devices"]> = {};
+  let notifications = [{notification_id:"storybook-notification",title:"Robot mower warning",message:"Water detected in the camera view. Check and wipe the camera lenses.",created_at:"2026-11-03T13:00:00Z"}];
   for (const [entityId, definition] of Object.entries(definitions)) {
     const areaId = definition.area?.toLowerCase().replaceAll(" ", "_");
     if (areaId) areas[areaId] = { name: definition.area };
@@ -61,9 +62,13 @@ export const createMockHass = (
     locale: { language: document.documentElement.lang || "en" },
     formatEntityState: (entity) => entity.state,
     callService: async (domain, service, data, target) => {
+      if (domain === "persistent_notification" && service === "dismiss") notifications = notifications.filter(row=>row.notification_id !== data?.notification_id);
       onServiceCall?.({ domain, service, data, target });
     },
     callWS: async (message: Record<string, unknown>) => {
+      if (message.type === "persistent_notification/get") return [...notifications] as never;
+      if (message.type === "repairs/list_issues") return {issues:[]} as never;
+      if (message.type === "config_entries/get") return [] as never;
       if (message.type === "auth/sign_path") return { path: message.path } as never;
       if (message.type === "history/history_during_period") {
         const ids = (message.entity_ids as string[]) || [];
