@@ -29,8 +29,8 @@ try {
   await search.fill('Application');
   const row=panel().locator('button.item:visible');assert.equal(await row.count(),1);
   await row.click();
-  assert.equal(await panel().locator('.member').count(),2,'update group keeps named members');
-  assert.match(await panel().locator('.members').textContent(),/Weather integration.*Camera card/s);
+  assert.equal(await panel().locator('.members luma-update-card').count(),2,'update group keeps named members');
+  assert.match((await panel().locator('.members luma-update-card .name').allTextContents()).join(' '),/Weather integration.*Camera card/s);
   assert.equal(await page.locator('dialog[open]').count(),1);
   await capture(`${output}/${language}-${width}-members.png`);
   await back().click();

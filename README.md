@@ -1141,8 +1141,18 @@ active, pending, unavailable, excluded, snoozed and informational event rows.
 Unavailable rows are grouped by source, matching summary counts even when several
 threshold rules depend on the same sensor. Their details retain all affected rule
 IDs, and searching by any of those IDs still finds the source.
-Update installation remains an explicit, confirmed action; changing the target
-version requires confirmation again.
+Operations discovery keeps the dedicated update cards even when embedded in the
+shared policy view. The notification list opens its usual detail panel; update
+details use the same update cards, including one card per group member. Installation
+is available there too, without another Luma sheet. Completed members leave the
+active group while the remaining updates stay accessible.
+
+Only entities advertising HA's `INSTALL` capability, a known target version and
+an available state offer installation. Informational/manual updates offer Details;
+unknown/restored/installing states never allow a new install request. Installation
+requires a second tap on that same update card. A changed entity/version requires
+confirmation again, and busy/error/progress behavior is shared by both surfaces.
+Native notifications and Repairs do not gain guessed install actions from their text.
 
 Acknowledgements use a HA `input_text` helper with max length 255. Compact keys
 include the affected members, error identity and version, so changed faults wake
@@ -1210,3 +1220,9 @@ incident/acknowledgement journal.
 Use `scripts/check-household-context-ui.mjs` with the same Playwright setup as the
 attention UI check to exercise mobile/tablet/desktop edits, approvals, drafts,
 conflicts and failed saves with mock services.
+
+The targeted regression runner `scripts/check-maintenance-updates-ui.mjs` exercises
+the actual discovery → policy → embedded path as well as notification group/single
+updates at 390/768/1280 px in English/Hungarian. It captures mock service calls and
+covers confirmation, capability gating, 0% progress, target changes, busy/failure
+states and keeping remaining group members reachable. It never installs a live update.

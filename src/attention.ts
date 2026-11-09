@@ -78,6 +78,8 @@ export const attentionAckMap = (raw = ""): Record<string, number> => Object.from
 }));
 const available = (e?: HassEntity) => !!e && !["", "unknown", "unavailable"].includes(e.state) && e.attributes.restored !== true;
 export const updateInstalling = (e: HassEntity) => e.attributes.in_progress === true || (typeof e.attributes.in_progress === "number" && e.attributes.in_progress >= 0);
+/** HA UpdateEntityFeature.INSTALL. An advertised update may be informational only. */
+export const updateCanInstall = (e?:HassEntity):boolean => !!e && e.state === "on" && !e.attributes.restored && Boolean(Number(e.attributes.supported_features) & 1) && typeof e.attributes.latest_version === "string" && !!e.attributes.latest_version.trim() && !["unknown","unavailable"].includes(e.attributes.latest_version) && !updateInstalling(e);
 const normal = (v: unknown) => String(v ?? "").trim().toLowerCase();
 
 export function attentionPolicyErrors(policy: AttentionPolicy | undefined): string[] {

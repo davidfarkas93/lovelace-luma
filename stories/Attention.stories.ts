@@ -81,9 +81,9 @@ const reviewEntities:Record<string,EntityDefinition>={
  "input_button.plants_watered":{state:"unknown"},
  "sensor.ignored_certificate":{state:"unknown",labels:["monitoring_ignore"]},
  "weather.demo":{state:"sunny",attributes:{temperature:21,temperature_unit:"°C"}},
- "update.weather":{state:"on",platform:"marketplace",attributes:{friendly_name:"Weather integration",installed_version:"1.4.1",latest_version:"2.0.0"}},
- "update.camera":{state:"on",platform:"marketplace",attributes:{friendly_name:"Camera card",installed_version:"8.1.0",latest_version:"8.2.0"}},
- "update.host":{state:"on",platform:"virtualization",attributes:{friendly_name:"Virtualization host",installed_version:"9.2.26",latest_version:"9.2.26-p0-d3",release_summary:"3 system packages available: 0 virtualization packages and 3 other packages. Review packages on the host."}},
+ "update.weather":{state:"on",platform:"marketplace",attributes:{friendly_name:"Weather integration",installed_version:"1.4.1",latest_version:"2.0.0",supported_features:23}},
+ "update.camera":{state:"on",platform:"marketplace",attributes:{friendly_name:"Camera card",installed_version:"8.1.0",latest_version:"8.2.0",supported_features:23}},
+ "update.host":{state:"on",platform:"virtualization",attributes:{friendly_name:"Virtualization host",supported_features:16,installed_version:"9.2.26",latest_version:"9.2.26-p0-d3",release_summary:"3 system packages available: 0 virtualization packages and 3 other packages. Review packages on the host."}},
 };
 const reviewScenario=(options:{hero?:boolean;registry?:"loading"|"error";repairs?:"loading"|"error";task?:boolean}={})=>{
  const calls:unknown[]=[];

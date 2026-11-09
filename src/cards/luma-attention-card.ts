@@ -32,6 +32,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
   @state() private query = "";
   @state() private filter = "active";
   @state() private selected?: string;
+  @state() private selectedUpdateCategory?: string;
   @state() private detailsOpen = false;
   @state() private limit = 50;
   @state() private saving = false;
@@ -84,7 +85,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     if (config.mode && !["incidents", "updates", "diagnostics"].includes(config.mode)) throw Error("Unknown attention mode");
     this.config = { mode: "incidents", ...config };
     this.query = ""; this.filter = "active"; this.limit = 50;
-    this.detailsOpen = false; this.selected = undefined; this.confirming = false; this.actionSent = false;
+    this.detailsOpen = false; this.selected = undefined; this.selectedUpdateCategory = undefined; this.confirming = false; this.actionSent = false;
   }
   getCardSize() { return 4; }
   connectedCallback() { super.connectedCallback(); this.subscription.connect(); }
@@ -182,18 +183,18 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
   }
   private back() {
     if(this.saving)return;
-    this.selected=undefined;this.confirming=false;this.actionSent=false;this.feedback="";this.error="";
+    this.selected=undefined;this.selectedUpdateCategory=undefined;this.confirming=false;this.actionSent=false;this.feedback="";this.error="";
     void this.updateComplete.then(()=>{this.listScroller?.scrollTo({top:this.listScroll});this.opener?.focus({preventScroll:true});});
   }
   private close() {
     if(this.saving)return;
-    this.open=false;this.detailsOpen=false;this.selected=undefined;this.confirming=false;
+    this.open=false;this.detailsOpen=false;this.selected=undefined;this.selectedUpdateCategory=undefined;this.confirming=false;
     this.dispatchEvent(new CustomEvent("attention-close"));
   }
   private setFilter(filter: string) { this.filter = filter; this.limit = 50; }
   private select(row: AttentionEntry, event:Event) {
     this.opener=event.currentTarget as HTMLElement;this.listScroller=this.scrollContainer();this.listScroll=this.listScroller?.scrollTop || 0;
-    this.selected=row.id;this.error="";this.feedback="";this.confirming=false;this.actionSent=false;this.detailsOpen=true;
+    this.selected=row.id;this.selectedUpdateCategory=row.kind==="update"?row.category:undefined;this.error="";this.feedback="";this.confirming=false;this.actionSent=false;this.detailsOpen=true;
     void this.updateComplete.then(()=>{this.listScroller?.scrollTo({top:0});(this.sheet()?.shadowRoot?.querySelector('button[aria-label]') as HTMLElement | null)?.focus({preventScroll:true});});
   }
   private async snooze(row:AttentionEntry, days:number) {
@@ -253,6 +254,12 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
       <p>${searching ? this.t("Try another device name or clear the search.", "Próbálj más eszköznevet, vagy töröld a keresést.") : loading ? this.t("The check is not complete yet. This is not an all-clear.","Az ellenőrzés még nem teljes. Ez még nem jelent hibamentes állapotot.") : missing && attentionView ? this.t("Some sources have no current data. Check the data gaps before treating the system as clear.", "Néhány forrásról nincs aktuális adat. Ezek az Adathiány nézetben ellenőrizhetők.") : clear ? this.config?.mode === "updates" ? this.t("The monitored sources report no available updates.", "A felügyelt források jelenleg nem jeleznek elérhető frissítést.") : this.t("The monitored sources report no active conditions in this view.", "A felügyelt források ebben a nézetben nem jeleznek aktív problémát.") : this.t("Choose another status to see the other monitored sources.", "Másik állapot kiválasztásával a többi felügyelt forrás is megtekinthető.")}</p>
     </div>`;
   }
+  private updateCard(row:AttentionEntry) {
+    return html`<luma-update-card .hass=${this.hass} ${ref(node=>{
+      const card=node as HTMLElement & LovelaceCard;
+      if(card && card.dataset.entity!==row.source){card.setConfig({type:"custom:luma-update-card",entity:row.source});card.dataset.entity=row.source;}
+    })}></luma-update-card>`;
+  }
   private details(row: AttentionEntry, all:AttentionEntry[]) {
     const policy = attentionPolicy(this.config?.policy);
     const description = this.description(row), explanation = this.reason(row);
@@ -261,7 +268,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     return html`<div class="detail">
       <div class="detail-status"><span class="pill" style=${`--tone:${this.tone(row)}`}>${this.status(row)}</span>${row.snoozedUntil ? html`<span class="muted">${this.t("Until", "Eddig")}: ${new Date(row.snoozedUntil * 1000).toLocaleString(this.hass?.locale?.language)}</span>` : nothing}</div>
       <p class="detail-message">${description}</p>
-      ${row.kind === "update" && members.length > 1 ? html`<div class="members">${members.map(member=>html`<div class="member"><strong>${member.name}</strong><p>${this.updateDescription(member)}</p><button class="action secondary" @click=${()=>runAction(this,this.hass!,{action:"more-info"},member.source)}>${this.t("Entity & history", "Entitás és előzmények")}</button></div>`)}</div>` : nothing}
+      ${row.kind === "update" && members.length ? html`<div class="members">${repeat(members,member=>member.source,member=>this.updateCard(member))}</div>` : nothing}
       ${row.context?.length ? html`<div class="context">${row.context.map(item=>item.entity ? html`<button class="context-item" @click=${()=>runAction(this,this.hass!,{action:"more-info"},item.entity)}><span>${item.label}</span><strong>${item.value}</strong></button>` : html`<div class="context-item"><span>${item.label}</span><strong>${item.value}</strong></div>`)}</div>` : nothing}
       ${description !== explanation ? html`<p class="explanation">${explanation}</p>` : nothing}
       ${row.completion ? html`<div class="actions"><button class="action" ?disabled=${this.saving || this.actionSent} @click=${()=>this.confirming=true}><ha-icon icon="mdi:check-circle-outline"></ha-icon>${row.completion.label}</button></div>` : nothing}
@@ -301,7 +308,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     if (mode === "diagnostics") rows = rows.filter(row => this.filter === "all" || (this.filter === "snoozed" ? !!row.snoozedUntil : this.filter === "active" ? ["active", "installing"].includes(row.status) : row.status === this.filter));
     const query = this.query.trim().toLowerCase();
     if (query) rows = rows.filter(row => `${row.name} ${row.source} ${row.rule} ${row.affectedRules?.join(" ") || ""} ${row.category} ${row.message} ${row.reason}`.toLowerCase().includes(query));
-    const sourceSelected = relevant.find(row => row.id === this.selected);
+    const sourceSelected = (this.selected && this.selectedUpdateCategory ? relevant.find(row=>row.kind==="update" && row.category===this.selectedUpdateCategory && ["active","installing"].includes(row.status)) : undefined) || relevant.find(row => row.id === this.selected);
     const selected = sourceSelected ? {...sourceSelected, name:sourceSelected.summaryName || sourceSelected.name, message:sourceSelected.summary || sourceSelected.message} : undefined;
     const title = this.config.title || (mode === "updates" ? this.t("Updates", "Frissítések") : mode === "diagnostics" ? this.t("Monitored notifications", "Felügyelt jelzések") : this.t("Needs attention", "Figyelmet kér"));
     const icon = mode === "updates" ? "mdi:package-up" : mode === "diagnostics" ? "mdi:bell-cog-outline" : "mdi:bell-outline";
@@ -323,7 +330,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
           ${[["active", "Needs attention", "Figyelmet kér"], ["unavailable", "Data gaps", "Adathiány"], ["snoozed", "Snoozed", "Szüneteltetve"], ["pending", "Waiting", "Megfigyelés alatt"], ["inactive", "Clear", "Rendben"], ["excluded", "Excluded", "Kizárva"], ["event", "Events", "Események"], ["loading", "Checking", "Ellenőrzés"], ["all", "All sources", "Összes forrás"]].map(([value, en, hu]) => html`<option value=${value}>${this.t(en, hu)}</option>`)}
         </select></label>
       </div>` : nothing}
-      ${mode === "updates" ? html`${categories.map(category => html`<div class="group-header">${rows.find(row => row.category === category)?.message}</div><div class="updates">${repeat(rows.filter(row => row.category === category), row => row.id, row => row.status === "unavailable" || row.kind !== "update" ? this.row(row) : this.config?.embedded || this.config?.panel ? this.row(row) : html`<luma-update-card .hass=${this.hass} ${ref(node => { const card = node as HTMLElement & LovelaceCard; if (card && card.dataset.entity !== row.source) { card.setConfig({ type: "custom:luma-update-card", entity: row.source }); card.dataset.entity = row.source; } })}></luma-update-card>`)}</div>`)}` : html`<div class="list">${rows.some(row=>row.kind!=="update") && rows.some(row=>row.kind==="update") ? html`<div class="section-title">${this.t("Needs attention", "Figyelmet kér")}</div>` : nothing}${repeat(rows.filter(row=>row.kind!=="update").slice(0,this.limit),row=>row.id,row=>this.row(row))}${rows.some(row=>row.kind==="update") ? html`<div class="section-title">${this.t("Planned maintenance · available updates", "Tervezhető karbantartás · elérhető frissítések")}</div>` : nothing}${repeat((this.config.panel && this.filter==="active" ? attentionSummaries(rows.filter(row=>row.kind==="update"),undefined,true) : rows.filter(row=>row.kind==="update")).slice(0,this.limit),row=>row.id,row=>this.row(row))}</div>`}
+      ${mode === "updates" ? html`${categories.map(category => html`<div class="group-header">${rows.find(row => row.category === category)?.message}</div><div class="updates">${repeat(rows.filter(row => row.category === category), row => row.id, row => row.status === "unavailable" || row.kind !== "update" ? this.row(row) : this.updateCard(row))}</div>`)}` : html`<div class="list">${rows.some(row=>row.kind!=="update") && rows.some(row=>row.kind==="update") ? html`<div class="section-title">${this.t("Needs attention", "Figyelmet kér")}</div>` : nothing}${repeat(rows.filter(row=>row.kind!=="update").slice(0,this.limit),row=>row.id,row=>this.row(row))}${rows.some(row=>row.kind==="update") ? html`<div class="section-title">${this.t("Planned maintenance · available updates", "Tervezhető karbantartás · elérhető frissítések")}</div>` : nothing}${repeat((this.config.panel && this.filter==="active" ? attentionSummaries(rows.filter(row=>row.kind==="update"),undefined,true) : rows.filter(row=>row.kind==="update")).slice(0,this.limit),row=>row.id,row=>this.row(row))}</div>`}
       ${!rows.length ? this.empty(missing.length, loading) : nothing}
       ${mode !== "updates" && rows.length > this.limit ? html`<button class="action secondary more" @click=${() => this.limit += 50}>${this.t("Show more", "Továbbiak")} (${rows.length - this.limit})<ha-icon icon="mdi:chevron-down"></ha-icon></button>` : nothing}
     </ha-card></div>`;

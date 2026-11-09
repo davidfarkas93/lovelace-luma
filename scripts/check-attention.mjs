@@ -43,6 +43,10 @@ assert.equal(get('update.shelly_new').status,'active');assert.equal(get('update.
 assert.equal(get('update.missing').status,'unavailable');assert.equal(get('update.restored').status,'excluded');
 assert.equal(get('update.disabled').status,'excluded');assert.equal(get('update.hidden').status,'active','UI hiding must not silently opt out of monitoring');
 assert.equal(get('update.installing').status,'installing','0% is in progress');
+assert.equal(model.updateCanInstall(entity('update.test','on',{supported_features:23,latest_version:'2.0'})),true);
+for(const attributes of [{supported_features:16,latest_version:'2.0'},{supported_features:1,latest_version:'2.0',in_progress:0},{supported_features:1,latest_version:'2.0',restored:true},{supported_features:1}])assert.equal(model.updateCanInstall(entity('update.test','on',attributes)),false,'only a known, install-capable target may offer installation');
+assert.equal(model.updateCanInstall(entity('update.test','unavailable',{supported_features:1,latest_version:'2.0'})),false);
+
 assert.equal(get('binary_sensor.boiler_fault').status,'active');assert.equal(get('binary_sensor.rain'),undefined,'rain is not an automatically discovered fault');
 assert.equal(get('sensor.not_present').status,'unavailable');assert.equal(get('sensor.watched').status,'pending');
 assert.equal(get('sensor.clear_alerts').status,'inactive','an explicitly clear empty alert string is not missing telemetry');
