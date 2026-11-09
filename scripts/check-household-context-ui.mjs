@@ -18,6 +18,7 @@ try {
   await card().locator('[data-field="explanation"]').fill('The washer is normally offline while switched off. This does not prove power-off during a network failure.');
   await card().locator('.editor button').filter({hasText:lang==='hu'?'Áttekintés és jóváhagyás':'Review & approve'}).click();
   assert.equal(await card().evaluate(c=>c.testCalls.length),0,'preview must not save');
+  const reviewBox=await card().locator('.confirm').boundingBox();assert.ok(reviewBox.y>=0 && reviewBox.y<844,'review must be visible after the user taps approve');
   assert.match(await card().locator('.confirm').textContent(),lang==='hu'?/Nem fog jelzést elrejteni/:/will not suppress alerts/);
   await capture(`${lang}-${width}-confirmation`);
   await card().locator('.confirm button').filter({hasText:lang==='hu'?'Megerősítés':'Confirm'}).click();

@@ -34,7 +34,15 @@ export class LumaHouseholdContextCard extends LitElement implements LovelaceCard
   getCardSize(){return 5;}
   connectedCallback(){super.connectedCallback();this.subscription.connect();}
   disconnectedCallback(){this.subscription.disconnect();super.disconnectedCallback();}
-  protected updated(){this.subscription.update(this.hass,this.config?.policy);}
+  protected updated(changed:Map<PropertyKey,unknown>){
+    this.subscription.update(this.hass,this.config?.policy);
+    if(changed.has('confirming') && this.confirming){
+      const review=this.renderRoot.querySelector<HTMLElement>('.confirm');
+      review?.scrollIntoView({block:'start',behavior:'auto'});
+      review?.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});
+    }
+    if(changed.has('error') && this.error)this.renderRoot.querySelector<HTMLElement>('[role="alert"]')?.scrollIntoView({block:'nearest',behavior:'auto'});
+  }
   private t(en:string,hu:string){return localized(this.hass,en,hu);}
   private get binding(){return attentionPolicy(this.config?.policy)?.household;}
   private get revision(){return Number(this.binding && this.hass?.states[this.binding.entity]?.attributes.revision);}
