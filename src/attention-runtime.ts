@@ -1,14 +1,17 @@
 import { attentionAckMap, attentionHash, attentionSnapshot, attentionPolicyErrors, groupAttention, type AttentionEntry, type AttentionExternal, type AttentionPolicy } from "./attention";
+import { callHouseholdScript, type HouseholdSnapshot } from "./household-context";
 import type { HomeAssistant } from "./types";
 
 declare global { interface Window { lumaAttentionPolicies?: Record<string, AttentionPolicy> } }
 const external: AttentionExternal = {};
 let owner: object | undefined, generation = 0;
+let householdFetching=false, householdFetchedAt=0, householdRevision:unknown, householdSource="";
 let registryFetched = false, registryFetching = false, registryFetchAt = 0;
 function session(hass: HomeAssistant) {
   const next = hass.connection || hass.callWS || hass;
   if (owner !== next) {
     owner = next; generation++; notificationRequest++; lastFetch = 0; fetching = false;
+    householdFetching=false;householdFetchedAt=0;householdRevision=undefined;householdSource="";
     registryFetched = false; registryFetching = false; registryFetchAt = 0;
     for (const key of Object.keys(external)) delete external[key as keyof AttentionExternal];
     external.readiness = {registry:"loading"}; cache.clear(); externalVersion++;
@@ -157,6 +160,22 @@ async function refreshAdapters(hass: HomeAssistant, policy?: AttentionPolicy) {
   } finally { if(epoch===generation){fetching = false; externalVersion++; changed();} }
 }
 
+export function householdRuntime(){return {snapshot:external.household,status:external.householdStatus};}
+export async function refreshHousehold(hass:HomeAssistant,policy?:AttentionPolicy,force=false) {
+  session(hass);const config=policy?.household;if(!config)return;
+  const revision=hass.states[config.entity]?.attributes.revision,source=`${config.entity}:${config.evaluate_script}`;
+  if(householdFetching || !force && householdSource===source && householdRevision===revision && Date.now()-householdFetchedAt<30000)return;
+  householdFetching=true;householdFetchedAt=Date.now();householdRevision=revision;householdSource=source;const epoch=generation;
+  if(!external.household)external.householdStatus="loading";
+  try {
+    const value=await callHouseholdScript(hass,config.evaluate_script);
+    if(epoch!==generation)return;
+    if(value.schema_version!==1 || !Array.isArray(value.evaluations) || !Array.isArray(value.expected_unavailable))throw Error("Invalid household snapshot");
+    external.household=value as unknown as HouseholdSnapshot;external.householdStatus=value.status==="ready"?"ready":"error";
+  }catch{if(epoch===generation){delete external.household;external.householdStatus="error";}}
+  finally{if(epoch===generation){householdFetching=false;externalVersion++;changed();}}
+}
+
 /** Lifecycle-owned timer: missing grace/ack deadlines must not depend on weather updates. */
 export class AttentionSubscription {
   private timer?: number;
@@ -175,6 +194,6 @@ export class AttentionSubscription {
   update(hass: HomeAssistant | undefined, name?: string) { this.hass=hass;this.name=name;if(this.connected)void this.refresh(); }
   disconnect() { this.connected=false;clearInterval(this.timer);listeners.delete(this.invalidate);window.removeEventListener("luma-attention-policy-changed",this.invalidate); }
   private async refresh() {
-    if(this.hass&&this.name) await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name))]);
+    if(this.hass&&this.name) await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name)),refreshHousehold(this.hass,attentionPolicy(this.name))]);
   }
 }

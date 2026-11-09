@@ -1,4 +1,5 @@
 import { glob, incidentSourceIds, matchesIncidentRule } from "./incidents";
+import { currentHouseholdEvaluations, householdRules, type HouseholdConfig, type HouseholdSnapshot } from "./household-context";
 import { localized } from "./localize";
 import type { HassEntity, HomeAssistant, LumaIncidentRule, LumaIncidentTone, LumaAction } from "./types";
 
@@ -20,6 +21,7 @@ export interface AttentionPolicy {
   acknowledgements_entity?: string;
   diagnostics_path?: string;
   rules: AttentionRule[];
+  household?: HouseholdConfig;
   ignored?: Record<string, string>;
   ignore_labels?: string[];
   platforms?: Record<string, { scope: string; path?: string }>;
@@ -56,6 +58,8 @@ export interface AttentionExternal {
   /** Runtime owns explicit request readiness; empty successful registries are valid. */
   registry?: NonNullable<HomeAssistant["entities"]>;
   readiness?: Partial<Record<"registry" | "notifications" | "repairs" | "integrations", "loading" | "ready" | "error">>;
+  household?: HouseholdSnapshot;
+  householdStatus?: "loading"|"error"|"ready";
   repairTranslations?: Record<string, string>;
   notifications?: Array<{ notification_id: string; title: string; message: string; created_at?: string }>;
   repairs?: { issues: Array<{ domain: string; issue_id: string; severity?: string; is_persistent?: boolean; is_fixable?: boolean; dismissed_version?: string; translation_key?: string; translation_placeholders?: Record<string, string> }> };
@@ -266,6 +270,29 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
     const entry = base(`adapter:${adapter}`, "adapter_health", "homelab");
     entry.name = localized(hass,adapter === "notifications" ? "Home Assistant notifications" : adapter === "repairs" ? "Home Assistant Repairs" : "Integrations",adapter === "notifications" ? "Home Assistant értesítések" : adapter === "repairs" ? "Home Assistant javítási feladatok" : "Integrációk"); entry.message = error; entry.status = "unavailable"; entry.reason = "adapter_unavailable"; entry.dismissible = false;
     add(entry, adapter);
+  }
+  if(policy.household) {
+    const config=policy.household, decisions=currentHouseholdEvaluations(hass,config,external.household,now);
+    const rules=householdRules(hass,config);
+    const ready=external.household?.status === "ready" && external.household.revision === hass.states[config.entity]?.attributes.revision && now/1000-external.household.evaluated_at<=90;
+    if(!ready) {
+      const entry=base(config.entity,"household_health","system");
+      entry.name=localized(hass,"Household knowledge","Háztartási háttértudás");
+      entry.status=external.householdStatus === "error" || external.household && external.household.status!=="ready" ? "unavailable" : "loading";
+      entry.reason=entry.status === "loading" ? "household_loading" : "household_unavailable";
+      entry.message=localized(hass,"Household rules could not yet be verified.","A háztartási szabályok érvényessége még nem ellenőrizhető.");entry.dismissible=false;entry.path=config.path;add(entry,"household");
+    }
+    for(const row of result) {
+      const matching=decisions.filter(e=>e.matched_entities.includes(row.source));
+      if(matching.length)row.context=[...(row.context||[]),...matching.map(e=>({label:e.title,value:e.explanation+(e.limitation ? ` · ${e.limitation}` : "")}))];
+      const expected=matching.find(e=>e.effect==="expected_unavailable");
+      // An active fault (including an explicit offline alarm) always wins.
+      if(row.status==="unavailable" && expected && external.household?.expected_unavailable.includes(row.source) && ["unknown","unavailable"].includes(hass.states[row.source]?.state)) {
+        row.status="excluded";row.reason="household_expected";row.message=expected.explanation;row.path=config.path;
+      } else if(row.status==="unavailable" && !ready && external.householdStatus!=="error" && rules.some(r=>r.status==="approved"&&r.enabled&&r.effect==="expected_unavailable"&&r.targets.includes(row.source))) {
+        row.status="loading";row.reason="household_loading";
+      }
+    }
   }
   // Overlapping threshold tiers select the most severe active signal per source.
   const winner = new Map<string, AttentionEntry>();

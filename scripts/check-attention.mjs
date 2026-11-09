@@ -10,7 +10,8 @@ const compile=(file,require,extras={})=>{
 };
 const matcher=compile('../src/incidents.ts',()=>{});
 const localize=compile('../src/localize.ts',()=>{});
-const model=compile('../src/attention.ts',name=>name==='./localize'?localize:matcher);
+const household=compile('../src/household-context.ts',()=>{});
+const model=compile('../src/attention.ts',name=>name==='./localize'?localize:name==='./household-context'?household:matcher);
 const entity=(id,state,attributes={})=>({entity_id:id,state,attributes,last_changed:new Date(clock-600000).toISOString(),last_updated:new Date(clock).toISOString()});
 const hass={states:{},entities:{},locale:{language:'hu'},callService:async()=>{throw Error('Unexpected service call')}};
 function add(id,state,platform,attributes={}){hass.states[id]=entity(id,state,attributes);hass.entities[id]={platform};return hass.states[id]}

@@ -1169,3 +1169,44 @@ The check exercises 390/768/1280 px in English/Hungarian, list/detail return sta
 focus, Escape, readiness failures and confirmed mock service calls. It never
 connects to a live Home Assistant instance. The pure attention check also covers
 12/24-hour formatting and nonbreaking AM/PM suffixes.
+
+## Household knowledge
+
+`custom:luma-household-context-card` reviews and edits an installation-owned,
+durable household registry. Set `policy` to the shared attention policy; its
+`household` binding supplies `entity`, `evaluate_script`, `manage_script` and
+optional `path`. `embedded: true` reuses a containing popup's surface/header.
+
+The entity exposes `schema_version: 1`, numeric `revision`, `rules` and the last
+20 configuration changes in `history`. Each rule has a stable ID, title,
+explanation, exact target entity IDs, target states, positive state conditions,
+`enabled`, approval status and optional expiry/measurement freshness limit.
+Native HA helpers can supply compound/numeric conditions as explicit states.
+
+`context` adds an explanation; it never removes a measurement or alert.
+`expected_unavailable` is limited to missing measurements and requires approved
+evidence. Smoke/gas/CO/safety/tamper sources cannot be excluded. Active faults,
+including explicit offline alarms, always remain active. An inactive appliance
+program flag by itself is not evidence of electrical power-off.
+
+The backend evaluator is a read-only script returning `schema_version`,
+`revision`, `evaluated_at`, `status`, `evaluations` and `expected_unavailable`.
+Each evaluation includes source/guard observations and its validity deadline.
+Luma consumes this result; it does not implement a second household condition
+engine. Changed observations, revisions, expiry or unavailable evidence invalidate
+cached decisions immediately. A missing evaluator never creates an all-clear.
+The daily collector must use this same evaluator and retain raw counts separately
+from expected missing measurements. AI receives approved context as data only.
+
+The configured manager script accepts `operation` (`upsert` or `set_enabled`),
+`record`/`rule_id`, `approve`/`enabled`, `expected_revision` and explicit
+`confirmed: true`, returning `{ok, revision}` or `{ok:false,error}`. The backend
+must validate scope, protect safety sources, serialize writes and reject revision
+conflicts. Editing a rule does not save it: an inline review confirms its exact
+scope/effect. Drafts have no operational effect. Source strings remain data, never
+executable templates. This rule change history is separate from a future durable
+incident/acknowledgement journal.
+
+Use `scripts/check-household-context-ui.mjs` with the same Playwright setup as the
+attention UI check to exercise mobile/tablet/desktop edits, approvals, drafts,
+conflicts and failed saves with mock services.

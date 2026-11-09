@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
+const {chromium}=await import(process.env.LUMA_PLAYWRIGHT_MODULE || 'playwright-core');
+const output=process.env.LUMA_UI_OUTPUT||'/private/tmp/luma-household-ui';mkdirSync(output,{recursive:true});
+const browser=await chromium.launch({executablePath:process.env.LUMA_CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--disable-gpu']});
+const page=await browser.newPage({reducedMotion:'reduce'}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+const card=()=>page.locator('luma-household-context-card');
+const open=async(story='catalogue',lang='hu')=>{await page.goto(`http://127.0.0.1:6006/iframe.html?id=attention-household-knowledge--${story}&viewMode=story&globals=locale:${lang}`);await card().locator('h2').waitFor();};
+const capture=async(name)=>{await page.waitForTimeout(120);await page.screenshot({path:`${output}/${name}.png`,animations:'disabled',timeout:15000,fullPage:true});};
+try {
+ for(const width of [390,768,1280])for(const lang of ['hu','en']) {
+  await page.setViewportSize({width,height:844});await open('catalogue',lang);
+  assert.equal(await card().locator('article.rule').count(),3);
+  await capture(`${lang}-${width}-catalogue`);
+  const first=card().locator('article.rule').first();await first.locator('button').filter({hasText:lang==='hu'?'Szerkesztés':'Edit'}).click();
+  assert.equal(await card().locator('[data-field="target"]').inputValue(),'sensor.washer','the primary target must stay selected while editing');
+  await card().locator('[data-field="explanation"]').fill('The washer is normally offline while switched off. This does not prove power-off during a network failure.');
+  await card().locator('.editor button').filter({hasText:lang==='hu'?'Áttekintés és jóváhagyás':'Review & approve'}).click();
+  assert.equal(await card().evaluate(c=>c.testCalls.length),0,'preview must not save');
+  assert.match(await card().locator('.confirm').textContent(),lang==='hu'?/Nem fog jelzést elrejteni/:/will not suppress alerts/);
+  await capture(`${lang}-${width}-confirmation`);
+  await card().locator('.confirm button').filter({hasText:lang==='hu'?'Megerősítés':'Confirm'}).click();
+  await card().locator('[role="status"]').filter({hasText:lang==='hu'?'Mentve':'Saved'}).waitFor();
+  const calls=await card().evaluate(c=>c.testCalls);assert.equal(calls.length,1);assert.equal(calls[0].expected_revision,1);assert.equal(calls[0].confirmed,true);assert.equal(calls[0].record.effect,'context');
+  assert.equal(await page.locator('dialog[open]').count(),0,'catalogue editing stays in the existing surface');
+  assert.ok(await card().evaluate(c=>c.getBoundingClientRect().right<=innerWidth+1),'no horizontal overflow');
+ }
+ await page.setViewportSize({width:390,height:844});await open();
+ await card().locator('.header button').click();
+ await card().locator('[data-field="title"]').fill('Seasonal appliance');
+ await card().locator('[data-field="explanation"]').fill('This is a draft household note.');
+ await card().locator('[data-field="target"]').selectOption('sensor.washer');
+ await card().locator('.editor button').filter({hasText:'Piszkozat mentése'}).click();
+ await card().locator('.confirm button').filter({hasText:'Megerősítés'}).click();
+ await card().locator('[role="status"]').filter({hasText:'Mentve'}).waitFor();
+ const draft=await card().evaluate(c=>c.testCalls[0]);assert.equal(draft.approve,false);assert.equal(draft.record.effect,'context');
+ await open();
+ await card().evaluate(c=>{c.setConfig({type:'custom:luma-household-context-card',policy:'household_demo',embedded:true});const sheet=document.createElement('luma-bottom-sheet');sheet.heading='Háztartási háttértudás';sheet.open=true;sheet.addEventListener('sheet-dismiss',()=>sheet.open=false);c.replaceWith(sheet);sheet.append(c);});
+ await page.locator('dialog.open').waitFor();assert.equal(await card().locator('h2').count(),0,'embedded catalogue reuses its parent heading');
+ await card().locator('article.rule').first().locator('button').filter({hasText:'Szerkesztés'}).click();
+ await card().locator('.editor button').filter({hasText:'Áttekintés és jóváhagyás'}).click();
+ assert.equal(await page.locator('dialog[open]').count(),1,'confirmation does not open another modal');
+ await capture('embedded-confirmation');
+ await page.keyboard.press('Escape');
+ await page.waitForFunction(()=>!document.querySelector('luma-bottom-sheet')?.shadowRoot.querySelector('dialog')?.open);
+ await open('conflict');await card().locator('article.rule').first().locator('button').filter({hasText:'Szerkesztés'}).click();
+ await card().locator('.editor button').filter({hasText:'Áttekintés és jóváhagyás'}).click();await card().locator('.confirm button').filter({hasText:'Megerősítés'}).click();
+ await card().locator('[role="alert"]').waitFor();assert.match(await card().locator('[role="alert"]').textContent(),/Közben megváltozott/);
+ assert.equal(await card().locator('.editor').count(),1,'conflicts preserve the draft');
+ await open('save-failure');await card().locator('article.rule').first().locator('button').filter({hasText:'Szabály kikapcsolása'}).click();
+ await card().locator('.confirm button').filter({hasText:'Megerősítés'}).click();await card().locator('[role="alert"]').waitFor();assert.match(await card().locator('[role="alert"]').textContent(),/Nem sikerült/);
+ await open('unavailable');assert.match(await card().locator('[role="status"]').textContent(),/nem érhető el/);assert.equal(await card().locator('.header button').count(),0);
+ await open();await page.evaluate(()=>{for(const[k,v]of Object.entries({'--primary-text-color':'#eff0f7','--secondary-text-color':'#b0b3c3','--primary-background-color':'#15161d','--card-background-color':'#22242d','--ha-card-background':'#22242d','--primary-color':'#9caaf0'}))document.documentElement.style.setProperty(k,v);});await capture('dark-mobile');
+ assert.deepEqual(errors,[]);
+ console.log('Household UI: HU/EN × 390/768/1280, preview-before-save, drafts, revision conflict, failure, unavailable registry and dark mode passed.');
+} finally {await browser.close();}
