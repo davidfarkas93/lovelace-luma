@@ -66,6 +66,8 @@ export const createMockHass = (
       onServiceCall?.({ domain, service, data, target });
     },
     callWS: async (message: Record<string, unknown>) => {
+      if (message.type === "config/entity_registry/list") return Object.entries(entities).map(([entity_id,row])=>({entity_id,...row})) as never;
+      if (message.type === "frontend/get_translations") return {resources:{}} as never;
       if (message.type === "persistent_notification/get") return [...notifications] as never;
       if (message.type === "repairs/list_issues") return {issues:[]} as never;
       if (message.type === "config_entries/get") return [] as never;

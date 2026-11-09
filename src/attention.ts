@@ -1,6 +1,6 @@
 import { glob, incidentSourceIds, matchesIncidentRule } from "./incidents";
 import { localized } from "./localize";
-import type { HassEntity, HomeAssistant, LumaIncidentRule, LumaIncidentTone } from "./types";
+import type { HassEntity, HomeAssistant, LumaIncidentRule, LumaIncidentTone, LumaAction } from "./types";
 
 export interface AttentionRule extends LumaIncidentRule {
   id: string;
@@ -8,6 +8,9 @@ export interface AttentionRule extends LumaIncidentRule {
   category?: string;
   identity?: "state" | "version" | "condition";
   unavailable_after_minutes?: number;
+  /** Explicit channels belonging to this task, never matched by message text. */
+  notification_ids?: string[];
+  completion?: { label: string; confirmation: string; action: LumaAction };
   state_labels?: Record<string, string>;
   context?: Array<{label:string; entity?:string; entity_pattern?:string; value?:string; source?:string; states?:string[]; decimals?:number}>;
 }
@@ -32,10 +35,13 @@ export interface AttentionEntry {
   name: string;
   message: string;
   summary?: string;
+  summaryName?: string;
+  relatedNotifications?: Array<{ id: string; title: string; message: string }>;
+  completion?: AttentionRule["completion"];
   scope: string;
   category: string;
   kind: "incident" | "update" | "notification" | "repair" | "integration" | "event";
-  status: "active" | "inactive" | "pending" | "unavailable" | "excluded" | "installing" | "event";
+  status: "active" | "inactive" | "pending" | "unavailable" | "excluded" | "installing" | "event" | "loading";
   reason: string;
   tone: LumaIncidentTone;
   path?: string;
@@ -47,8 +53,12 @@ export interface AttentionEntry {
   context?: Array<{label:string; value:string; entity?:string}>;
 }
 export interface AttentionExternal {
+  /** Runtime owns explicit request readiness; empty successful registries are valid. */
+  registry?: NonNullable<HomeAssistant["entities"]>;
+  readiness?: Partial<Record<"registry" | "notifications" | "repairs" | "integrations", "loading" | "ready" | "error">>;
+  repairTranslations?: Record<string, string>;
   notifications?: Array<{ notification_id: string; title: string; message: string; created_at?: string }>;
-  repairs?: { issues: Array<{ domain: string; issue_id: string; severity?: string; is_persistent?: boolean; is_fixable?: boolean; dismissed_version?: string; translation_key?: string }> };
+  repairs?: { issues: Array<{ domain: string; issue_id: string; severity?: string; is_persistent?: boolean; is_fixable?: boolean; dismissed_version?: string; translation_key?: string; translation_placeholders?: Record<string, string> }> };
   integrations?: Array<{ entry_id: string; domain: string; title: string; state: string; disabled_by?: string | null }>;
   errors?: Record<string, string>;
 }
@@ -75,6 +85,8 @@ export function attentionPolicyErrors(policy: AttentionPolicy | undefined): stri
     if(!r.entity&&!r.entity_pattern&&!r.entity_patterns?.length&&!r.device_classes?.length&&!r.platform&&!r.platforms?.length&&!r.domain&&!r.label)errors.push(`Missing selector: ${r.id}`);
     if(r.above!==undefined&&r.below!==undefined&&r.above>=r.below)errors.push(`Invalid numeric range: ${r.id}`);
     if(r.for_minutes!==undefined&&(!Number.isFinite(r.for_minutes)||r.for_minutes<0))errors.push(`Invalid grace: ${r.id}`);
+    if(r.notification_ids && (!r.entity || !Array.isArray(r.notification_ids) || r.notification_ids.some(id=>typeof id!=="string" || !id.trim())))errors.push(`Invalid notification links: ${r.id}`);
+    if(r.completion && (!r.notification_ids || !r.completion.label || !r.completion.confirmation || !["perform-action","call-service"].includes(r.completion.action?.action)))errors.push(`Invalid completion action: ${r.id}`);
     if(r.state_labels && (typeof r.state_labels !== "object" || Object.values(r.state_labels).some(value=>typeof value !== "string")))errors.push(`Invalid state labels: ${r.id}`);
     if(r.context !== undefined && !Array.isArray(r.context))errors.push(`Invalid context: ${r.id}`);
     else for(const item of r.context || []) {
@@ -82,11 +94,15 @@ export function attentionPolicyErrors(policy: AttentionPolicy | undefined): stri
       if(item?.decimals !== undefined && (!Number.isInteger(item.decimals) || item.decimals < 0 || item.decimals > 6))errors.push(`Invalid context precision: ${r.id}`);
     }
   }
+  const channels = policy.rules.flatMap(rule=>rule.notification_ids || []);
+  if (new Set(channels).size !== channels.length) errors.push("A notification channel belongs to more than one rule");
   return errors;
 }
 
 /** One deterministic snapshot for all surfaces. No services, storage or rendering. */
 export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, external: AttentionExternal = {}, now = Date.now()): AttentionEntry[] {
+  const registryReady = external.registry !== undefined || (external.readiness?.registry ? external.readiness.registry === "ready" : !!hass.entities && Object.keys(hass.entities).length > 0);
+  if (external.registry) hass = {...hass, entities: external.registry};
   const result: AttentionEntry[] = [];
   const ack = attentionAckMap(policy.acknowledgements_entity ? hass.states[policy.acknowledgements_entity]?.state : "");
   const expected = new Set<string>();
@@ -109,7 +125,19 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
     id: `${rule}:${source}`, key: "", rule, source, name: names(hass.states[source], source), message: "", scope, category,
     kind: "incident", status: "inactive", reason: "condition_not_met", tone: "warning", dismissible: true,
   });
-  if(!hass.entities){const entry=base("registry","metadata","system");entry.status="unavailable";entry.reason="metadata_unavailable";entry.message=localized(hass,"Entity registry metadata is not ready","Az entitás-regiszter metaadatai még nem érhetők el");entry.dismissible=false;add(entry,"metadata");}
+  if (!registryReady || external.readiness?.registry === "error") {
+    const entry=base("registry","metadata","system");
+    entry.status=external.readiness?.registry === "error" ? "unavailable" : "loading";
+    entry.reason=entry.status === "loading" ? "metadata_loading" : "metadata_unavailable";
+    entry.name=localized(hass,"Monitoring sources","Felügyeleti források");
+    entry.message=entry.status === "loading" ? localized(hass,"Entity information is being checked. Monitoring is not yet complete.","Az entitásadatok ellenőrzése folyamatban. A felügyelet még nem teljes.") : localized(hass,"Entity information could not be read. Monitoring coverage cannot be confirmed.","Az entitásadatokat nem sikerült beolvasni. A felügyelet teljessége nem igazolható.");
+    entry.dismissible=false; add(entry,"metadata");
+    // Labels, disabled flags and platform selectors are unknown. Do not invent
+    // individual gaps (or an all-clear) from a half-loaded frontend registry.
+    if(!registryReady)return result;
+    // Retain known safety conditions if a later metadata refresh fails. The
+    // separate coverage fault prevents the cached registry becoming an all-clear.
+  }
   for (const rule of policy.rules) {
     const sources = rule.entity ? [rule.entity] : incidentSourceIds(hass, { ...rule, for_minutes: undefined });
     for (const source of sources) {
@@ -180,10 +208,20 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
       add(entry, `${e.state}|${e.last_changed}`);
     }
   }
+  const linked = new Set<string>();
+  for (const rule of policy.rules.filter(rule=>policy.adapters?.notifications && rule.notification_ids?.length)) {
+    const canonical = result.find(row=>row.rule===rule.id && row.source===rule.entity);
+    if (!canonical || !["active","pending"].includes(canonical.status)) continue;
+    canonical.completion = rule.completion;
+    canonical.relatedNotifications = (external.notifications || []).filter(n=>rule.notification_ids!.includes(n.notification_id)).map(n=>({id:n.notification_id,title:n.title,message:n.message}));
+    for (const n of canonical.relatedNotifications) linked.add(n.id);
+    if (canonical.relatedNotifications.length) canonical.context = [...(canonical.context || []),...canonical.relatedNotifications.map(n=>({label:n.title,value:n.message}))];
+  }
   for (const n of policy.adapters?.notifications ? external.notifications || [] : []) {
+    if (linked.has(n.notification_id)) continue;
     if (policy.adapters?.notification_exclude?.some(p => glob(p, n.notification_id))) continue;
     const entry = base(`notification:${n.notification_id}`, "persistent_notifications");
-    entry.kind = "notification"; entry.name = n.title; entry.message = n.message; entry.status = "active"; entry.reason = "persistent_notification";
+    entry.kind = "notification"; entry.name = n.title || localized(hass,"Home Assistant notification","Home Assistant értesítés"); entry.message = n.message; entry.status = "active"; entry.reason = "persistent_notification";
     entry.notificationId = n.notification_id; entry.dismissible = false;
     entry.path = policy.diagnostics_path;
     add(entry, `${n.created_at || ""}|${n.message}`);
@@ -191,7 +229,13 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
   for (const issue of policy.adapters?.repairs ? external.repairs?.issues || [] : []) {
     if (issue.dismissed_version) continue;
     const entry = base(`repair:${issue.domain}:${issue.issue_id}`, "repairs", "homelab");
-    entry.kind = "repair"; entry.name = `${issue.domain}: ${issue.translation_key || issue.issue_id}`; entry.message = entry.name;
+    const prefix = `component.${issue.domain}.issues.${issue.translation_key || issue.issue_id}`;
+    const interpolate = (text:string) => text.replace(/\{([^{}]+)\}/g,(match,key)=>issue.translation_placeholders?.[key] ?? match);
+    entry.kind = "repair";
+    entry.name = interpolate(external.repairTranslations?.[`${prefix}.title`] || localized(hass,`${issue.domain}: repair needed`,`${issue.domain}: javítási feladat`));
+    entry.message = interpolate(external.repairTranslations?.[`${prefix}.description`] || Object.entries(external.repairTranslations || {}).find(([key])=>key.startsWith(`${prefix}.fix_flow.step.`) && key.endsWith(".description"))?.[1] || localized(hass,"Home Assistant reports an open repair. Open Repairs for the integration's explanation.","A Home Assistant nyitott javítási feladatot jelez. Az integráció magyarázata a Javítások oldalon érhető el."));
+    entry.sourceState = issue.translation_key || issue.issue_id;
+    entry.context = Object.entries(issue.translation_placeholders || {}).map(([label,value])=>({label,value}));
     entry.status = "active"; entry.reason = "repair_issue"; entry.path = "/config/repairs";
     entry.tone = issue.severity === "error" || issue.severity === "critical" ? "error" : "warning";
     add(entry, issue.issue_id);
@@ -211,10 +255,16 @@ export function attentionSnapshot(hass: HomeAssistant, policy: AttentionPolicy, 
     entry.tone = normal(e?.attributes.importance) === "alert" ? "error" : "warning";
     add(entry, e?.state || "");
   }
+  for (const [adapter, readiness] of Object.entries(external.readiness || {})) {
+    if (readiness !== "loading" || !policy.adapters?.[adapter as "notifications" | "repairs" | "integrations"]) continue;
+    const entry=base(`adapter:${adapter}`,"adapter_health","system");
+    entry.name=localized(hass,adapter === "notifications" ? "Home Assistant notifications" : adapter === "repairs" ? "Home Assistant Repairs" : "Integrations",adapter === "notifications" ? "Home Assistant értesítések" : adapter === "repairs" ? "Home Assistant javítási feladatok" : "Integrációk"); entry.status="loading"; entry.reason="adapter_loading"; entry.dismissible=false;
+    entry.message=localized(hass,"Checking Home Assistant data sources…","Home Assistant adatforrások ellenőrzése…"); add(entry,adapter);
+  }
   for (const [adapter, error] of Object.entries(external.errors || {})) {
     if (!policy.adapters?.[adapter as "notifications" | "repairs" | "integrations"]) continue;
     const entry = base(`adapter:${adapter}`, "adapter_health", "homelab");
-    entry.name = adapter; entry.message = error; entry.status = "unavailable"; entry.reason = "adapter_unavailable"; entry.dismissible = false;
+    entry.name = localized(hass,adapter === "notifications" ? "Home Assistant notifications" : adapter === "repairs" ? "Home Assistant Repairs" : "Integrations",adapter === "notifications" ? "Home Assistant értesítések" : adapter === "repairs" ? "Home Assistant javítási feladatok" : "Integrációk"); entry.message = error; entry.status = "unavailable"; entry.reason = "adapter_unavailable"; entry.dismissible = false;
     add(entry, adapter);
   }
   // Overlapping threshold tiers select the most severe active signal per source.
@@ -258,11 +308,14 @@ export function groupAttention(rows: AttentionEntry[], policy: AttentionPolicy, 
   for (const [id, members] of grouped) {
     const key = `a${attentionHash(`${id}|${members.map(x=>x.key).sort().join(",")}`)}`;
     const rule = policy.rules.find(r=>r.id===members[0].rule);
-    const message = members[0].kind === "update" ? `${members.length} ${members[0].message}` : rule?.aggregate ? rule.message.replaceAll("{count}",String(members.length)) : members[0].message;
+    const message = members[0].kind === "update" ? members.length === 1
+      ? String(hass.states[members[0].source]?.attributes.release_summary || `${hass.states[members[0].source]?.attributes.installed_version || "—"} → ${hass.states[members[0].source]?.attributes.latest_version || "—"}`)
+      : localized(hass,`${members.length} components have updates available`,`${members.length} összetevőhöz érhető el frissítés`) : rule?.aggregate ? rule.message.replaceAll("{count}",String(members.length)) : members[0].message;
     for (const row of members) {
       const copy = {...row,key};
       // The summary is separate from each source's own diagnostic explanation.
       copy.summary = message;
+      if (row.kind === "update" && members.length > 1) copy.summaryName = row.message;
       delete copy.snoozedUntil;
       if (row.dismissible && row.tone !== "error" && ack[key] > now/1000) copy.snoozedUntil=ack[key];
       copies.set(row.id,copy);
@@ -271,7 +324,7 @@ export function groupAttention(rows: AttentionEntry[], policy: AttentionPolicy, 
   return rows.map(x=>copies.get(x.id)||x);
 }
 
-export const attentionSummaries = (rows: AttentionEntry[], scope?: string, includeSnoozed = false) => [...new Map(activeAttention(rows,scope,includeSnoozed).map(x=>[x.key,{...x,message:x.summary||x.message}])).values()];
+export const attentionSummaries = (rows: AttentionEntry[], scope?: string, includeSnoozed = false) => [...new Map(activeAttention(rows,scope,includeSnoozed).map(x=>[x.key,{...x,name:x.summaryName||x.name,message:x.summary||x.message}])).values()];
 
 /** Fixed-size legacy input_text storage, compact keys, no truncation of a record. */
 export function attentionAckValue(raw: string, key: string, expiry: number | null, now: number, max = 255) {
@@ -281,4 +334,15 @@ export function attentionAckValue(raw: string, key: string, expiry: number | nul
   const result: string[] = [];
   for (const [id, end] of entries) { const item = `${id}:${end}`; if ([...result,item].join(",").length <= max) result.push(item); }
   return result.join(",");
+}
+
+/** Explicit counting units shared by hero surfaces. Updates are maintenance. */
+export function attentionOverview(rows:AttentionEntry[], hass:HomeAssistant) {
+  const visible=activeAttention(rows), issues=attentionSummaries(visible.filter(row=>row.kind!=="update"));
+  const updates=new Set(visible.filter(row=>row.kind==="update").map(row=>row.source)).size;
+  const missing=new Set(rows.filter(row=>row.status==="unavailable").map(row=>row.source)).size;
+  const loading=rows.some(row=>row.status==="loading");
+  const snoozed=new Set(rows.filter(row=>row.snoozedUntil).map(row=>row.key)).size;
+  const parts=[issues.length ? localized(hass,`${issues.length} ${issues.length===1?"issue":"issues"}`,`${issues.length} ügy`) : "",updates ? localized(hass,`${updates} ${updates===1?"updatable component":"updatable components"}`,`${updates} frissíthető összetevő`) : "",missing ? localized(hass,`${missing} ${missing===1?"data gap":"data gaps"}`,`${missing} adatkimaradás`) : "", loading ? localized(hass,"Checking sources…","Adatforrások ellenőrzése…") : "",snoozed ? localized(hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`) : ""].filter(Boolean);
+  return {issues:issues.length,updates,missing,loading,snoozed,critical:issues.some(row=>row.tone==="error"),text:parts.join(" · ") || localized(hass,"No active issues","Nincs aktív ügy")};
 }

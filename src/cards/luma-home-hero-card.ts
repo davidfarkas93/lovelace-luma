@@ -14,7 +14,9 @@ import {
 import { localize, localized, localizedMap } from "../localize";
 import { lumaTokens } from "../styles";
 import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
-import { attentionAckValue, attentionSummaries } from "../attention";
+import { attentionAckValue, attentionSummaries, attentionOverview } from "../attention";
+import "./luma-attention-card";
+import { ref } from "lit/directives/ref.js";
 import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows } from "../attention-runtime";
 import type {
   HassEntity,
@@ -245,6 +247,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 16px;
       }
       .attention {
+        min-height:44px;max-width:100%;line-height:1.4;
         color: var(--attention-color);
         background: color-mix(in srgb, var(--attention-color) 12%, transparent);
       }
@@ -1294,13 +1297,14 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       a = weather?.attributes || {},
       wind = Number(a.wind_speed) || 0;
     const attentionRows = this.config.attention_policy ? policyRows(this.config.attention_policy,this.hass) : [];
+    const overview = this.config.attention_policy ? attentionOverview(attentionRows,this.hass) : undefined;
     const snoozed = new Set(attentionRows.filter(x=>x.snoozedUntil).map(x=>x.key)).size;
     const missing = new Set(attentionRows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
     const issues = this.incidents(),
       critical = issues.some((x) => x.tone === "error"),
-      attentionColor = critical
+      attentionColor = overview?.loading && !overview.issues && !missing ? "var(--secondary-text-color)" : overview && !overview.issues && !missing && overview.updates ? "var(--primary-color)" : critical
         ? "var(--error-color)"
-        : issues.length || missing
+        : (overview ? overview.issues || missing : issues.length || missing)
           ? "var(--warning-color)"
           : "var(--success-color)",
       active = this.activeCount(),
@@ -1311,7 +1315,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         ? `${a.temperature} ${a.temperature_unit || "°C"}`
         : "",
       wind ? `${localized(this.hass,"wind","szél")} ${wind} ${a.wind_speed_unit || "km/h"}` : "",
-      issues.length
+      overview ? overview.text : issues.length
         ? localized(this.hass,`${issues.length} warnings`,`${issues.length} figyelmeztetés`)
         : missing ? localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`) : localized(this.hass,"all systems operational","minden rendszer rendben"),
     ]
@@ -1348,7 +1352,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         state_label: [
           irrigation,
           irrigationRemaining != null && irrigationRemaining > 0
-            ? `${applianceDuration(irrigationRemaining)} ${localized(this.hass,"left","hátra")}`
+            ? `${applianceDuration(irrigationRemaining,this.hass)} ${localized(this.hass,"left","hátra")}`
             : "",
           irrigationFinish
             ? `${localized(this.hass,"ends","vége")} ${irrigationFinish}`
@@ -1405,14 +1409,14 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           ? this.hass.states[item.remaining_entity]
           : undefined,
         remaining = applianceSeconds(remainingEntity),
-        finish = applianceFinishTime(remainingEntity);
+        finish = applianceFinishTime(remainingEntity,this.hass);
       if (active)
         banners.push({
           entity: item.entity,
           label: item.name,
           state_label: [
             entityState(this.hass, appliance, item.state_map),
-            remaining != null ? `${applianceDuration(remaining)} ${localized(this.hass,"left","hátra")}` : "",
+            remaining != null ? `${applianceDuration(remaining,this.hass)} ${localized(this.hass,"left","hátra")}` : "",
             finish ? `${localized(this.hass,"done","kész")} ${finish}` : "",
           ]
             .filter(Boolean)
@@ -1511,21 +1515,21 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                 }}
               >
                 <ha-icon
-                  icon=${critical
+                  icon=${overview?.loading && !issues.length ? "mdi:progress-clock" : overview && !overview.issues && overview.updates ? "mdi:package-up" : critical
                     ? "mdi:alert-octagon"
                     : issues.length
                       ? "mdi:alert-circle-outline"
                       : missing ? "mdi:cloud-question-outline" : snoozed ? "mdi:bell-sleep-outline" : "mdi:check-circle-outline"}
                 ></ha-icon
                 ><span
-                  >${issues.length
+                  >${overview ? overview.text : issues.length
                     ? localized(this.hass,`${issues.length} notices`,`${issues.length} jelzés`)
                     : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : snoozed ? localized(this.hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`) : localized(this.hass,"All good","Rendben")}</span
                 >
               </button>
             </div>
           </div>
-          ${this.detailsOpen && (issues.length || snoozed || missing)
+          ${!this.config.attention_policy && this.detailsOpen && (issues.length || snoozed || missing)
             ? html`<div class="panel">
                 ${issues.map(
                   (issue) =>
@@ -1575,7 +1579,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
               </div>`
             : nothing}${this.renderBanners(banners)}
         </div></ha-card
-      >${this.alarmPopoverOpen && alarm
+      >${this.config.attention_policy ? html`<luma-attention-card .hass=${this.hass} .open=${this.detailsOpen} @attention-close=${()=>this.detailsOpen=false} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card && card.dataset.policy!==this.config?.attention_policy){card.setConfig({type:"custom:luma-attention-card",policy:this.config!.attention_policy,mode:"diagnostics",panel:true,title:localized(this.hass,"Notifications","Jelzések")});card.dataset.policy=this.config!.attention_policy;}})}></luma-attention-card>` : nothing}${this.alarmPopoverOpen && alarm
         ? html`<button
               class="alarm-scrim"
               aria-label=${localize(this.hass, "dismiss")}

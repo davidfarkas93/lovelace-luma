@@ -82,9 +82,14 @@ clock+=2*86400000;grouped=model.groupAttention(model.attentionSnapshot(hass,poli
 const storage=new Map();const listeners={};let interval;
 const win={lumaAttentionPolicies:{test:policy},setInterval:fn=>{interval=fn;return 1},addEventListener:(name,fn)=>{listeners[name]=fn},removeEventListener:()=>{}};
 const runtime=compile('../src/attention-runtime.ts',()=>model,{window:win,localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},clearInterval:()=>{}});
+hass.callWS=async ({type})=>type==='config/entity_registry/list' ? Object.entries(hass.entities).map(([entity_id,row])=>({entity_id,...row})) : type==='repairs/list_issues' ? {issues:[]} : [];
+const settle=async()=>{for(let i=0;i<30;i++)await Promise.resolve()};
+const prime=async(runtime,source)=>{const watcher=new runtime.AttentionSubscription(()=>{});watcher.update(source,'test');watcher.connect();await settle();watcher.disconnect()};
+await prime(runtime,hass);
 const before=runtime.policyRows('test',hass).find(x=>x.rule==='temp-critical').key;
 const secondRuntime=compile('../src/attention-runtime.ts',()=>model,{window:win,localStorage:{getItem:()=>null,setItem:()=>{}},clearInterval:()=>{}});
 clock+=1000;
+await prime(secondRuntime,hass);
 assert.equal(secondRuntime.policyRows('test',hass).find(x=>x.rule==='temp-critical').key,before,'first observation identity is shared across browsers');
 hass.states['sensor.temp']=entity('sensor.temp','40');clock+=16000;runtime.policyRows('test',{...hass});
 hass.states['sensor.temp']=entity('sensor.temp','46');clock+=16000;const after=runtime.policyRows('test',{...hass}).find(x=>x.rule==='temp-critical').key;
@@ -124,4 +129,68 @@ assert.deepEqual([...nativeRows.map(x=>x.notificationId)],['keep'],'a stale in-f
 await assert.rejects(nativeRuntime.dismissAttentionNotification({...nativeHass,callService:async()=>{throw Error('Denied')}},'keep'));
 assert.equal(nativeRuntime.policyRows('test',nativeHass).filter(x=>x.kind==='notification').length,1,'failed dismissal leaves the notice visible');
 await assert.rejects(nativeRuntime.dismissAttentionNotification(nativeHass,''));watcher.disconnect();
+// Registry readiness: the actual three ignored certificate pattern must never
+// turn an unhydrated frontend into three source failures.
+const certHass={...hass,states:{},entities:{}};
+for(const name of ['backup','photos','internal']){const id=`sensor.${name}_certificate`;certHass.states[id]=entity(id,'unknown');certHass.entities[id]={labels:['ignore']};}
+const certPolicy={version:1,revision:'readiness',ignore_labels:['ignore'],rules:Object.keys(certHass.states).map((entity,i)=>({id:`cert-${i}`,entity,below:7,message:'Expired'}))};
+for(const entities of [undefined,{}]){
+ const pending=model.attentionSnapshot({...certHass,entities},certPolicy,{},clock);
+ assert.equal(pending.filter(row=>row.status==='unavailable').length,0);
+ assert.equal(pending.filter(row=>row.status==='loading').length,1);
+ assert.equal(model.attentionOverview(pending,hass).loading,true);
+}
+rows=model.attentionSnapshot({...certHass,entities:{}},certPolicy,{registry:certHass.entities,readiness:{registry:'ready'}},clock);
+assert.ok(rows.every(row=>row.status==='excluded'),'late registry labels must be applied before claiming gaps');
+rows=model.attentionSnapshot(certHass,certPolicy,{readiness:{registry:'error'}},clock);
+assert.equal(rows.length,1);assert.equal(rows[0].reason,'metadata_unavailable');
+rows=model.attentionSnapshot({...certHass,entities:{}},certPolicy,{registry:{},readiness:{registry:'ready'}},clock);
+assert.equal(rows.length,3,'a successful empty response differs from a registry that never loaded');
+rows=model.attentionSnapshot(hass,policy,{readiness:{registry:'ready',repairs:'loading'}},clock);
+assert.equal(rows.find(row=>row.source==='adapter:repairs').status,'loading');
+assert.equal(model.attentionOverview(rows,hass).loading,true);
+rows=model.attentionSnapshot(hass,policy,{registry:hass.entities,readiness:{registry:'error'}},clock);
+assert.ok(rows.some(row=>row.source==='binary_sensor.boiler_fault'&&row.status==='active'),'a failed metadata refresh cannot hide a known safety fault');
+assert.ok(rows.some(row=>row.source==='registry'&&row.status==='unavailable'),'cached metadata still exposes incomplete coverage');
+// Human Repairs: supported translations and placeholders, not source codes.
+const repairExternal={repairs:{issues:[{domain:'marketplace',issue_id:'restart',translation_key:'restart_required',translation_placeholders:{name:'Komodo Integration'}}]},repairTranslations:{'component.marketplace.issues.restart_required.title':'Restart required: {name}','component.marketplace.issues.restart_required.description':'Restart to finish installing {name}.'}};
+const repair=model.attentionSnapshot(hass,policy,repairExternal,clock).find(row=>row.kind==='repair');
+assert.equal(repair.name,'Restart required: Komodo Integration');assert.match(repair.message,/installing Komodo Integration/);assert.equal(repair.sourceState,'restart_required');
+// Explicit task correlation preserves independent notifications and task state.
+const taskPolicy={version:1,revision:'tasks',rules:[{id:'plant-task',entity:'input_boolean.plants',state:'on',message:'Check plants',notification_ids:['plants-due'],completion:{label:'Watered',confirmation:'Record watering?',action:{action:'perform-action',perform_action:'input_button.press',target:{entity_id:'input_button.watered'}}}}],adapters:{notifications:true}};
+const taskHass={...hass,states:{...hass.states,'input_boolean.plants':entity('input_boolean.plants','on')}};
+const taskExt={notifications:[{notification_id:'plants-due',title:'Plants need water',message:'Due after 14 days in winter at this temperature.'},{notification_id:'other-task',title:'Plants need water',message:'An independent task with the same text.'}]};
+rows=model.attentionSnapshot(taskHass,taskPolicy,taskExt,clock);
+assert.equal(model.activeAttention(rows).length,2);assert.equal(rows.find(row=>row.rule==='plant-task').relatedNotifications.length,1);assert.match(rows.find(row=>row.rule==='plant-task').context[0].value,/winter/);
+rows=model.attentionSnapshot(taskHass,taskPolicy,{notifications:taskExt.notifications.slice(1)},clock);
+assert.equal(rows.find(row=>row.rule==='plant-task').status,'active','removing a channel never resolves the task');
+rows=model.attentionSnapshot({...taskHass,states:{...taskHass.states,'input_boolean.plants':entity('input_boolean.plants','off')}},taskPolicy,taskExt,clock);
+assert.equal(rows.find(row=>row.notificationId==='plants-due').status,'active','a stale channel is not silently hidden behind an inactive task');
+assert.ok(model.attentionPolicyErrors({...taskPolicy,rules:[...taskPolicy.rules,{...taskPolicy.rules[0],id:'duplicate-channel'}]}).length);
+// One update retains its actual name/version. Multiple members stay discoverable.
+const updatePolicy={version:1,revision:'updates',rules:[],updates:{enabled:true,groups:[{id:'software',name:'Applications',platforms:['marketplace']}]}};
+const updateHass={...hass,states:{'update.first':entity('update.first','on',{friendly_name:'Weather.com',installed_version:'1.4.1',latest_version:'2.0.0'})},entities:{'update.first':{platform:'marketplace'}}};
+let updateRows=model.groupAttention(model.attentionSnapshot(updateHass,updatePolicy,{},clock),updatePolicy,updateHass,clock);
+assert.equal(model.attentionSummaries(updateRows)[0].name,'Weather.com');assert.equal(model.attentionSummaries(updateRows)[0].message,'1.4.1 → 2.0.0');
+updateHass.states['update.second']=entity('update.second','on',{friendly_name:'Camera',latest_version:'8.2'});updateHass.entities['update.second']={platform:'marketplace'};
+updateRows=model.groupAttention(model.attentionSnapshot(updateHass,updatePolicy,{},clock),updatePolicy,updateHass,clock);
+assert.equal(model.attentionSummaries(updateRows).length,1);assert.equal(model.attentionOverview(updateRows,hass).updates,2);assert.equal(model.attentionOverview(updateRows,hass).issues,0);
+assert.match(model.attentionSummaries(updateRows)[0].message,/2 összetevő/);
+// A delayed registry and delayed/failed adapters must remain incomplete.
+let deliverRegistry,deliverRepairs;
+const delayedHass={...hass,entities:{},callWS:async({type})=>type==='config/entity_registry/list'?new Promise(resolve=>deliverRegistry=resolve):type==='repairs/list_issues'?new Promise(resolve=>deliverRepairs=resolve):[]};
+const delayedRuntime=compile('../src/attention-runtime.ts',()=>model,{window:win,localStorage:{getItem:()=>null,setItem:()=>{}},clearInterval:()=>{}});
+const delayedWatcher=new delayedRuntime.AttentionSubscription(()=>{});delayedWatcher.update(delayedHass,'test');delayedWatcher.connect();
+assert.equal(delayedRuntime.policyRows('test',delayedHass)[0].status,'loading');
+deliverRegistry(Object.entries(hass.entities).map(([entity_id,row])=>({entity_id,...row})));await settle();
+assert.ok(delayedRuntime.policyRows('test',delayedHass).some(row=>row.source==='adapter:repairs'&&row.status==='loading'));
+deliverRepairs({issues:[]});await settle();assert.ok(!delayedRuntime.policyRows('test',delayedHass).some(row=>row.status==='loading'));delayedWatcher.disconnect();
+const failedHass={...hass,callWS:async()=>{throw Error('denied')}};
+await prime(delayedRuntime,failedHass);assert.equal(delayedRuntime.policyRows('test',failedHass)[0].status,'unavailable');
+const appliance=compile('../src/appliance.ts',()=>{});
+const timestamp=entity('sensor.finish','2026-11-09T16:21:00Z',{device_class:'timestamp'});
+const twelve=appliance.applianceFinishTime(timestamp,{locale:{language:'en-US',time_format:'12'}});
+const twentyFour=appliance.applianceFinishTime(timestamp,{locale:{language:'hu',time_format:'24'}});
+assert.match(twelve,/AM|PM/);assert.ok(twelve.includes('\u00a0'),'12-hour suffix must stay attached on mobile');
+assert.doesNotMatch(twentyFour,/AM|PM/);assert.equal(appliance.applianceDuration(1800,{locale:{language:'en'}}),'30 min');assert.equal(appliance.applianceDuration(1800,{locale:{language:'hu'}}),'30 p');
 console.log('Attention: discovery, metadata, fault semantics, grace, per-source/version identity, recurrence, snooze expiry, adapter gating, missing policy and storage bounds passed.');

@@ -990,6 +990,28 @@ degree temperature; incomplete rain data never implies a dry forecast.
 
 ## Shared attention policy
 
+The home hero opens one notification panel: list → details → back. Search,
+scroll position and row focus survive the return to the list; Escape, close,
+backdrop and the sheet gesture close the panel. Related dashboards are explicit
+secondary actions. Embedded attention lists drill down inside their containing
+popup instead of opening another Luma modal.
+
+Issue counts and **updatable component** counts use separate units. A host update
+representing several packages is still one component; its release summary explains
+the packages. Single updates retain their names and versions. Group details retain
+all member names. Include both `marketplace` and `hacs` in an installation's
+application platform group when the installation has migrated to Marketplace.
+
+Runtime monitoring explicitly reads `config/entity_registry/list` before evaluating
+labels/platforms, and separately tracks notification/Repair/integration request
+readiness. A successful empty response, a pending response and a failed response
+are different states. Loading never creates per-entity gaps or an all-clear.
+Registry and adapter refreshes are shared per HA connection. Repairs use HA's
+`frontend/get_translations` issue resources and placeholders (including fix-flow
+explanations); missing translations have a readable fallback and retain technical
+source codes. Integration-provided text can fall back to that integration's English.
+
+
 Register an installation-owned policy in a separate dashboard module resource.
 Entity IDs, thresholds, exceptions and routes belong here, outside the Luma bundle:
 
@@ -1030,6 +1052,32 @@ Rules use the existing incident selectors and conditions (`entity`, glob pattern
 device classes, label, state/state_not, above/below, grace and aggregation), plus
 `platform`, `platforms`, `exclude_platforms`, `domain`, `unit`, `scope`, `category`,
 `identity` (`state`, `version` or `condition`) and `unavailable_after_minutes`.
+A task rule may explicitly link native notification channels and an existing
+completion action:
+
+```js
+{
+  id: "plants_due", entity: "input_boolean.plants_due", state: "on",
+  message: "Check the indoor plants", dismissible: false,
+  notification_ids: ["plants_watering_due"],
+  completion: {
+    label: "Watered",
+    confirmation: "Record watering now and clear the reminder channels?",
+    action: { action: "perform-action", perform_action: "input_button.press",
+      target: { entity_id: "input_button.plants_watered" } }
+  }
+}
+```
+
+While the canonical task is active, linked messages enrich that task's context.
+Identical text never merges unrelated IDs. An orphan notification remains visible
+if its task is inactive. Completion requires inline confirmation and invokes the
+configured action; only a subsequent source observation establishes recovery.
+Native dismissal removes that channel only. Snoozing changes visibility only;
+critical and non-dismissible rules do not offer it. These controls do not claim
+durable "seen", "fixed" or "normal" feedback: that needs a shared backend journal,
+which is also required before retrospective daily AI reports can rely on it.
+
 Keep rule IDs stable. Unknown/missing data is distinct from an inactive condition;
 missing or incompatible policies produce an explicit error.
 
@@ -1110,3 +1158,14 @@ reported as unavailable. `notification_exclude` accepts notification-ID globs, a
 `events` accepts event entity IDs shown as historical information, never fabricated
 active fault totals. This frontend policy does not replace independent phone/push
 automations or create a browser-independent notification service.
+
+### Notification interaction regression
+
+With local Storybook running (`npm run docs`), run
+`node scripts/check-attention-ui.mjs` in an environment with `playwright-core`.
+`LUMA_PLAYWRIGHT_MODULE` can point to a separately installed module URL;
+`LUMA_CHROME_PATH`, `LUMA_STORYBOOK_URL` and `LUMA_UI_OUTPUT` override defaults.
+The check exercises 390/768/1280 px in English/Hungarian, list/detail return state,
+focus, Escape, readiness failures and confirmed mock service calls. It never
+connects to a live Home Assistant instance. The pure attention check also covers
+12/24-hour formatting and nonbreaking AM/PM suffixes.

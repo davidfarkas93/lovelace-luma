@@ -26,7 +26,8 @@ export interface HomeAssistant {
   areas?: Record<string, { name?: string }>;
   user?: { id?: string; name?: string; is_admin?: boolean };
   editMode?: boolean;
-  locale?: { language?: string };
+  connection?: object;
+  locale?: { language?: string; time_format?: "12" | "24" | "language" | "system" };
   config?: { unit_system?: { temperature?: string } };
   formatEntityState?: (state: HassEntity) => string;
   callService: (

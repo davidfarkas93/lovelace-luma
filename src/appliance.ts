@@ -1,4 +1,4 @@
-import type { HassEntity } from "./types";
+import type { HassEntity, HomeAssistant } from "./types";
 
 const missing = new Set(["", "unknown", "unavailable", "none"]);
 
@@ -25,18 +25,18 @@ export const applianceSeconds = (
   return numeric * (unit === "h" ? 3600 : unit === "min" ? 60 : 1);
 };
 
-export const applianceDuration = (seconds: number | undefined): string =>
+export const applianceDuration = (seconds: number | undefined, hass?:HomeAssistant): string =>
   seconds == null
     ? ""
     : seconds >= 3600
-      ? `${Math.floor(seconds / 3600)} ó ${Math.ceil((seconds % 3600) / 60)} p`
-      : `${Math.ceil(seconds / 60)} p`;
+      ? `${Math.floor(seconds / 3600)} ${hass?.locale?.language?.startsWith("hu") || !hass ? "ó" : "h"} ${Math.ceil((seconds % 3600) / 60)} ${hass?.locale?.language?.startsWith("hu") || !hass ? "p" : "min"}`
+      : `${Math.ceil(seconds / 60)} ${hass?.locale?.language?.startsWith("hu") || !hass ? "p" : "min"}`;
 
-export const applianceFinishTime = (entity: HassEntity | undefined): string => {
+export const applianceFinishTime = (entity: HassEntity | undefined, hass?:HomeAssistant): string => {
   if (!entity || entity.attributes.device_class !== "timestamp") return "";
   const value = Date.parse(entity.state);
   return Number.isFinite(value)
-    ? new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(value)
+    ? new Intl.DateTimeFormat(hass?.locale?.time_format === "system" ? undefined : hass?.locale?.language, { hour: "2-digit", minute: "2-digit", ...(hass?.locale?.time_format === "12" ? {hour12:true} : hass?.locale?.time_format === "24" ? {hour12:false} : {}) }).format(value).replace(/\s/g,"\u00a0")
     : "";
 };
 

@@ -3,6 +3,17 @@ import type { HomeAssistant } from "./types";
 
 declare global { interface Window { lumaAttentionPolicies?: Record<string, AttentionPolicy> } }
 const external: AttentionExternal = {};
+let owner: object | undefined, generation = 0;
+let registryFetched = false, registryFetching = false, registryFetchAt = 0;
+function session(hass: HomeAssistant) {
+  const next = hass.connection || hass.callWS || hass;
+  if (owner !== next) {
+    owner = next; generation++; notificationRequest++; lastFetch = 0; fetching = false;
+    registryFetched = false; registryFetching = false; registryFetchAt = 0;
+    for (const key of Object.keys(external)) delete external[key as keyof AttentionExternal];
+    external.readiness = {registry:"loading"}; cache.clear(); externalVersion++;
+  }
+}
 let lastFetch = 0, fetching = false, externalVersion = 0;
 let notificationRequest = 0;
 const listeners = new Set<() => void>();
@@ -12,19 +23,22 @@ let episodesLoaded = false;
 const changed = () => { cache.clear(); for (const listener of listeners) listener(); };
 
 async function readNotifications(hass: HomeAssistant) {
-  if (!hass.callWS) return;
   const request = ++notificationRequest;
+  const epoch = generation;
   try {
+    if(!hass.callWS)throw Error("WebSocket unavailable");
     const value = await hass.callWS<NonNullable<AttentionExternal["notifications"]>>({type:"persistent_notification/get"});
-    if (request !== notificationRequest) return;
-    if (!Array.isArray(value)) throw Error("Invalid notification response");
+    if (epoch !== generation || request !== notificationRequest) return;
+    if (!Array.isArray(value) || value.some(row=>!row || typeof row.notification_id!=="string" || typeof row.message!=="string")) throw Error("Invalid notification response");
     external.notifications = value;
+    external.readiness ||= {}; external.readiness.notifications = "ready";
     if (external.errors) delete external.errors.notifications;
   } catch {
-    if (request !== notificationRequest) return;
+    if (epoch !== generation || request !== notificationRequest) return;
+    external.readiness ||= {}; external.readiness.notifications = "error";
     external.errors ||= {}; external.errors.notifications = "The notification source could not be read";
     delete external.notifications;
-  } finally { if (request === notificationRequest) { externalVersion++; changed(); } }
+  } finally { if (epoch === generation && request === notificationRequest) { externalVersion++; changed(); } }
 }
 
 /** Dismiss exactly one HA notification. Never write a Luma snooze record. */
@@ -41,6 +55,7 @@ export async function dismissAttentionNotification(hass: HomeAssistant, notifica
 }
 export const attentionPolicy = (name?: string) => name ? window.lumaAttentionPolicies?.[name] : undefined;
 export function policyRows(name: string, hass: HomeAssistant): AttentionEntry[] {
+  session(hass);
   const policy = attentionPolicy(name), now = Date.now(), bucket = Math.floor(now / 15000), hit = cache.get(name);
   if (hit?.hass === hass && hit.policy === policy && hit.bucket === bucket && hit.version === externalVersion) return hit.rows;
   const errors=attentionPolicyErrors(policy);
@@ -48,6 +63,8 @@ export function policyRows(name: string, hass: HomeAssistant): AttentionEntry[] 
     id: "policy", key: "policy", source: name, rule: "policy_health", scope: "system", category: "configuration", kind: "incident",
     name: name, message: errors.join(" · "), status: "active", reason: "policy_unavailable", tone: "error", dismissible: false,
   }];
+  external.readiness ||= {};
+  for(const key of ["notifications","repairs","integrations"] as const) if(policy.adapters?.[key] && !external.readiness[key])external.readiness[key]="loading";
   const rows = attentionSnapshot(hass, policy, external, now);
   // Threshold recurrence can be tracked while a dashboard is observing. Persist
   // across reloads, but never claim this replaces a backend incident lifecycle.
@@ -82,27 +99,62 @@ export function policyRows(name: string, hass: HomeAssistant): AttentionEntry[] 
   return grouped;
 }
 
+async function refreshRegistry(hass: HomeAssistant) {
+  session(hass);
+  if (registryFetching || registryFetched && Date.now()-registryFetchAt < 60000) return;
+  registryFetching = true; registryFetched = true; registryFetchAt = Date.now();
+  const epoch=generation;
+  try {
+    if (!hass.callWS) throw Error("WebSocket unavailable");
+    const value = await hass.callWS<Array<{entity_id:string} & NonNullable<HomeAssistant["entities"]>[string]>>({type:"config/entity_registry/list"});
+    if (epoch !== generation) return;
+    if (!Array.isArray(value) || value.some(row=>!row || typeof row.entity_id !== "string")) throw Error("Invalid entity registry");
+    external.registry=Object.fromEntries(value.map(row=>[row.entity_id,row]));
+    external.readiness ||= {}; external.readiness.registry="ready";
+  } catch {
+    if (epoch !== generation) return;
+    external.readiness ||= {}; external.readiness.registry="error";
+  } finally { if(epoch===generation){registryFetching=false;externalVersion++;changed();} }
+}
+
 async function refreshAdapters(hass: HomeAssistant, policy?: AttentionPolicy) {
-  if (!hass.callWS || !policy?.adapters || fetching || Date.now()-lastFetch < 30000) return;
-  const calls: Array<[keyof AttentionExternal,string]> = [];
+  session(hass);
+  if (!policy?.adapters || fetching || Date.now()-lastFetch < 30000) return;
+  const calls: Array<["notifications"|"repairs"|"integrations",string]> = [];
   if (policy.adapters.notifications) calls.push(["notifications","persistent_notification/get"]);
   if (policy.adapters.repairs) calls.push(["repairs","repairs/list_issues"]);
   if (policy.adapters.integrations) calls.push(["integrations","config_entries/get"]);
   if (!calls.length) return;
-  fetching = true; lastFetch = Date.now();
+  fetching = true; lastFetch = Date.now(); const epoch=generation;
+  external.readiness ||= {};
+  for(const [key] of calls) if(!external.readiness[key])external.readiness[key]="loading";
+  externalVersion++; changed();
   try {
-    for (const [key,type] of calls) {
-      if (key === "notifications") { await readNotifications(hass); continue; }
+    await Promise.all(calls.map(async ([key,type])=>{
+      if (key === "notifications") { await readNotifications(hass); return; }
       try {
+        if(!hass.callWS)throw Error("WebSocket unavailable");
         const value = await hass.callWS({type});
-        Object.assign(external,{[key]:value});
+        if(epoch!==generation)return;
+        if(key==="repairs" ? !Array.isArray((value as AttentionExternal["repairs"])?.issues) : !Array.isArray(value))throw Error("Invalid source response");
+        Object.assign(external,{[key]:value}); external.readiness![key]="ready";
         if (external.errors) delete external.errors[key];
+        externalVersion++; changed();
+        if(key === "repairs") {
+          const domains=[...new Set(external.repairs!.issues.map(issue=>issue.domain))];
+          if(domains.length)try {
+            const translated=await hass.callWS<{resources:Record<string,string>}>({type:"frontend/get_translations",language:hass.locale?.language || "en",category:"issues",integration:domains});
+            if(epoch===generation)external.repairTranslations=translated.resources || {};
+          } catch { /* The repair remains visible with a human-readable fallback. */ }
+        }
       } catch {
+        if(epoch!==generation)return;
+        external.readiness![key]="error";
         external.errors ||= {}; external.errors[key] = "The data source could not be read";
         delete external[key];
       }
-    }
-  } finally { fetching = false; externalVersion++; changed(); }
+    }));
+  } finally { if(epoch===generation){fetching = false; externalVersion++; changed();} }
 }
 
 /** Lifecycle-owned timer: missing grace/ack deadlines must not depend on weather updates. */
@@ -122,5 +174,7 @@ export class AttentionSubscription {
   }
   update(hass: HomeAssistant | undefined, name?: string) { this.hass=hass;this.name=name;if(this.connected)void this.refresh(); }
   disconnect() { this.connected=false;clearInterval(this.timer);listeners.delete(this.invalidate);window.removeEventListener("luma-attention-policy-changed",this.invalidate); }
-  private async refresh() { if(this.hass&&this.name)await refreshAdapters(this.hass,attentionPolicy(this.name)); }
+  private async refresh() {
+    if(this.hass&&this.name) await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name))]);
+  }
 }

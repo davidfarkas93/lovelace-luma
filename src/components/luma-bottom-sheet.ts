@@ -10,6 +10,9 @@ export class LumaBottomSheet extends LitElement {
   @property() subtitle='';
   @property() icon='mdi:lightning-bolt-outline';
   @property() closeLabel='Close';
+  @property() backLabel='';
+  getScrollPosition(){return this.renderRoot.querySelector('.content')?.scrollTop || 0}
+  restoreScrollPosition(top:number){this.renderRoot.querySelector('.content')?.scrollTo({top})}
   @property({type:Number}) maxWidth=720;
   @state() private visible=false;
   @state() private dragY=0;
@@ -291,7 +294,7 @@ export class LumaBottomSheet extends LitElement {
     <div class="scrim" @click=${()=>this.dismiss()}></div>
     <section class="sheet" style=${`--sheet-width:${this.maxWidth}px`}>
       <div class="handle-zone" @pointerdown=${this.dragStart} @pointermove=${this.dragMove} @pointerup=${this.dragEnd} @pointercancel=${this.dragEnd}><div class="handle"></div></div>
-      <header><span class="icon"><ha-icon icon=${this.icon}></ha-icon></span><span><div class="title">${this.heading}</div>${this.subtitle?html`<div class="subtitle">${this.subtitle}</div>`:nothing}</span><button class="close" aria-label=${this.closeLabel} @click=${()=>this.dismiss()}><ha-icon icon="mdi:close"></ha-icon></button></header>
+      <header>${this.backLabel ? html`<button class="close" aria-label=${this.backLabel} @click=${()=>this.dispatchEvent(new CustomEvent("sheet-back"))}><ha-icon icon="mdi:arrow-left"></ha-icon></button>` : html`<span class="icon"><ha-icon icon=${this.icon}></ha-icon></span>`}<span><div class="title">${this.heading}</div>${this.subtitle?html`<div class="subtitle">${this.subtitle}</div>`:nothing}</span><button class="close" aria-label=${this.closeLabel} @click=${()=>this.dismiss()}><ha-icon icon="mdi:close"></ha-icon></button></header>
       <div class="content" @touchstart=${this.contentTouchStart} @touchmove=${this.contentTouchMove}
         @pointerdown=${(event:PointerEvent)=>{this.contentPointerId=event.pointerId}}
         @pointerup=${()=>{this.contentPointerId=undefined}} @pointercancel=${()=>{this.contentPointerId=undefined}}
