@@ -108,3 +108,22 @@ export const RegistryLoading:Story={render:()=>reviewScenario({registry:"loading
 export const RegistryFailed:Story={render:()=>reviewScenario({registry:"error"})};
 export const RepairsLoading:Story={render:()=>reviewScenario({repairs:"loading"})};
 export const RepairsFailed:Story={render:()=>reviewScenario({repairs:"error"})};
+
+import { attentionSnapshot } from "../src/attention";
+const backendScenario=(failed=false)=>{
+ const backendPolicy=window.lumaAttentionPolicies!["demo-review"];
+ window.lumaAttentionPolicies!["demo-backend"]={version:1,revision:"Backend binding",rules:[],backend:{policy_id:"demo"},acknowledgements_entity:"input_text.ack"};
+ const hass=createMockHass(reviewEntities);
+ const original=hass.callWS!;
+ hass.callWS=async(command)=>{
+  if(command.type==='home_insights/attention'){
+   if(failed)throw Error('Observer unavailable');
+   const external={registry:hass.entities||{},notifications:[{notification_id:'plants-due',title:'Indoor plants',message:'Watering is due'}],readiness:{registry:'ready' as const,notifications:'ready' as const,repairs:'ready' as const,integrations:'ready' as const},repairs:{issues:[]},integrations:[]};
+   return {schema_version:1,policy_id:'demo',policy_hash:'storybook',policy_revision:backendPolicy.revision,generated_at:Date.now(),policy:backendPolicy,rows:attentionSnapshot(hass,backendPolicy,external,Date.now())} as never;
+  }
+  return original(command);
+ };
+ return html`<div style="width:1050px;max-width:calc(100vw - 48px)"><luma-home-hero-card .hass=${hass} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card)card.setConfig({type:'custom:luma-home-hero-card',weather_entity:'weather.demo',attention_policy:'demo-backend'})})}></luma-home-hero-card></div>`;
+};
+export const BackendObserver:Story={render:()=>backendScenario()};
+export const BackendUnavailable:Story={render:()=>backendScenario(true)};

@@ -199,3 +199,27 @@ const twentyFour=appliance.applianceFinishTime(timestamp,{locale:{language:'hu',
 assert.match(twelve,/AM|PM/);assert.ok(twelve.includes('\u00a0'),'12-hour suffix must stay attached on mobile');
 assert.doesNotMatch(twentyFour,/AM|PM/);assert.equal(appliance.applianceDuration(1800,{locale:{language:'en'}}),'30 min');assert.equal(appliance.applianceDuration(1800,{locale:{language:'hu'}}),'30 p');
 console.log('Attention: discovery, metadata, fault semantics, grace, per-source/version identity, recurrence, snooze expiry, adapter gating, missing policy and storage bounds passed.');
+
+// A configured backend owns conditions. No client-side fallback, including on failure.
+const binding={policy_id:'shared',health_entity:'sensor.journal'};
+const serverPolicy={version:1,revision:'server.1',rules:[]};
+const backendWin={...win,lumaAttentionPolicies:{shared:{...serverPolicy,backend:binding,rules:[{id:'must-not-run',entity:'sensor.client',state:'on',message:'Client evaluator ran'}]}}};
+let failBackend=false;const backendCalls=[];
+const backHass={states:{'sensor.client':entity('sensor.client','on'),'sensor.journal':entity('sensor.journal','recording',{event_count:1})},entities:{},locale:{language:'hu'},connection:{},callService:async()=>{},callWS:async command=>{
+ backendCalls.push(command);assert.equal(command.type,'home_insights/attention');if(failBackend)throw Error('Offline');
+ return {schema_version:1,policy_id:'shared',policy_hash:'testhash',policy_revision:'server.1',generated_at:clock,rows:[{id:'server:source',key:'server-key',rule:'server',source:'sensor.source',name:'Server result',message:'Observed',scope:'home',category:'home',kind:'incident',status:'active',reason:'condition_met',tone:'warning',dismissible:true}],policy:serverPolicy};
+}};
+const backRuntime=compile('../src/attention-runtime.ts',name=>name==='./localize'?localize:name==='./household-context'?household:model,{window:backendWin,localStorage:{getItem:()=>null,setItem:()=>{}},clearInterval:()=>{}});
+assert.equal(backRuntime.policyRows('shared',backHass)[0].status,'loading');
+await backRuntime.refreshAttentionBackend(backHass,'shared');
+assert.equal(backRuntime.policyRows('shared',backHass)[0].name,'Server result');
+assert.ok(backendCalls.length===1);
+failBackend=true;await backRuntime.refreshAttentionBackend(backHass,'shared',true);
+let backRows=backRuntime.policyRows('shared',backHass);
+assert.ok(backRows.some(r=>r.reason==='backend_unavailable'));
+assert.ok(backRows.every(r=>r.rule!=='must-not-run'));
+clock+=46000;backRows=backRuntime.policyRows('shared',backHass);
+assert.equal(backRows.length,1,'expired cached alerts must not masquerade as fresh observations');
+assert.equal(backRows[0].reason,'backend_unavailable');
+assert.equal(backRuntime.policyRows('shared',{...backHass,connection:{}})[0].status,'loading','a new account/connection cannot reuse a prior private snapshot');
+console.log('Attention backend: authority, fail-closed errors, freshness, locale and connection isolation passed.');

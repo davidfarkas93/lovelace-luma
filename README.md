@@ -1,5 +1,28 @@
 # Luma
 
+### Home Insights attention backend
+
+Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1
+policy into the integration using `home_insights.set_attention_policy`, then bind
+the existing named policy to it:
+
+```js
+window.lumaAttentionPolicies.home = {
+  version: 1, revision: "Backend binding", rules: [],
+  backend: { policy_id: "home", health_entity: "sensor.example_journal_status" }
+};
+window.dispatchEvent(new Event("luma-attention-policy-changed"));
+```
+
+`health_entity` is optional; its `event_count` invalidates the shared snapshot promptly.
+Otherwise the client polls every 15 seconds. The server's policy owns conditions
+and presentation metadata; the client only groups/renders rows and performs confirmed
+user actions. Existing card `attention_policy`/`policy` references stay the same.
+Keep the household binding locally too when its editor must remain usable before the
+first backend read. A backend-bound policy never falls back to browser evaluation:
+loading, errors and expired observations are visible. Private cache data is reset
+between HA connections and locales. Standalone browser policies remain supported.
+
 [![Validate](https://github.com/davidfarkas93/lovelace-luma/actions/workflows/validate.yml/badge.svg)](https://github.com/davidfarkas93/lovelace-luma/actions/workflows/validate.yml)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?logo=home-assistant-community-store)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/davidfarkas93/lovelace-luma?display_name=tag&sort=semver)](https://github.com/davidfarkas93/lovelace-luma/releases/latest)

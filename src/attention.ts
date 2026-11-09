@@ -16,6 +16,7 @@ export interface AttentionRule extends LumaIncidentRule {
   context?: Array<{label:string; entity?:string; entity_pattern?:string; value?:string; source?:string; states?:string[]; decimals?:number}>;
 }
 export interface AttentionPolicy {
+  backend?: { policy_id: string; health_entity?: string };
   version: 1;
   revision: string;
   acknowledgements_entity?: string;

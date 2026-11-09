@@ -101,6 +101,22 @@ try {
  await complete.click();await panel().locator('.confirmation button').filter({hasText:'Megerősítés'}).click();
  await panel().locator('[role="alert"]').waitFor();
  assert.match(await panel().locator('[role="alert"]').textContent(),/nem sikerült/);
+ for(const width of [390,768,1280])for(const language of ['hu','en']){
+  await page.setViewportSize({width,height:844});await story('backend-observer',language);
+  await page.locator('luma-home-hero-card button.attention').click();
+  await panel().locator('dialog.open').waitFor();
+  await panel().locator('button.item:visible').filter({hasText:'Application updates'}).click();
+  assert.equal(await panel().locator('.members luma-update-card').count(),2);
+  const update=panel().locator('luma-update-card').filter({hasText:'Weather integration'});
+  await update.evaluate(c=>{c.testCalls=[];c.hass={...c.hass,callService:async(...args)=>c.testCalls.push(args)}});
+  await update.locator('button.action').click();assert.equal(await update.evaluate(c=>c.testCalls.length),0);
+  await capture(`${output}/backend-${language}-${width}.png`);
+  await update.locator('button.action').click();assert.equal(await update.evaluate(c=>c.testCalls.length),1);
+  await story('backend-unavailable',language);
+  const pill=page.locator('luma-home-hero-card button.attention');
+  await page.waitForTimeout(300);
+  assert.match(await pill.textContent(),language==='hu'?/adatkimaradás/:/data gap/);
+ }
  assert.deepEqual(errors,[]);
  console.log('Attention UI: 390/768/1280 × HU/EN, hero → list → group → back, search/scroll/focus, Escape, registry/adapters, dark mode, 12/24-hour appliance labels and confirmed mock actions passed.');
 } finally {await browser.close();}

@@ -1,6 +1,39 @@
 import { attentionAckMap, attentionHash, attentionSnapshot, attentionPolicyErrors, groupAttention, type AttentionEntry, type AttentionExternal, type AttentionPolicy } from "./attention";
 import { callHouseholdScript, type HouseholdSnapshot } from "./household-context";
 import type { HomeAssistant } from "./types";
+import { localized } from "./localize";
+
+interface BackendResult {schema_version:1;policy_id:string;policy_hash:string;policy_revision:string;generated_at:number;rows:AttentionEntry[];policy:AttentionPolicy}
+const backend = new Map<string,{binding:string;language:string;data?:BackendResult;fetching:boolean;at:number;error:boolean;health:unknown;request?:number}>();
+export async function refreshAttentionBackend(hass:HomeAssistant,name:string,force=false) {
+  session(hass);const policy=window.lumaAttentionPolicies?.[name],binding=policy?.backend;
+  if(!binding)return;
+  const language=hass.locale?.language?.startsWith('hu')?'hu':'en',key=JSON.stringify(binding);
+  let entry=backend.get(name);
+  if(!entry||entry.binding!==key||entry.language!==language){entry={binding:key,language,fetching:false,at:0,error:false,health:undefined};backend.set(name,entry)}
+  const health=binding.health_entity?hass.states[binding.health_entity]?.attributes.event_count:undefined;
+  if(entry.fetching&&!force||!force&&entry.health===health&&Date.now()-entry.at<15000)return;
+  entry.fetching=true;entry.health=health;entry.at=Date.now();const epoch=generation;
+  const request=entry.request=(entry.request||0)+1;
+  try {
+    if(!hass.callWS)throw Error('WebSocket unavailable');
+    const result=await hass.callWS<BackendResult>({type:'home_insights/attention',policy_id:binding.policy_id,language});
+    if(epoch!==generation||backend.get(name)!==entry||entry.request!==request)return;
+    if(result.schema_version!==1||result.policy_id!==binding.policy_id||!Array.isArray(result.rows)||!result.policy?.rules||typeof result.policy_hash!=='string'||!Number.isFinite(result.generated_at)||Date.now()-result.generated_at>45000||result.generated_at>Date.now()+10000||result.rows.some(r=>!r||typeof r.id!=='string'||typeof r.key!=='string'||!['active','inactive','pending','unavailable','excluded','installing','event','loading'].includes(r.status)))throw Error('Invalid backend attention snapshot');
+    entry.data=result;entry.error=false;
+  } catch {if(epoch===generation&&backend.get(name)===entry&&entry.request===request)entry.error=true;}
+  finally{if(epoch===generation&&backend.get(name)===entry&&entry.request===request){entry.fetching=false;externalVersion++;changed();}}
+}
+function backendRows(name:string,hass:HomeAssistant,policy:AttentionPolicy,now:number):AttentionEntry[]{
+  const current=backend.get(name),valid=current?.binding===JSON.stringify(policy.backend)&&current.language===(hass.locale?.language?.startsWith('hu')?'hu':'en');
+  const data=valid?current.data:undefined,expired=data&&now-data.generated_at>45000;
+  const rows=data&&!expired?data.rows.map(row=>({...row})):[];
+  if(!data||current?.error||expired){
+    const error=!!current?.error||!!expired;
+    rows.push({id:'attention_backend',key:'attention_backend',rule:'backend_health',source:'backend',scope:'system',category:'system',kind:'incident',status:error?'unavailable':'loading',reason:error?'backend_unavailable':'backend_loading',tone:'error',dismissible:false,name:localized(hass,'Notification monitoring','Jelzésfigyelés'),message:error?localized(hass,'The background observer could not be read. Current monitoring cannot be confirmed.','A háttérfigyelő adatai nem olvashatók. Az aktuális felügyelet nem igazolható.'):localized(hass,'Reading the background observer…','Háttérfigyelő adatainak betöltése…')});
+  }
+  return groupAttention(rows,data?.policy||policy,hass,now);
+}
 
 declare global { interface Window { lumaAttentionPolicies?: Record<string, AttentionPolicy> } }
 const external: AttentionExternal = {};
@@ -15,6 +48,7 @@ function session(hass: HomeAssistant) {
     registryFetched = false; registryFetching = false; registryFetchAt = 0;
     for (const key of Object.keys(external)) delete external[key as keyof AttentionExternal];
     external.readiness = {registry:"loading"}; cache.clear(); externalVersion++;
+    backend.clear();
   }
 }
 let lastFetch = 0, fetching = false, externalVersion = 0;
@@ -54,12 +88,18 @@ export async function dismissAttentionNotification(hass: HomeAssistant, notifica
   external.notifications = external.notifications?.filter(row => row.notification_id !== notificationId);
   externalVersion++; changed();
   // Re-read immediately: a producer may legitimately create a new notice again.
-  await readNotifications(hass);
+  const names=Object.entries(window.lumaAttentionPolicies||{}).filter(([,p])=>p.backend).map(([name])=>name);
+  if(names.length)await Promise.all(names.map(name=>refreshAttentionBackend(hass,name,true)));
+  else await readNotifications(hass);
 }
-export const attentionPolicy = (name?: string) => name ? window.lumaAttentionPolicies?.[name] : undefined;
+export const attentionPolicy = (name?: string) => {
+  const local=name?window.lumaAttentionPolicies?.[name]:undefined,entry=name?backend.get(name):undefined;
+  return local?.backend&&entry?.binding===JSON.stringify(local.backend)&&entry.data?{...local,...entry.data.policy,backend:local.backend}:local;
+};
 export function policyRows(name: string, hass: HomeAssistant): AttentionEntry[] {
   session(hass);
   const policy = attentionPolicy(name), now = Date.now(), bucket = Math.floor(now / 15000), hit = cache.get(name);
+  if(policy?.backend)return backendRows(name,hass,policy,now);
   if (hit?.hass === hass && hit.policy === policy && hit.bucket === bucket && hit.version === externalVersion) return hit.rows;
   const errors=attentionPolicyErrors(policy);
   if (errors.length || !policy) return [{
@@ -194,6 +234,9 @@ export class AttentionSubscription {
   update(hass: HomeAssistant | undefined, name?: string) { this.hass=hass;this.name=name;if(this.connected)void this.refresh(); }
   disconnect() { this.connected=false;clearInterval(this.timer);listeners.delete(this.invalidate);window.removeEventListener("luma-attention-policy-changed",this.invalidate); }
   private async refresh() {
-    if(this.hass&&this.name) await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name)),refreshHousehold(this.hass,attentionPolicy(this.name))]);
+    if(this.hass&&this.name){
+      if(window.lumaAttentionPolicies?.[this.name]?.backend)await refreshAttentionBackend(this.hass,this.name);
+      else await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name)),refreshHousehold(this.hass,attentionPolicy(this.name))]);
+    }
   }
 }
