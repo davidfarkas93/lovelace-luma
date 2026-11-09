@@ -18,7 +18,7 @@ export class LumaHouseholdContextCard extends LitElement implements LovelaceCard
   @state() private busy=false;
   @state() private message='';
   @state() private error='';
-  private subscription=new AttentionSubscription(()=>this.requestUpdate());
+  private subscription=new AttentionSubscription(()=>this.requestUpdate(),{household:true});
   static styles=[lumaTokens,css`
     :host{display:block;min-width:0;container-type:inline-size}
     ha-card{padding:20px;border:1px solid var(--luma-border);border-radius:var(--luma-radius-card);background:var(--luma-surface);box-shadow:var(--luma-shadow)}

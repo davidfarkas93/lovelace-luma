@@ -11,11 +11,13 @@ const rules:HouseholdRule[]=[
  {id:'draft',title:'Seasonal appliance note',explanation:'A draft must be approved before it can affect a report.',effect:'context',targets:['sensor.washer'],target_states:['unavailable'],when:[],enabled:true,status:'draft'},
 ];
 window.lumaAttentionPolicies={...window.lumaAttentionPolicies,household_demo:{version:1,revision:'household-demo',rules:[],problems:{enabled:true},household:{entity:'sensor.household_context',evaluate_script:'script.household_evaluate',manage_script:'script.household_manage'}}};
-function renderScenario(options:{unavailable?:boolean;conflict?:boolean;failure?:boolean}={}) {
+window.lumaAttentionPolicies.household_backend={...window.lumaAttentionPolicies.household_demo,backend:{policy_id:'household_demo'}};
+function renderScenario(options:{unavailable?:boolean;conflict?:boolean;failure?:boolean;backend?:boolean}={}) {
  let card:(HTMLElement & LovelaceCard & {testCalls:unknown[]})|undefined;
  const hass=createMockHass({'sensor.washer':{state:'unavailable',attributes:{friendly_name:'Washer'}},'input_boolean.washer_program':{state:'off',attributes:{friendly_name:'Washer program active'}},'binary_sensor.flash_health':{state:'unknown',attributes:{friendly_name:'Boot flash health',device_class:'problem'}},'sensor.household_context':{state:options.unavailable?'unavailable':'1',attributes:{friendly_name:'Household knowledge',schema_version:1,revision:1,rules:JSON.parse(JSON.stringify(rules)),history:[]}}});
  const original=hass.callWS!;
  hass.callWS=async message=>{
+  if(message.type==='home_insights/attention')return {schema_version:1,policy_id:'household_demo',policy_hash:'demo',policy_revision:'household-demo',generated_at:Date.now(),rows:[],policy:window.lumaAttentionPolicies!.household_demo} as never;
   if(message.type!=='call_service')return original(message);
   const source=hass.states['sensor.household_context'];
   if(message.service==='household_evaluate')return {response:{schema_version:1,revision:source.attributes.revision,evaluated_at:Date.now()/1000,status:options.unavailable?'unavailable':'ready',expected_unavailable:['binary_sensor.flash_health'],evaluations:(source.attributes.rules as HouseholdRule[]).map(rule=>({id:rule.id,title:rule.title,explanation:rule.explanation,effect:rule.effect,status:rule.status==='draft'?'draft':'applies',matched_entities:rule.targets,observations:[...rule.targets,...rule.when.map(c=>c.entity)].map(entity=>({entity,state:hass.states[entity].state,changed_at:Date.parse(hass.states[entity].last_changed)/1000}))}))}} as never;
@@ -32,12 +34,13 @@ function renderScenario(options:{unavailable?:boolean;conflict?:boolean;failure?
   if(card)card.hass={...hass};
   return {response:{ok:true,revision:source.attributes.revision}} as never;
  };
- return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-household-context-card .hass=${hass} ${ref(node=>{card=node as typeof card;if(card){card.setConfig({type:'custom:luma-household-context-card',policy:'household_demo'});card.testCalls=[];}})}></luma-household-context-card></div>`;
+ return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-household-context-card .hass=${hass} ${ref(node=>{card=node as typeof card;if(card){card.setConfig({type:'custom:luma-household-context-card',policy:options.backend?'household_backend':'household_demo'});card.testCalls=[];}})}></luma-household-context-card></div>`;
 }
 const meta:Meta={title:'Attention/Household knowledge',render:()=>renderScenario(),parameters:{controls:{disable:true}}};
 export default meta;
 type Story=StoryObj;
 export const Catalogue:Story={};
+export const BackendCatalogue:Story={render:()=>renderScenario({backend:true})};
 export const Unavailable:Story={render:()=>renderScenario({unavailable:true})};
 export const Conflict:Story={render:()=>renderScenario({conflict:true})};
 export const SaveFailure:Story={render:()=>renderScenario({failure:true})};

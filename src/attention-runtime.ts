@@ -223,7 +223,7 @@ export class AttentionSubscription {
   private name?: string;
   private connected = false;
   private invalidate = () => this.render();
-  constructor(private render: () => void) {}
+  constructor(private render: () => void, private options: {household?: boolean} = {}) {}
   connect() {
     if (this.connected) return; this.connected = true;
     listeners.add(this.invalidate);
@@ -235,7 +235,12 @@ export class AttentionSubscription {
   disconnect() { this.connected=false;clearInterval(this.timer);listeners.delete(this.invalidate);window.removeEventListener("luma-attention-policy-changed",this.invalidate); }
   private async refresh() {
     if(this.hass&&this.name){
-      if(window.lumaAttentionPolicies?.[this.name]?.backend)await refreshAttentionBackend(this.hass,this.name);
+      if(window.lumaAttentionPolicies?.[this.name]?.backend){
+        await refreshAttentionBackend(this.hass,this.name);
+        // The editor still needs the shared rule proof for its applicability
+        // labels. This does not evaluate notification conditions in the browser.
+        if(this.options.household)await refreshHousehold(this.hass,attentionPolicy(this.name));
+      }
       else await Promise.all([refreshRegistry(this.hass),refreshAdapters(this.hass,attentionPolicy(this.name)),refreshHousehold(this.hass,attentionPolicy(this.name))]);
     }
   }

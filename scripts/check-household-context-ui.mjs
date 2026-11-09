@@ -9,10 +9,11 @@ const card=()=>page.locator('luma-household-context-card');
 const open=async(story='catalogue',lang='hu')=>{await page.goto(`http://127.0.0.1:6006/iframe.html?id=attention-household-knowledge--${story}&viewMode=story&globals=locale:${lang}`);await card().locator('h2').waitFor();};
 const capture=async(name)=>{await page.waitForTimeout(120);await page.screenshot({path:`${output}/${name}.png`,animations:'disabled',timeout:15000,fullPage:true});};
 try {
- for(const width of [390,768,1280])for(const lang of ['hu','en']) {
-  await page.setViewportSize({width,height:844});await open('catalogue',lang);
+ for(const story of ['catalogue','backend-catalogue'])for(const width of [390,768,1280])for(const lang of ['hu','en']) {
+  await page.setViewportSize({width,height:844});await open(story,lang);
   assert.equal(await card().locator('article.rule').count(),3);
-  await capture(`${lang}-${width}-catalogue`);
+  await card().locator('article.rule').first().locator('.tag.muted').filter({hasText:lang==='hu'?'Most érvényesül':'Applies now'}).waitFor();
+  await capture(`${story}-${lang}-${width}-catalogue`);
   const first=card().locator('article.rule').first();await first.locator('button').filter({hasText:lang==='hu'?'Szerkesztés':'Edit'}).click();
   assert.equal(await card().locator('[data-field="target"]').inputValue(),'sensor.washer','the primary target must stay selected while editing');
   await card().locator('[data-field="explanation"]').fill('The washer is normally offline while switched off. This does not prove power-off during a network failure.');
@@ -20,10 +21,11 @@ try {
   assert.equal(await card().evaluate(c=>c.testCalls.length),0,'preview must not save');
   const reviewBox=await card().locator('.confirm').boundingBox();assert.ok(reviewBox.y>=0 && reviewBox.y<844,'review must be visible after the user taps approve');
   assert.match(await card().locator('.confirm').textContent(),lang==='hu'?/Nem fog jelzést elrejteni/:/will not suppress alerts/);
-  await capture(`${lang}-${width}-confirmation`);
+  await capture(`${story}-${lang}-${width}-confirmation`);
   await card().locator('.confirm button').filter({hasText:lang==='hu'?'Megerősítés':'Confirm'}).click();
   await card().locator('[role="status"]').filter({hasText:lang==='hu'?'Mentve':'Saved'}).waitFor();
   const calls=await card().evaluate(c=>c.testCalls);assert.equal(calls.length,1);assert.equal(calls[0].expected_revision,1);assert.equal(calls[0].confirmed,true);assert.equal(calls[0].record.effect,'context');
+  await card().locator('article.rule').last().locator('.tag.muted').filter({hasText:lang==='hu'?'Most érvényesül':'Applies now'}).waitFor();
   assert.equal(await page.locator('dialog[open]').count(),0,'catalogue editing stays in the existing surface');
   assert.ok(await card().evaluate(c=>c.getBoundingClientRect().right<=innerWidth+1),'no horizontal overflow');
  }
@@ -54,5 +56,5 @@ try {
  await open('unavailable');assert.match(await card().locator('[role="status"]').textContent(),/nem érhető el/);assert.equal(await card().locator('.header button').count(),0);
  await open();await page.evaluate(()=>{for(const[k,v]of Object.entries({'--primary-text-color':'#eff0f7','--secondary-text-color':'#b0b3c3','--primary-background-color':'#15161d','--card-background-color':'#22242d','--ha-card-background':'#22242d','--primary-color':'#9caaf0'}))document.documentElement.style.setProperty(k,v);});await capture('dark-mobile');
  assert.deepEqual(errors,[]);
- console.log('Household UI: HU/EN × 390/768/1280, preview-before-save, drafts, revision conflict, failure, unavailable registry and dark mode passed.');
+ console.log('Household UI: legacy/backend HU/EN × 390/768/1280, applicability before/after saving, preview-before-save, drafts, revision conflict, failure, unavailable registry and dark mode passed.');
 } finally {await browser.close();}
