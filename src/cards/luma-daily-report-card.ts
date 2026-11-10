@@ -19,6 +19,7 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
  @state() private forbidden=false;
  @state() private loading=false;
  @state() private detailsOpen=false;
+ @state() private detailsMounted=false;
  private pendingAction?:()=>void;
  private restoreFocus=false;
  private timer?:number;private owner?:object;private binding='';private epoch=0;private fetched=0;private health:unknown;
@@ -41,7 +42,7 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
  setConfig(config:Config){if([config.policy,config.energy_profile,config.heating_profile].filter(Boolean).length!==1)throw Error('Select exactly one report scope');for(const id of [config.energy_profile,config.heating_profile])if(id&&!/^[a-z0-9_-]{1,64}$/.test(id))throw Error('Invalid report profile');if(config.due_time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(config.due_time))throw Error('Invalid report time');this.config=config;}
  getCardSize(){return 3;}
  connectedCallback(){super.connectedCallback();this.timer=window.setInterval(()=>{this.requestUpdate();void this.refresh();},15000);void this.refresh();}
- disconnectedCallback(){this.epoch++;this.detailsOpen=false;this.pendingAction=undefined;this.restoreFocus=false;this.fetched=0;clearInterval(this.timer);super.disconnectedCallback();}
+ disconnectedCallback(){this.epoch++;this.detailsOpen=false;this.detailsMounted=false;this.pendingAction=undefined;this.restoreFocus=false;this.fetched=0;clearInterval(this.timer);super.disconnectedCallback();}
  protected willUpdate(){this.syncBinding();}
  protected updated(){if(this.isConnected)void this.refresh();}
  private t(en:string,hu:string){return localized(this.hass,en,hu);}
@@ -49,7 +50,7 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
   const source=this.hass?.connection||this.hass?.callWS||this.hass,policy=this.config?.policy?attentionPolicy(this.config.policy)?.backend:undefined;
   const profile=this.config?.energy_profile,heating=this.config?.heating_profile,expected=heating?'heating:'+heating:profile?'energy:'+profile:policy?.policy_id;
   const binding=JSON.stringify([expected,this.config?.due_time||'08:00']);
-  if(this.owner!==source||this.binding!==binding){this.owner=source;this.binding=binding;this.epoch++;this.fetched=0;this.loading=false;this.data=undefined;this.error=false;this.forbidden=false;this.health=undefined;this.detailsOpen=false;this.pendingAction=undefined;this.restoreFocus=false;}
+  if(this.owner!==source||this.binding!==binding){this.owner=source;this.binding=binding;this.epoch++;this.fetched=0;this.loading=false;this.data=undefined;this.error=false;this.forbidden=false;this.health=undefined;this.detailsOpen=false;this.detailsMounted=false;this.pendingAction=undefined;this.restoreFocus=false;}
   return {policy,profile,heating,expected};
  }
  private async refresh(force=false){
@@ -120,8 +121,8 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
  private statusText(state:ReportState){return this.loading&&!this.data&&!this.error?this.t('Reading the report…','Jelentés betöltése…'):this.forbidden?this.t('Administrator access is required to read this private report.','A privát jelentés olvasásához adminisztrátori jogosultság szükséges.'):this.label(state);}
  private deferAction(action:()=>void){this.pendingAction=action;this.detailsOpen=false;}
  private moreInfo(entity:string){this.deferAction(()=>runAction(this,this.hass!,{action:'more-info',entity}));}
- private afterClose(){const action=this.pendingAction,restore=this.restoreFocus;this.pendingAction=undefined;this.restoreFocus=false;if(action)action();else if(restore&&!this.detailsOpen)this.renderRoot.querySelector<HTMLButtonElement>('.preview-button')?.focus({preventScroll:true});}
- private openDetails(){this.restoreFocus=true;this.detailsOpen=true;void this.updateComplete.then(()=>this.renderRoot.querySelector<LumaBottomSheet>('luma-bottom-sheet')?.restoreScrollPosition(0));}
+ private afterClose(){this.detailsMounted=false;const action=this.pendingAction,restore=this.restoreFocus;this.pendingAction=undefined;this.restoreFocus=false;if(action)action();else if(restore&&!this.detailsOpen)this.renderRoot.querySelector<HTMLButtonElement>('.preview-button')?.focus({preventScroll:true});}
+ private openDetails(){this.restoreFocus=true;this.detailsMounted=true;this.detailsOpen=true;void this.updateComplete.then(()=>this.renderRoot.querySelector<LumaBottomSheet>('luma-bottom-sheet')?.restoreScrollPosition(0));}
  render(){
   if(!this.hass||!this.config)return nothing;
   const view=dailyReportView(this.data,this.error),narrative=view.report?.narrative,attempt=view.current;
@@ -134,7 +135,7 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
   return html`<ha-card style=${`--tone:${color}`}><button class="preview-button" aria-haspopup="dialog" aria-expanded=${String(this.detailsOpen)} aria-label=${title+' · '+period+' · '+status+' · '+this.t('Open full report','Teljes jelentés megnyitása')} @click=${()=>this.openDetails()}>
    <span class="icon"><ha-icon icon=${['failed','missed','stalled','unavailable'].includes(view.state)&&!loading?'mdi:calendar-alert':view.state==='running'?'mdi:progress-clock':'mdi:text-box-outline'}></ha-icon></span>
    <span class="preview-copy"><span class="preview-head"><span class="preview-title">${title}</span><span class="preview-period">${period}</span></span><span class="preview-text" role="status">${narrative?reportSummaryPreview(narrative.summary,this.hass.locale?.language):status}</span><span class="preview-footer"><span>${timestamp}</span>${qualifier?html`<span class="preview-quality">${qualifier}</span>`:nothing}<span>${this.t('Details','Részletek')}</span></span></span><ha-icon class="preview-arrow" icon="mdi:chevron-right"></ha-icon>
-  </button></ha-card><luma-bottom-sheet style=${`--tone:${color}`} .open=${this.detailsOpen} .heading=${title} .subtitle=${this.data?this.day(this.data.expected_day):this.t('Previous local calendar day','Előző helyi naptári nap')} .icon=${'mdi:text-box-outline'} .maxWidth=${760} .closeLabel=${this.t('Close','Bezárás')} @sheet-dismiss=${()=>{this.detailsOpen=false;}} @sheet-closed=${()=>this.afterClose()}>${this.detailsOpen?this.renderDetails():nothing}</luma-bottom-sheet>`;
+  </button></ha-card><luma-bottom-sheet style=${`--tone:${color}`} .open=${this.detailsOpen} .heading=${title} .subtitle=${this.data?this.day(this.data.expected_day):this.t('Previous local calendar day','Előző helyi naptári nap')} .icon=${'mdi:text-box-outline'} .maxWidth=${760} .closeLabel=${this.t('Close','Bezárás')} @sheet-dismiss=${()=>{this.detailsOpen=false;}} @sheet-closed=${()=>this.afterClose()}>${this.detailsMounted?this.renderDetails():nothing}</luma-bottom-sheet>`;
  }
 
 }
