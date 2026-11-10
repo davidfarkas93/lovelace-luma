@@ -12,4 +12,6 @@ assert.equal(exports.dailyReportView(data,true,now).report,null,'transport failu
 assert.equal(exports.dailyReportView({...data,generated_at:now/1000-46},false,now).state,'unavailable');
 assert.ok(exports.validDailyReport({...data,policy_id:'energy:demo',energy_profile:'demo'},'energy:demo',now));
 assert.equal(exports.validDailyReport({...data,policy_id:'energy:demo'},'home',now),false,'energy and attention snapshots cannot share a report scope');
+assert.ok(exports.validDailyReport({...data,policy_id:'heating:demo',heating_profile:'demo'},'heating:demo',now));
+assert.equal(exports.validDailyReport({...data,policy_id:'heating:demo'},'energy:demo',now),false);
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');

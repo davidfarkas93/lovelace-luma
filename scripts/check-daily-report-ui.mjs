@@ -43,6 +43,22 @@ try{
   assert.match((await card().locator('.metric strong').allTextContents())[3],/—/,'unknown charging must not render as zero');
   await open('energy-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
  }
+ for(const width of [390,768,1280])for(const lang of ['hu','en']){
+  await page.setViewportSize({width,height:844});await open('heating-partial',lang);
+  assert.match(await card().locator('.status').textContent(),lang==='hu'?/Részleges megfigyelés/:/Partial observation/);
+  assert.equal(await card().locator('.metric').count(),4);
+  assert.match((await card().locator('.metric strong').allTextContents())[0],/≥6/);
+  assert.match(await card().locator('.summary').textContent(),/hiányos/);
+  await card().locator('.coverage summary').click();
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/99,975%/:/99.975%/);
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/nem kazánhiba/:/do not diagnose/);
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/Melegvíz/:/Hot water/);
+  await page.screenshot({path:`${output}/heating-${lang}-${width}.png`,animations:'disabled',fullPage:true});
+  assert.ok(await card().evaluate(c=>c.shadowRoot.querySelector('ha-card').scrollWidth<=c.shadowRoot.querySelector('ha-card').clientWidth+1));
+  await open('heating-idle',lang);const idle=await card().locator('.metric strong').allTextContents();assert.equal(idle[0].trim(),'0');assert.equal(idle[2].trim(),'—');assert.equal(idle[3].trim(),'—');
+  await open('heating-empty',lang);assert.ok((await card().locator('.metric strong').allTextContents()).every(s=>s.trim()==='—'));
+  await open('heating-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
+ }
  await open();await card().evaluate(c=>{c.hass={...c.hass,connection:{},callWS:async()=>{throw Error('New account offline');}};});
  await page.waitForTimeout(200);assert.equal(await card().locator('.summary:visible').count(),0,'a new account cannot inherit private cached report text');
  assert.deepEqual(errors,[]);console.log('Daily report UI: HU/EN × mobile/tablet/desktop, coverage/interpretation/evidence disclosure, old-success separation, failed/missed/interrupted/waiting/empty/stale/restricted states and connection privacy passed.');

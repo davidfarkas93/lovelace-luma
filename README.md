@@ -24,6 +24,16 @@ The report scope is independent of attention policies; there is no browser-side
 energy calculation, AI invocation or device control. Tapping a measured total opens
 the source entity's More Info. Scope/connection changes discard private cached data.
 
+Luma **0.52** with Home Insights **0.6** adds `heating_profile` as a third mutually
+exclusive report scope. It renders observed burner ignitions/runtime, complete
+heating-burn median and identified short heating burns. `≥` explicitly marks lower
+bounds under incomplete observation; missing measurements and absent complete-cycle
+statistics remain dashes. Expanded details separate heating/hot-water/mixed modes,
+censored burns, exact observation gaps, configured review thresholds and recorded
+burn timestamps, with short heating burns first. Room demand is separate from flame
+feedback; short hot-water burns are not heating faults. The AI selects measured
+statements; source citations/checks and partial-data framing are backend-owned.
+
 ### Home Insights attention backend
 
 Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1
