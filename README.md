@@ -15,6 +15,15 @@ previous successful narrative appears only in a separately dated disclosure.
 Report access currently follows the backend's administrator-only private journal
 permission model. Opening or refreshing this card never runs AI or controls a device.
 
+Luma **0.51** with Home Insights **0.5** also supports `energy_profile` instead of
+`policy`. The backend profile explicitly maps cumulative solar/import/export/EV
+statistics and comparison thresholds. The same card renders four measured kWh
+totals, a short prior-day interpretation and expandable per-source hourly coverage,
+previous-day medians and differences. Verified zero and missing data remain distinct.
+The report scope is independent of attention policies; there is no browser-side
+energy calculation, AI invocation or device control. Tapping a measured total opens
+the source entity's More Info. Scope/connection changes discard private cached data.
+
 ### Home Insights attention backend
 
 Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1

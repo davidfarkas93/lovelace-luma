@@ -25,6 +25,24 @@ try{
  for(const [story,pattern] of [['missed',/kimaradt/],['interrupted',/nem fejeződött/],['running',/készül/],['waiting',/vár/],['no-observation',/nincs megfigyelés/],['clear',/Nem találtam eltérést/],['unavailable',/nem olvasható/],['restricted',/adminisztrátori/],['stale',/nem olvasható/]]){
   await open(story);assert.match(await card().locator('.status').textContent(),pattern);
  }
+ for(const width of [390,768,1280])for(const lang of ['hu','en']){
+  await page.setViewportSize({width,height:844});await open('energy',lang);
+  assert.equal(await card().locator('.metric').count(),4);
+  const totals=await card().locator('.metric strong').allTextContents();
+  assert.match(totals[3],/^0\s+kWh/,'verified zero charging is a measured zero');
+  await card().locator('.coverage summary').click();
+  assert.equal(await card().locator('.energy-row').count(),4);
+  assert.match(await card().locator('.coverage').textContent(),/14\/14/);
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/mindkettőnek/:/both must/);
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/nem bizonyít hibát/:/does not prove a fault/);
+  await card().locator('.facts summary').click();
+  assert.doesNotMatch(await card().locator('.facts').textContent(),/A nap során észlelve/,'energy evidence is a daily measurement, not a new incident');
+  assert.ok(await card().evaluate(c=>c.shadowRoot.querySelector('ha-card').scrollWidth<=c.shadowRoot.querySelector('ha-card').clientWidth+1));
+  await page.screenshot({path:`${output}/energy-${lang}-${width}.png`,animations:'disabled',fullPage:true});
+  await open('energy-partial',lang);
+  assert.match((await card().locator('.metric strong').allTextContents())[3],/—/,'unknown charging must not render as zero');
+  await open('energy-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
+ }
  await open();await card().evaluate(c=>{c.hass={...c.hass,connection:{},callWS:async()=>{throw Error('New account offline');}};});
  await page.waitForTimeout(200);assert.equal(await card().locator('.summary:visible').count(),0,'a new account cannot inherit private cached report text');
  assert.deepEqual(errors,[]);console.log('Daily report UI: HU/EN × mobile/tablet/desktop, coverage/interpretation/evidence disclosure, old-success separation, failed/missed/interrupted/waiting/empty/stale/restricted states and connection privacy passed.');

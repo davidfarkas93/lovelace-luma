@@ -10,4 +10,6 @@ assert.equal(exports.validDailyReport({...data,attempt:{...attempt,day:'2026-11-
 for(const state of ['failed','missed','stalled']){const view=exports.dailyReportView({...data,state,attempt:state==='failed'?{...attempt,status:'failed',narrative:null}:null},false,now);assert.equal(view.report,null);assert.equal(view.previous.id,'latest');assert.equal(view.tone,'error');}
 assert.equal(exports.dailyReportView(data,true,now).report,null,'transport failure cannot show an old success as current');
 assert.equal(exports.dailyReportView({...data,generated_at:now/1000-46},false,now).state,'unavailable');
+assert.ok(exports.validDailyReport({...data,policy_id:'energy:demo',energy_profile:'demo'},'energy:demo',now));
+assert.equal(exports.validDailyReport({...data,policy_id:'energy:demo'},'home',now),false,'energy and attention snapshots cannot share a report scope');
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');
