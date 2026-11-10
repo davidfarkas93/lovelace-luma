@@ -6,12 +6,13 @@ export interface EnergyMetric {
  baseline:{status:string;days:number;requested_days:number;median:number|null};delta_kwh:number|null;delta_percent:number|null;deviation:string|null;
 }
 export interface EnergyProfile {deviation_percent:number;deviation_kwh:number}
-export interface HeatingProfile {short_burn_seconds:number;minimum_short_cycles:number;mode_edge_seconds:number;sources:{flame:string;heating:string;dhw:string;connectivity:string}}
-export interface HeatingCycle {started_at:string|null;ended_at:string|null;observed_from:string;observed_until:string;complete:boolean;duration_seconds:number|null;mode:'heating'|'dhw'|'mixed'|'unclassified';reason:string;carried_into_day:boolean}
-export interface HeatingCycles {complete:number;heating:number;dhw:number;mixed:number;unclassified:number;censored:number;heating_median_seconds:number|null;heating_mean_seconds:number|null;heating_min_seconds:number|null;heating_max_seconds:number|null;short_heating:number|null;short_cycle_pattern:boolean;samples:HeatingCycle[];truncated:boolean}
+export interface HeatingProfile {short_burn_seconds:number;minimum_short_cycles:number;mode_edge_seconds:number;rapid_pause_seconds?:number;rapid_start_interval_seconds?:number;warm_margin_celsius?:number;warm_window_seconds?:number;warm_short_burns_expected?:boolean;sources:{flame:string;heating:string;dhw:string;connectivity:string}}
+export interface HeatingCycle {started_at:string|null;ended_at:string|null;observed_from:string;observed_until:string;complete:boolean;duration_seconds:number|null;mode:'heating'|'dhw'|'mixed'|'unclassified';reason:string;carried_into_day:boolean;previous_pause_seconds?:number|null;start_interval_seconds?:number|null;heating_feedback_continuous?:boolean|null;thermal_context?:'unknown'|'not_established'|'warm_operation';rapid_restart?:boolean;temperatures_at_start?:Partial<Record<'flow'|'return'|'target',{celsius:number;recorded_at:string}|null>>}
+export interface HeatingCycles {analysis_version?:number;rapid_restart_sequences?:number;rapid_restart_burns?:number;warm_short_heating?:number;short_context_unknown?:number;short_other?:number;complete:number;heating:number;dhw:number;mixed:number;unclassified:number;censored:number;heating_median_seconds:number|null;heating_mean_seconds:number|null;heating_min_seconds:number|null;heating_max_seconds:number|null;short_heating:number|null;short_cycle_pattern:boolean;samples:HeatingCycle[];truncated:boolean}
 export interface ReportFacts {
  scope?:string;metrics?:EnergyMetric[];profile?:EnergyProfile|HeatingProfile;
  burner?:{observed_ignitions:number|null;observed_seconds:number|null;counts_are_lower_bounds:boolean;carried_into_day:boolean};cycles?:HeatingCycles;unobserved_seconds?:number;mode_coverage_seconds?:number;
+ observation_gaps?:{count:number;longest_seconds:number;intervals:{start:string;end:string;seconds:number}[];truncated:boolean};
  day:string;assessment:string;data_quality:string;coverage_seconds:number;window_seconds:number;coverage_percent:number;
  counts:Record<string,Record<string,number>>;availability?:{sources_with_gaps:number|null;whole_day_details:boolean};
  ai_evidence?:ReportEvidence[];limitations?:string[];
@@ -28,5 +29,5 @@ export function dailyReportView(data:DailyReport|undefined,error=false,now=Date.
  const current=!unavailable&&data?.attempt?.day===data?.expected_day?data.attempt:null;
  const report=current?.status==='completed'?current:null;
  const previous=data?.last_success?.id!==report?.id?data?.last_success:null;
- return {state,current,report,previous,tone:['failed','missed','stalled','unavailable'].includes(state)?'error':state==='no_anomaly_found'?'success':['attention_needed','insufficient_data','not_run'].includes(state)?'warning':'primary'};
+ return {state,current,report,previous,tone:['failed','missed','stalled','unavailable'].includes(state)?'error':state==='no_anomaly_found'?current?.facts?.data_quality==='minor_gaps'?'primary':'success':['attention_needed','insufficient_data','not_run'].includes(state)?'warning':'primary'};
 }

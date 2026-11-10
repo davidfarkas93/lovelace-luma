@@ -14,4 +14,5 @@ assert.ok(exports.validDailyReport({...data,policy_id:'energy:demo',energy_profi
 assert.equal(exports.validDailyReport({...data,policy_id:'energy:demo'},'home',now),false,'energy and attention snapshots cannot share a report scope');
 assert.ok(exports.validDailyReport({...data,policy_id:'heating:demo',heating_profile:'demo'},'heating:demo',now));
 assert.equal(exports.validDailyReport({...data,policy_id:'heating:demo'},'energy:demo',now),false);
+assert.equal(exports.dailyReportView({...data,attempt:{...attempt,facts:{data_quality:'minor_gaps'}}},false,now).tone,'primary','brief gaps stay visible without a whole-day success or warning tint');
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');
