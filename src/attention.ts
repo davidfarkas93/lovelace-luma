@@ -31,6 +31,9 @@ export interface AttentionPolicy {
   adapters?: { notifications?: boolean; repairs?: boolean; integrations?: boolean; notification_exclude?: string[]; events?: string[] };
 }
 export interface AttentionEntry {
+  episodeId?: string;
+  canHandle?: boolean;
+  handling?: {revision:number;seen_at?:number;claimed_fixed_at?:number;snooze_override:boolean;snoozed_until?:number|null};
   id: string;
   key: string;
   rule: string;
@@ -347,7 +350,8 @@ export function groupAttention(rows: AttentionEntry[], policy: AttentionPolicy, 
       copy.summary = message;
       if (row.kind === "update" && members.length > 1) copy.summaryName = row.message;
       delete copy.snoozedUntil;
-      if (row.dismissible && row.tone !== "error" && ack[key] > now/1000) copy.snoozedUntil=ack[key];
+      const until=row.handling?.snooze_override ? row.handling.snoozed_until : ack[key];
+      if (row.dismissible && row.tone !== "error" && until && until > now/1000) copy.snoozedUntil=until;
       copies.set(row.id,copy);
     }
   }

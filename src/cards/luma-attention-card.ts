@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { repeat } from "lit/directives/repeat.js";
 import { activeAttention, attentionAckValue, attentionCoverageRows, attentionSummaries, type AttentionEntry } from "../attention";
-import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows } from "../attention-runtime";
+import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows, recordAttentionHandling } from "../attention-runtime";
 import { localized } from "../localize";
 import { runAction } from "../helpers";
 import { lumaTokens } from "../styles";
@@ -11,6 +11,7 @@ import type { HomeAssistant, LovelaceCard } from "../types";
 import "./luma-update-card";
 import type { LumaBottomSheet } from "../components/luma-bottom-sheet";
 import "../components/luma-bottom-sheet";
+import "../components/luma-attention-handling";
 
 interface Config {
   type: string;
@@ -32,6 +33,8 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
   @state() private query = "";
   @state() private filter = "active";
   @state() private selected?: string;
+  private selectedSnapshot?: AttentionEntry;
+  private selectedHistory: AttentionEntry[]=[];
   @state() private selectedUpdateCategory?: string;
   @state() private detailsOpen = false;
   @state() private limit = 50;
@@ -193,11 +196,21 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
   }
   private setFilter(filter: string) { this.filter = filter; this.limit = 50; }
   private select(row: AttentionEntry, event:Event) {
+    this.selectedSnapshot={...row};
+    this.selectedHistory=this.hass&&this.config?policyRows(this.config.policy,this.hass).filter(r=>r.key===row.key&&r.episodeId).map(r=>({...r})):[];
     this.opener=event.currentTarget as HTMLElement;this.listScroller=this.scrollContainer();this.listScroll=this.listScroller?.scrollTop || 0;
     this.selected=row.id;this.selectedUpdateCategory=row.kind==="update"?row.category:undefined;this.error="";this.feedback="";this.confirming=false;this.actionSent=false;this.detailsOpen=true;
     void this.updateComplete.then(()=>{this.listScroller?.scrollTo({top:0});(this.sheet()?.shadowRoot?.querySelector('button[aria-label]') as HTMLElement | null)?.focus({preventScroll:true});});
   }
   private async snooze(row:AttentionEntry, days:number) {
+    if(row.handling){
+      if(!this.hass||this.saving||!this.config)return;
+      const members=policyRows(this.config.policy,this.hass).filter(r=>r.key===row.key&&['active','installing'].includes(r.status));
+      this.saving=true;this.error='';
+      try{await recordAttentionHandling(this.hass,this.config.policy,members,'snooze',{until:Date.now()/1000+days*86400});}
+      catch{this.error=this.t('Snooze was not confirmed. Check the current history before retrying.','A szüneteltetés nem igazolt. Újrapróbálás előtt ellenőrizd az aktuális előzményeket.');}
+      finally{this.saving=false;}return;
+    }
     const id=attentionPolicy(this.config?.policy)?.acknowledgements_entity;
     if(!id||!this.hass||this.saving||row.tone==="error"||!row.dismissible)return;
     this.saving=true;this.error="";
@@ -227,6 +240,14 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
       : html`<span class="pill" style=${`--tone:${tone}`}><ha-icon icon=${icon}></ha-icon>${label}</span>`;
   }
   private async unsnooze(row: AttentionEntry) {
+    if(row.handling){
+      if(!this.hass||this.saving||!this.config)return;
+      const members=policyRows(this.config.policy,this.hass).filter(r=>r.key===row.key&&['active','installing'].includes(r.status));
+      this.saving=true;this.error='';
+      try{await recordAttentionHandling(this.hass,this.config.policy,members,'unsnooze');}
+      catch{this.error=this.t('Restoring the alert was not confirmed. Check its history.','A visszaállítás nem igazolt. Ellenőrizd az előzményeket.');}
+      finally{this.saving=false;}return;
+    }
     const id = attentionPolicy(this.config?.policy)?.acknowledgements_entity;
     if (!id || !this.hass || this.saving) return;
     const source = this.hass.states[id]; this.saving = true; this.error = "";
@@ -264,6 +285,8 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     const policy = attentionPolicy(this.config?.policy);
     const description = this.description(row), explanation = this.reason(row);
     const members=all.filter(item=>item.key===row.key && ["active","installing"].includes(item.status));
+    const handling=members.length?members:row.episodeId?[row]:this.selectedHistory.map(r=>({...r,canHandle:false}));
+    const canSnooze=row.handling?members.length>0&&members.every(r=>r.canHandle):!!policy?.acknowledgements_entity;
     const notifications=row.relatedNotifications || (row.notificationId ? [{id:row.notificationId,title:row.name,message:row.message}] : []);
     return html`<div class="detail">
       <div class="detail-status"><span class="pill" style=${`--tone:${this.tone(row)}`}>${this.status(row)}</span>${row.snoozedUntil ? html`<span class="muted">${this.t("Until", "Eddig")}: ${new Date(row.snoozedUntil * 1000).toLocaleString(this.hass?.locale?.language)}</span>` : nothing}</div>
@@ -278,13 +301,14 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
         ${row.notificationId ? html`<button class="action" ?disabled=${this.saving} @click=${() => this.dismissNotification(row)}><ha-icon icon="mdi:bell-remove-outline"></ha-icon>${this.t("Dismiss in Home Assistant", "Törlés a Home Assistantból")}</button>` : nothing}
         ${row.path && row.path !== policy?.diagnostics_path ? html`<button class="action" @click=${() => runAction(this, this.hass!, { action: "navigate", navigation_path: row.path! })}><ha-icon icon="mdi:arrow-top-right"></ha-icon>${this.t("Open related dashboard", "Kapcsolódó oldal megnyitása")}</button>` : nothing}
         ${this.hass?.states[row.source] && members.length <= 1 ? html`<button class="action secondary" @click=${() => runAction(this, this.hass!, { action: "more-info" }, row.source)}><ha-icon icon="mdi:chart-timeline-variant"></ha-icon>${this.t("Entity & history", "Entitás és előzmények")}</button>` : nothing}
-        ${row.dismissible && row.tone !== "error" && !row.snoozedUntil && policy?.acknowledgements_entity ? html`<button class="action secondary" ?disabled=${this.saving} @click=${()=>this.snooze(row,1)}>${this.t("Remind me tomorrow", "Emlékeztess holnap")}</button><button class="action secondary" ?disabled=${this.saving} @click=${()=>this.snooze(row,7)}>${this.t("Snooze for 7 days", "Szüneteltetés 7 napra")}</button>` : nothing}
-        ${row.snoozedUntil ? html`<button class="action" ?disabled=${this.saving} @click=${() => this.unsnooze(row)}><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${this.t("Show alert again", "Jelzés visszaállítása")}</button>` : nothing}
+        ${row.dismissible && row.tone !== "error" && !row.snoozedUntil && canSnooze ? html`<button class="action secondary" ?disabled=${this.saving} @click=${()=>this.snooze(row,1)}>${this.t("Remind me tomorrow", "Emlékeztess holnap")}</button><button class="action secondary" ?disabled=${this.saving} @click=${()=>this.snooze(row,7)}>${this.t("Snooze for 7 days", "Szüneteltetés 7 napra")}</button>` : nothing}
+        ${row.snoozedUntil && canSnooze ? html`<button class="action" ?disabled=${this.saving} @click=${() => this.unsnooze(row)}><ha-icon icon="mdi:bell-ring-outline"></ha-icon>${this.t("Show alert again", "Jelzés visszaállítása")}</button>` : nothing}
       </div>
       ${notifications.length ? html`<p class="muted">${this.t("Dismissing a notification only removes that delivery channel; it does not complete the task.","Az értesítés törlése csak az üzenetcsatornát törli; a feladatot nem zárja le.")}</p>${notifications.filter(n=>n.id!==row.notificationId).map(n=>html`<button class="action secondary" ?disabled=${this.saving} @click=${()=>this.dismissNotification({...row,notificationId:n.id})}>${this.t("Dismiss HA notification", "HA-értesítés törlése")}: ${n.title}</button>`)}` : nothing}
       ${row.dismissible && row.tone!=="error" ? html`<p class="muted">${this.t("Snoozing changes visibility only. It does not fix the source condition.","A szüneteltetés csak a megjelenítést módosítja. A forrás állapotát nem javítja meg.")}</p>` : nothing}
       ${this.feedback ? html`<p class="muted" role="status">${this.feedback}</p>` : nothing}
       ${this.error && !this.confirming ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
+      ${handling.some(r=>r.episodeId)?html`<luma-attention-handling .hass=${this.hass} .policy=${this.config!.policy} .entries=${handling}></luma-attention-handling>`:nothing}
       <details class="technical"><summary><ha-icon icon="mdi:tune-variant"></ha-icon>${this.t("Technical details", "Technikai részletek")}</summary><dl>
         <dt>${this.t("Source", "Forrás")}</dt><dd><code>${row.source}</code></dd>
         ${row.sourceState !== undefined ? html`<dt>${this.t("Source state", "Forrás állapota")}</dt><dd>${row.sourceState || "—"}</dd>` : nothing}
@@ -334,7 +358,7 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
       ${!rows.length ? this.empty(missing.length, loading) : nothing}
       ${mode !== "updates" && rows.length > this.limit ? html`<button class="action secondary more" @click=${() => this.limit += 50}>${this.t("Show more", "Továbbiak")} (${rows.length - this.limit})<ha-icon icon="mdi:chevron-down"></ha-icon></button>` : nothing}
     </ha-card></div>`;
-    const detail = this.selected ? html`<div>${selected ? this.details(selected,relevant) : html`<p class="explanation">${this.t("This condition is no longer in the current snapshot. This alone does not prove who resolved it.","Ez a jelzés már nem szerepel az aktuális állapotban. Ebből önmagában nem állapítható meg, ki vagy mi szüntette meg.")}</p>`}</div>` : nothing;
+    const detail = this.selected ? html`<div>${selected ? this.details(selected,relevant) : html`<p class="explanation">${this.t("This condition is no longer in the current snapshot. This alone does not prove who resolved it.","Ez a jelzés már nem szerepel az aktuális állapotban. Ebből önmagában nem állapítható meg, ki vagy mi szüntette meg.")}</p>${this.selectedHistory.length?html`<luma-attention-handling .hass=${this.hass} .policy=${this.config.policy} .entries=${this.selectedHistory.map(r=>({...r,canHandle:false}))}></luma-attention-handling>`:nothing}`}</div>` : nothing;
     const backLabel=this.t("Back to notifications", "Vissza a jelzésekhez");
     if(this.config.embedded && !this.config.panel)return html`${this.selected ? html`<button class="action secondary back" @click=${()=>this.back()}><ha-icon icon="mdi:arrow-left"></ha-icon>${backLabel}</button>` : nothing}${list}${detail}`;
     if(!this.config.panel)return html`${list}<luma-bottom-sheet .open=${this.detailsOpen} .heading=${selected?.name || this.t("Notification changed", "A jelzés megváltozott")} .subtitle=${selected ? this.kind(selected) : ""} .icon=${selected ? this.icon(selected) : icon} .maxWidth=${720} .closeLabel=${this.t("Close", "Bezárás")} @sheet-dismiss=${()=>this.close()}>${detail}</luma-bottom-sheet>`;

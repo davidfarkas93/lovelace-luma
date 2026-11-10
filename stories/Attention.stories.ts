@@ -109,17 +109,51 @@ export const RegistryFailed:Story={render:()=>reviewScenario({registry:"error"})
 export const RepairsLoading:Story={render:()=>reviewScenario({repairs:"loading"})};
 export const RepairsFailed:Story={render:()=>reviewScenario({repairs:"error"})};
 
-import { attentionSnapshot } from "../src/attention";
-const backendScenario=(failed=false)=>{
+import { attentionSnapshot, type AttentionEntry } from "../src/attention";
+import { refreshAttentionBackend } from "../src/attention-runtime";
+const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolean;readonly?:boolean;lostResponse?:boolean})=>{
  const backendPolicy=window.lumaAttentionPolicies!["demo-review"];
  window.lumaAttentionPolicies!["demo-backend"]={version:1,revision:"Backend binding",rules:[],backend:{policy_id:"demo"},acknowledgements_entity:"input_text.ack"};
  const hass=createMockHass(reviewEntities);
  const original=hass.callWS!;
+ const metadata:Record<string,NonNullable<AttentionEntry['handling']>>={},history:Record<string,Array<Record<string,unknown>>>={};
+ const calls:unknown[]=[],committed=new Set<string>();let sequence=1,lost=false,cleared=false;
+ Object.assign(window,{lumaHandlingCalls:calls});
+ Object.assign(window,{lumaHandlingClear:async()=>{cleared=true;await refreshAttentionBackend(hass,'demo-backend',true);}});
  hass.callWS=async(command)=>{
+  if(command.type==='home_insights/record_handling'){
+   calls.push(command);
+   const request=command as unknown as {request_id:string;operation:string;targets:Array<{episode_id:string;expected_revision:number}>;note?:string;until?:number};
+   if(handling?.failure)throw Error('Storage unavailable');
+   if(handling?.conflict)throw Error('Revision changed');
+   if(!committed.has(request.request_id)){
+    for(const target of request.targets){
+     const state=metadata[target.episode_id]||{revision:0,snooze_override:false};
+     if(state.revision!==target.expected_revision)throw Error('Revision changed');
+     const updated={...state,revision:state.revision+1};
+     if(request.operation==='seen')updated.seen_at=Date.now()/1000;
+     if(request.operation==='claimed_fixed')updated.claimed_fixed_at=Date.now()/1000;
+     if(['snooze','unsnooze'].includes(request.operation)){updated.snooze_override=true;updated.snoozed_until=request.until||null;}
+     metadata[target.episode_id]=updated;
+     (history[target.episode_id]||=[]).unshift({seq:++sequence,observed:Date.now()/1000,type:'attention_handling_recorded',operation:request.operation,actor_name:'Household member',note:request.note||'',until:request.until});
+    }
+    committed.add(request.request_id);
+    if(handling?.lostResponse&&!lost){lost=true;throw Error('Response lost after commit');}
+   }
+   return {ok:true} as never;
+  }
+  if(command.type==='home_insights/episode'){
+   const id=String(command.episode_id);return {episode_id:id,events:history[id]||[{seq:1,observed:Date.now()/1000-300,type:'attention_first_observed'}],has_more:false} as never;
+  }
   if(command.type==='home_insights/attention'){
    if(failed)throw Error('Observer unavailable');
    const external={registry:hass.entities||{},notifications:[{notification_id:'plants-due',title:'Indoor plants',message:'Watering is due'}],readiness:{registry:'ready' as const,notifications:'ready' as const,repairs:'ready' as const,integrations:'ready' as const},repairs:{issues:[]},integrations:[]};
-   return {schema_version:1,policy_id:'demo',policy_hash:'storybook',policy_revision:backendPolicy.revision,generated_at:Date.now(),policy:backendPolicy,rows:attentionSnapshot(hass,backendPolicy,external,Date.now())} as never;
+   const rows=attentionSnapshot(hass,backendPolicy,external,Date.now()).filter(row=>!cleared||row.kind!=='update').map(row=>{
+    if(!handling||!['active','installing','event'].includes(row.status))return row;
+    const episode=`episode:${row.id}`,state=metadata[episode]||{revision:0,snooze_override:false};
+    return {...row,episodeId:episode,canHandle:!handling.readonly,handling:state};
+   });
+   return {schema_version:1,policy_id:'demo',policy_hash:'storybook',policy_revision:backendPolicy.revision,generated_at:Date.now(),policy:backendPolicy,rows} as never;
   }
   return original(command);
  };
@@ -127,3 +161,8 @@ const backendScenario=(failed=false)=>{
 };
 export const BackendObserver:Story={render:()=>backendScenario()};
 export const BackendUnavailable:Story={render:()=>backendScenario(true)};
+export const BackendHandling:Story={render:()=>backendScenario(false,{})};
+export const HandlingFailure:Story={render:()=>backendScenario(false,{failure:true})};
+export const HandlingConflict:Story={render:()=>backendScenario(false,{conflict:true})};
+export const HandlingReadonly:Story={render:()=>backendScenario(false,{readonly:true})};
+export const HandlingLostResponse:Story={render:()=>backendScenario(false,{lostResponse:true})};

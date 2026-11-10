@@ -223,3 +223,12 @@ assert.equal(backRows.length,1,'expired cached alerts must not masquerade as fre
 assert.equal(backRows[0].reason,'backend_unavailable');
 assert.equal(backRuntime.policyRows('shared',{...backHass,connection:{}})[0].status,'loading','a new account/connection cannot reuse a prior private snapshot');
 console.log('Attention backend: authority, fail-closed errors, freshness, locale and connection isolation passed.');
+
+const nativeRow={id:'native',key:'native',rule:'native',source:'sensor.native',name:'Native',message:'Active',scope:'home',category:'health',kind:'incident',status:'active',reason:'condition_met',tone:'warning',dismissible:true,episodeId:'episode',handling:{revision:1,snooze_override:true,snoozed_until:clock/1000+100}};
+let nativeGrouped=model.groupAttention([nativeRow],serverPolicy,backHass,clock);
+assert.equal(nativeGrouped[0].snoozedUntil,clock/1000+100,'backend snoozes survive presentation grouping');
+const obsoleteAck={...backHass,states:{...backHass.states,'input_text.old':entity('input_text.old',`${nativeGrouped[0].key}:${clock/1000+100}`)}};
+nativeGrouped=model.groupAttention([{...nativeRow,handling:{...nativeRow.handling,snoozed_until:null}}],{...serverPolicy,acknowledgements_entity:'input_text.old'},obsoleteAck,clock);
+assert.equal(nativeGrouped[0].snoozedUntil,undefined,'a native unsnooze overrides cached legacy helper entries');
+nativeGrouped=model.groupAttention([{...nativeRow,tone:'error'}],serverPolicy,backHass,clock);
+assert.equal(nativeGrouped[0].snoozedUntil,undefined,'critical escalation cannot inherit a snooze');

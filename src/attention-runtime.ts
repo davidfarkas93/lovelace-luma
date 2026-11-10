@@ -4,6 +4,26 @@ import type { HomeAssistant } from "./types";
 import { localized } from "./localize";
 
 interface BackendResult {schema_version:1;policy_id:string;policy_hash:string;policy_revision:string;generated_at:number;rows:AttentionEntry[];policy:AttentionPolicy}
+export type AttentionHandlingOperation='seen'|'claimed_fixed'|'snooze'|'unsnooze'|'note';
+export interface EpisodeEvent {seq:number;observed:number;type:string;operation?:AttentionHandlingOperation;actor_name?:string;note?:string;until?:number;source_status?:string}
+export interface EpisodeHistory {episode_id:string;events:EpisodeEvent[];has_more:boolean;next_before?:number}
+export async function attentionEpisode(hass:HomeAssistant,name:string,episode:string,before?:number):Promise<EpisodeHistory>{
+  const binding=attentionPolicy(name)?.backend;
+  if(!binding||!hass.callWS)throw Error('Backend unavailable');
+  return hass.callWS({type:'home_insights/episode',policy_id:binding.policy_id,episode_id:episode,...(before?{before}:{})});
+}
+export async function recordAttentionHandling(hass:HomeAssistant,name:string,rows:AttentionEntry[],operation:AttentionHandlingOperation,extra:{until?:number;note?:string}={}){
+  const binding=attentionPolicy(name)?.backend;
+  if(!binding||!hass.callWS||!rows.length||rows.some(r=>!r.episodeId||!r.canHandle))throw Error('Handling unavailable');
+  const command={type:'home_insights/record_handling',policy_id:binding.policy_id,request_id:crypto.randomUUID(),operation,...extra,
+    targets:rows.map(r=>({row_id:r.id,episode_id:r.episodeId!,expected_revision:r.handling?.revision||0}))};
+  // Retry the identical request once: a lost response must not duplicate a
+  // note or extend a snooze. The backend journals request IDs transactionally.
+  let result:{ok:boolean};
+  try{result=await hass.callWS(command);}catch{result=await hass.callWS(command);}
+  if(result.ok!==true)throw Error('Handling not confirmed');
+  await refreshAttentionBackend(hass,name,true);
+}
 const backend = new Map<string,{binding:string;language:string;data?:BackendResult;fetching:boolean;at:number;error:boolean;health:unknown;request?:number}>();
 export async function refreshAttentionBackend(hass:HomeAssistant,name:string,force=false) {
   session(hass);const policy=window.lumaAttentionPolicies?.[name],binding=policy?.backend;

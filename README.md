@@ -23,6 +23,21 @@ first backend read. A backend-bound policy never falls back to browser evaluatio
 loading, errors and expired observations are visible. Private cache data is reset
 between HA connections and locales. Standalone browser policies remain supported.
 
+Luma **0.49 + Home Insights 0.3** adds durable handling inside the existing detail
+surface: mark seen, report a user-performed fix, add a plain-text note and read
+paged episode history. Source observations remain authoritative; these metadata
+operations never close a fault or install an update. Group handling is atomic,
+revision-checked and audited per member. Lost responses retry the same request ID.
+Read-only entity access permits history; handling additionally requires control
+permission, and native non-entity channels require an administrator.
+
+Backend episode snoozes replace the short legacy helper for these clients. A new
+episode gets fresh handling state; critical/non-dismissible rows cannot be snoozed.
+Standalone policies retain their existing helper behavior. Refresh all open clients
+after upgrading: pre-0.49 clients do not understand backend-owned snooze metadata.
+Notes are not automatic exceptions; approved conditional household knowledge stays
+in its separate editor. Update installation still uses the existing confirmed controls.
+
 [![Validate](https://github.com/davidfarkas93/lovelace-luma/actions/workflows/validate.yml/badge.svg)](https://github.com/davidfarkas93/lovelace-luma/actions/workflows/validate.yml)
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?logo=home-assistant-community-store)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/davidfarkas93/lovelace-luma?display_name=tag&sort=semver)](https://github.com/davidfarkas93/lovelace-luma/releases/latest)
@@ -1097,9 +1112,10 @@ Identical text never merges unrelated IDs. An orphan notification remains visibl
 if its task is inactive. Completion requires inline confirmation and invokes the
 configured action; only a subsequent source observation establishes recovery.
 Native dismissal removes that channel only. Snoozing changes visibility only;
-critical and non-dismissible rules do not offer it. These controls do not claim
-durable "seen", "fixed" or "normal" feedback: that needs a shared backend journal,
-which is also required before retrospective daily AI reports can rely on it.
+critical and non-dismissible rules do not offer it. Standalone policies do not
+provide durable handling. Backend policies using Home Insights 0.3 provide the
+audited seen/fix-claim/note/history workflow described above. "I fixed it" records
+a user claim, not verified recovery; normality exceptions require the household editor.
 
 Keep rule IDs stable. Unknown/missing data is distinct from an inactive condition;
 missing or incompatible policies produce an explicit error.
@@ -1237,7 +1253,7 @@ The configured manager script accepts `operation` (`upsert` or `set_enabled`),
 must validate scope, protect safety sources, serialize writes and reject revision
 conflicts. Editing a rule does not save it: an inline review confirms its exact
 scope/effect. Drafts have no operational effect. Source strings remain data, never
-executable templates. This rule change history is separate from a future durable
+executable templates. This rule change history is separate from the backend's durable
 incident/acknowledgement journal.
 
 Use `scripts/check-household-context-ui.mjs` with the same Playwright setup as the
