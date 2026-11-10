@@ -1,5 +1,20 @@
 # Luma
 
+### Previous-day reports
+
+Luma 0.50 + Home Insights 0.4 provides `custom:luma-daily-report-card` with `policy`
+set to the existing backend-bound attention policy name. Optional `title`, `due_time`
+(default `08:00`) and `household_path` are runtime presentation settings. The time
+must match the native morning automation. No source IDs or topology are baked in.
+
+The read-only card shows the previous HA-local calendar day, deterministic data
+quality/counts, latest attempt time and a short Hungarian narrative. Coverage,
+supporting observations, hypothesis and suggested check expand in place. Failed,
+missing, interrupted, stale and permission-restricted reads stay explicit; the
+previous successful narrative appears only in a separately dated disclosure.
+Report access currently follows the backend's administrator-only private journal
+permission model. Opening or refreshing this card never runs AI or controls a device.
+
 ### Home Insights attention backend
 
 Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1

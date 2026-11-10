@@ -1,0 +1,75 @@
+import {LitElement,css,html,nothing} from 'lit';
+import {customElement,property,state} from 'lit/decorators.js';
+import {attentionPolicy} from '../attention-runtime';
+import {dailyReportView,validDailyReport,type DailyReport,type ReportState,type ReportFacts} from '../daily-report';
+import {localized} from '../localize';
+import {runAction} from '../helpers';
+import {lumaTokens} from '../styles';
+import type {HomeAssistant,LovelaceCard} from '../types';
+interface Config {type:string;policy:string;title?:string;due_time?:string;household_path?:string}
+
+@customElement('luma-daily-report-card')
+export class LumaDailyReportCard extends LitElement implements LovelaceCard {
+ @property({attribute:false}) hass?:HomeAssistant;
+ @state() private config?:Config;
+ @state() private data?:DailyReport;
+ @state() private error=false;
+ @state() private forbidden=false;
+ @state() private loading=false;
+ private timer?:number;private owner?:object;private binding='';private epoch=0;private fetched=0;private health:unknown;
+ static styles=[lumaTokens,css`
+  :host{display:block;min-width:0;container-type:inline-size}
+  ha-card{padding:20px;background:var(--luma-surface);border:1px solid var(--luma-border);border-radius:var(--luma-radius-card);box-shadow:var(--luma-shadow)}
+  .header{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}.icon{display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;border-radius:var(--luma-radius-control);color:var(--tone);background:color-mix(in srgb,var(--tone) 12%,transparent)}ha-icon{--mdc-icon-size:20px}h2{margin:0;font-size:var(--luma-text-md)}.period{font-size:var(--luma-text-xs);color:var(--luma-muted);margin:5px 0 0}.status{font-size:var(--luma-text-sm);font-weight:650;color:var(--tone);margin:8px 0}.summary{font-size:var(--luma-text-md);line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}p{font-size:var(--luma-text-sm);line-height:1.6;overflow-wrap:anywhere}.muted,small{color:var(--luma-muted)}small{font-size:var(--luma-text-xs);line-height:1.6;display:block}
+  .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}.metric{padding:12px;background:color-mix(in srgb,var(--primary-text-color) 3%,transparent);border:1px solid var(--luma-border);border-radius:var(--luma-radius-control)}.metric strong{display:block;font-size:var(--luma-text-lg);margin-bottom:4px}.metric span{font-size:var(--luma-text-xs);color:var(--luma-muted)}
+  details{border-top:1px solid var(--luma-border);margin-top:12px;padding-top:4px}summary{min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--luma-muted);font-size:var(--luma-text-sm)}summary:before{content:'›';font-size:20px;transition:transform .15s}details[open]>summary:before{transform:rotate(90deg)}.evidence{border-left:2px solid var(--luma-border);padding:0 0 10px 12px;margin-top:10px}.evidence strong{font-size:var(--luma-text-sm)}.evidence p{margin:4px 0;white-space:pre-wrap}.analysis h3{font-size:var(--luma-text-sm);margin:16px 0 6px}.analysis p{margin:6px 0}.previous{padding:12px;border:1px solid var(--luma-border);border-radius:var(--luma-radius-control);margin-top:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:9px 14px;font:inherit;font-size:var(--luma-text-sm);font-weight:650;background:transparent;color:var(--primary-color);border:1px solid var(--luma-border);border-radius:999px;cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible,summary:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}
+  @container(max-width:450px){ha-card{padding:16px}.metric{padding:10px}}
+ `];
+ setConfig(config:Config){if(!config.policy)throw Error('Report policy required');if(config.due_time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(config.due_time))throw Error('Invalid report time');this.config=config;}
+ getCardSize(){return 5;}
+ connectedCallback(){super.connectedCallback();this.timer=window.setInterval(()=>{this.requestUpdate();void this.refresh();},15000);void this.refresh();}
+ disconnectedCallback(){this.epoch++;clearInterval(this.timer);super.disconnectedCallback();}
+ protected updated(){if(this.isConnected)void this.refresh();}
+ private t(en:string,hu:string){return localized(this.hass,en,hu);}
+ private async refresh(force=false){
+  if(!this.hass||!this.config)return;
+  const source=this.hass.connection||this.hass.callWS||this.hass,policy=attentionPolicy(this.config.policy)?.backend;
+  const binding=JSON.stringify([policy?.policy_id,this.config.due_time||'08:00']);
+  if(this.owner!==source||this.binding!==binding){this.owner=source;this.binding=binding;this.epoch++;this.fetched=0;this.loading=false;this.data=undefined;this.error=false;this.forbidden=false;this.health=undefined;}
+  const health=policy?.health_entity?this.hass.states[policy.health_entity]?.attributes.event_count:undefined;
+  if(this.loading||!force&&health===this.health&&Date.now()-this.fetched<15000)return;
+  this.loading=true;this.fetched=Date.now();this.health=health;const epoch=this.epoch;
+  try{
+   if(!policy||!this.hass.callWS)throw Error('Backend unavailable');
+   const data=await this.hass.callWS<DailyReport>({type:'home_insights/report',policy_id:policy.policy_id,due_time:this.config.due_time||'08:00'});
+   if(epoch!==this.epoch)return;
+   if(!validDailyReport(data,policy.policy_id))throw Error('Invalid report snapshot');
+   this.data=data;this.error=false;this.forbidden=false;
+  }catch(error){if(epoch===this.epoch){this.error=true;this.forbidden=(error as {code?:string})?.code==='unauthorized';}}
+  finally{if(epoch===this.epoch)this.loading=false;}
+ }
+ private date(value:number){return new Date(value*1000).toLocaleString(this.hass?.locale?.language,{timeZone:this.data?.timezone});}
+ private day(value:string){return new Date(value+'T12:00:00Z').toLocaleDateString(this.hass?.locale?.language,{year:'numeric',month:'long',day:'numeric',timeZone:this.data?.timezone});}
+ private label(state:ReportState){const labels:Record<ReportState,[string,string]>={waiting:['Waiting for the morning check','A reggeli ellenőrzésre vár'],running:['Preparing the summary','Összefoglaló készül'],missed:['The morning check did not run','A reggeli ellenőrzés kimaradt'],stalled:['The check did not finish','Az ellenőrzés nem fejeződött be'],failed:['The summary could not be completed','Nem készült el az összefoglaló'],not_run:['No observations for this day','Erről a napról nincs megfigyelés'],insufficient_data:['Insufficient data','Nincs elég adat'],attention_needed:['Signals worth reviewing','Volt figyelmet kérő jelzés'],no_anomaly_found:['No anomaly found','Nem találtam eltérést'],unavailable:['Report status is unavailable','A jelentés állapota nem olvasható']};return this.t(...labels[state]);}
+ private metrics(facts:ReportFacts){
+  const values=[[facts.counts.issues?.sources_present??0,this.t('Sources with issues','Jelzést adó forrás')],[facts.counts.updates?.sources_present??0,this.t('Updatable components','Frissíthető összetevő')],[facts.availability?.sources_with_gaps??'—',this.t('Sources with data gaps','Adathiányos forrás')]];
+  return html`<div class="metrics">${values.map(([value,label])=>html`<div class="metric"><strong>${value}</strong><span>${label}</span></div>`)}</div>`;
+ }
+ render(){
+  if(!this.hass||!this.config)return nothing;
+  const view=dailyReportView(this.data,this.error),attempt=view.current,facts=attempt?.facts,narrative=view.report?.narrative;
+  const tone=this.loading&&!this.data&&!this.error?'primary':view.tone;
+  const color=tone==='primary'?'var(--primary-color)':`var(--${tone}-color)`;
+  return html`<ha-card style=${`--tone:${color}`}><div class="header"><span class="icon"><ha-icon icon="mdi:calendar-check-outline"></ha-icon></span><div><h2>${this.config.title||this.t('Previous-day report','Előző napi jelentés')}</h2><p class="period">${this.data?this.day(this.data.expected_day):this.t('Previous local calendar day','Előző helyi naptári nap')} · ${this.t('Daily','Naponta')} ${this.config.due_time||'08:00'}</p></div></div>
+   <p class="status" role="status">${this.loading&&!this.data&&!this.error?this.t('Reading the report…','Jelentés betöltése…'):this.forbidden?this.t('Administrator access is required to read this private report.','A privát jelentés olvasásához adminisztrátori jogosultság szükséges.'):this.label(view.state)}</p>
+   ${narrative?html`<p class="summary">${narrative.summary}</p>`:view.state==='failed'?html`<p>${this.t('The latest attempt failed. Previously completed results are shown separately below.','A legutóbbi próbálkozás sikertelen. A korábban elkészült eredmény külön, lent olvasható.')}</p>`:view.state==='missed'||view.state==='stalled'?html`<p>${this.t('A current completed check cannot be confirmed. An earlier report does not establish today’s run.','Aktuális befejezett ellenőrzés nem igazolható. Egy korábbi jelentés nem igazolja a mai futást.')}</p>`:nothing}
+   ${attempt?html`<small>${this.t('Last attempt','Utolsó próbálkozás')}: ${this.date(attempt.started)}${attempt.finished?html`<br>${this.t('Completed','Befejezve')}: ${this.date(attempt.finished)}`:nothing}</small>`:nothing}
+   ${facts?html`${this.metrics(facts)}<details class="coverage"><summary>${this.t('Measurements & coverage','Mérés és lefedettség')}</summary><p>${this.t('Confirmed observation','Igazolt megfigyelés')}: <strong>${(facts.coverage_percent??100*facts.coverage_seconds/facts.window_seconds).toLocaleString(this.hass.locale?.language,{maximumFractionDigits:1})}%</strong> · ${Math.round(facts.coverage_seconds/60)} ${this.t('minutes','perc')}</p><p>${this.t('Carried episodes','Áthúzódó epizód')}: ${facts.counts.issues?.carried_over??0} · ${this.t('Observed recurrences','Megfigyelt ismétlődés')}: ${facts.counts.issues?.recurrences??0}</p>${!facts.availability?.whole_day_details?html`<p class="muted">${this.t('Per-source gap detail does not cover the whole day; the source count is unknown.','Az entitásszintű adathiány-részletek nem fedik le az egész napot; a forrásszám ismeretlen.')}</p>`:nothing}<p class="muted">${this.t('Counts describe the monitored policy, not every possible household fault. Automation trace history, energy and heating calculations are outside this first report.','A számok a felügyelt szabálykészletre vonatkoznak. Az automatizálási trace-előzmények, az energia- és fűtésszámítások ezen az első jelentésen kívül esnek.')}</p></details>`:nothing}
+   ${narrative?.hypothesis||narrative?.suggested_check?html`<details class="analysis"><summary>${this.t('Interpretation & suggested check','Értelmezés és javasolt ellenőrzés')}</summary>${narrative.hypothesis?html`<h3>${this.t('Possible explanation','Lehetséges magyarázat')}</h3><p>${narrative.hypothesis}</p>`:nothing}${narrative.suggested_check?html`<h3>${this.t('Suggested check','Javasolt ellenőrzés')}</h3><p>${narrative.suggested_check}</p>`:nothing}</details>`:nothing}
+   ${facts?.ai_evidence?.length?html`<details class="facts"><summary>${this.t('Supporting observations','Alátámasztó megfigyelések')}</summary>${facts.ai_evidence.map(item=>html`<div class="evidence"><strong>${item.name}</strong>${item.message?html`<p>${item.message}</p>`:nothing}<small>${item.present_at_period_start?this.t('Carried from the previous day','Korábbról áthúzódó ügy'):item.initial?this.t('First observed · actual start unknown','Első észlelés · valódi kezdet ismeretlen'):item.category==='availability'?this.t('Missing source measurement','Hiányzó forrásmérés'):this.t('Observed during the day','A nap során észlelve')}</small></div>`)}</details>`:nothing}
+   ${view.previous?html`<details class="previous"><summary>${this.t('Earlier successful report','Korábbi sikeres jelentés')} · ${this.day(view.previous.day)}</summary><small>${this.t('Completed','Elkészült')}: ${this.date(view.previous.finished||view.previous.started)}</small><p class="summary">${view.previous.narrative?.summary}</p></details>`:nothing}
+   <div class="actions">${this.error?html`<button ?disabled=${this.loading} @click=${()=>this.refresh(true)}>${this.t('Read again','Újraolvasás')}</button>`:nothing}${this.config.household_path?html`<button @click=${()=>runAction(this,this.hass!,{action:'navigate',navigation_path:this.config!.household_path!})}><ha-icon icon="mdi:book-open-page-variant-outline"></ha-icon>${this.t('Household knowledge','Háztartási háttértudás')}</button>`:nothing}</div>
+  </ha-card>`;
+ }
+}
