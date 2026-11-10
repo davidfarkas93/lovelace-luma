@@ -7,13 +7,21 @@ set to the existing backend-bound attention policy name. Optional `title`, `due_
 (default `08:00`) and `household_path` are runtime presentation settings. The time
 must match the native morning automation. No source IDs or topology are baked in.
 
-The read-only card shows the previous HA-local calendar day, deterministic data
-quality/counts, latest attempt time and a short Hungarian narrative. Coverage,
-supporting observations, hypothesis and suggested check expand in place. Failed,
-missing, interrupted, stale and permission-restricted reads stay explicit; the
-previous successful narrative appears only in a separately dated disclosure.
-Report access currently follows the backend's administrator-only private journal
-permission model. Opening or refreshing this card never runs AI or controls a device.
+The card is a compact, tappable previous-day summary: report date, the first
+complete sentence of the saved narrative and its completion time. Measurements,
+coverage percentages and technical disclosures live in the shared bottom sheet.
+A visible data-quality qualifier accompanies partial/minor-gap observations;
+failed, missed, waiting and unavailable states replace the current summary explicitly.
+An earlier successful result appears only in its separately dated disclosure.
+Opening the report never runs AI or controls a device.
+
+Luma **0.54** uses this presentation for all three scopes, with keyboard opening,
+focus return, Escape, backdrop and swipe dismissal through the shared sheet shell.
+Account/scope changes close the sheet and clear private cached detail content.
+The complete narrative, source metrics/More Info, supporting observations and checks
+remain available inside. Report access follows the backend's administrator-only
+private journal permission model. Place the card near its topic page's heading;
+no default/main dashboard placement is installed by the component itself.
 
 Luma **0.51** with Home Insights **0.5** also supports `energy_profile` instead of
 `policy`. The backend profile explicitly maps cumulative solar/import/export/EV

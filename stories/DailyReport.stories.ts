@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -37,11 +37,12 @@ const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;f
   if(options.warm){facts.assessment='no_anomaly_found';facts.data_quality='minor_gaps';facts.coverage_percent=99.878;facts.coverage_seconds=86294.71;facts.unobserved_seconds=105.29;facts.observation_gaps={count:2,longest_seconds:60,intervals:[{start:'2026-11-09T21:50:00Z',end:'2026-11-09T21:51:00Z',seconds:60},{start:'2026-11-09T22:39:00Z',end:'2026-11-09T22:39:45.290Z',seconds:45.29}],truncated:false};facts.burner.counts_are_lower_bounds=true;data.state='no_anomaly_found';completed.narrative={summary:'Voltak rövid fűtési égések, de a megfigyelt égések között nem alakult ki gyors újraindulási sorozat. A rövid égések egy része már meleg rendszerben történt; ez összeegyeztethető a nálad megszokott hőntartással, önmagában nem hibajel.',hypothesis:'',suggested_check:'',evidence_refs:['heating_burns','warm_operation']};}
   data.policy_id='heating:demo';data.heating_profile='demo';
  }
+ if(options.long)completed.narrative.summary='A korábbi napokról áthúzódó jelzés a megfigyelt időszakban továbbra is fennmaradt, de a rendelkezésre álló forrásokból a kiváltó okot és a háztartás működésére gyakorolt tényleges következményét nem lehet biztosan megállapítani. A részletekben minden rögzített megfigyelés külön visszanézhető.';
  window.lumaAttentionPolicies={...window.lumaAttentionPolicies,report_demo:{version:1,revision:'demo',rules:[],backend:{policy_id:'demo'}}};
  const hass=createMockHass({});
  hass.callService=async()=>{throw Error('Report card must not call services');};
  hass.callWS=async command=>{if(command.type!=='home_insights/report')throw Error('Unexpected command');if(options.forbidden)throw {code:'unauthorized'};if(options.offline)throw Error('Offline');return structuredClone(data) as never;};
- return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-daily-report-card .hass=${hass} ${ref(node=>{if(node)(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...(options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',household_path:'#household-context'})});})}></luma-daily-report-card></div>`;
+ return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...(options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',household_path:'#household-context'})});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card></div>`;
 };
 const meta:Meta={title:'Cards/Daily report',render:()=>scenario(),parameters:{controls:{disable:true}}};
 export default meta;type Story=StoryObj;
@@ -68,3 +69,6 @@ export const HeatingEmpty:Story={render:()=>scenario('not_run',{heating:true})};
 export const HeatingFailed:Story={render:()=>scenario('failed',{heating:true})};
 
 export const HeatingWarm:Story={render:()=>scenario('attention_needed',{heating:true,warm:true})};
+
+export const HeatingDetails:Story={render:()=>scenario('attention_needed',{heating:true,warm:true,detailsOpen:true})};
+export const LongSummary:Story={render:()=>scenario('attention_needed',{long:true})};

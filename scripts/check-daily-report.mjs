@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';import ts from 'typescript';
-const {outputText}=ts.transpileModule(readFileSync(new URL('../src/daily-report.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}});
+const {outputText}=ts.transpileModule(readFileSync(new URL('../src/daily-report.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}});
 const exports={};vm.runInNewContext(outputText,{exports,Date,Set});
 const now=Date.now(),attempt={id:'latest',day:'2026-11-09',status:'completed',narrative:{summary:'Current'}};
 const data={schema_version:1,policy_id:'home',expected_day:'2026-11-09',generated_at:now/1000,state:'no_anomaly_found',attempt,last_success:attempt};
@@ -15,4 +15,6 @@ assert.equal(exports.validDailyReport({...data,policy_id:'energy:demo'},'home',n
 assert.ok(exports.validDailyReport({...data,policy_id:'heating:demo',heating_profile:'demo'},'heating:demo',now));
 assert.equal(exports.validDailyReport({...data,policy_id:'heating:demo'},'energy:demo',now),false);
 assert.equal(exports.dailyReportView({...data,attempt:{...attempt,facts:{data_quality:'minor_gaps'}}},false,now).tone,'primary','brief gaps stay visible without a whole-day success or warning tint');
+assert.equal(exports.reportSummaryPreview('A termelés 4.63 kWh volt. A különbség oka nem ismert.','hu'),'A termelés 4.63 kWh volt.','a decimal point must not cut off a measured statement');
+assert.equal(exports.reportSummaryPreview('A megfigyelt égésekben nem látszott gyors újraindulás. Meleg előzmény is volt.','hu'),'A megfigyelt égésekben nem látszott gyors újraindulás.','the observed-scope qualifier remains in the preview');
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');

@@ -20,6 +20,12 @@ export interface ReportFacts {
 export interface ReportAttempt {id:string;day:string;started:number;finished:number|null;status:'running'|'failed'|'completed';ai_status:string;error?:string|null;facts:ReportFacts|null;narrative:{summary:string;hypothesis:string;suggested_check:string;evidence_refs:string[]}|null}
 export interface DailyReport {schema_version:1;policy_id:string;energy_profile?:string|null;heating_profile?:string|null;timezone:string;expected_day:string;generated_at:number;due_at:number;state:ReportState;attempt:ReportAttempt|null;last_success:ReportAttempt|null;last_attempt?:{day:string;started:number}|null}
 const states=new Set<ReportState>(['waiting','running','missed','stalled','failed','not_run','insufficient_data','attention_needed','no_anomaly_found']);
+/** Keep a complete sentence, including its qualifier; details retain the full narrative. */
+export function reportSummaryPreview(summary:string,language='en'):string{
+ const text=summary.trim();
+ if(typeof Intl.Segmenter!=='function')return text;
+ return [...new Intl.Segmenter(language,{granularity:'sentence'}).segment(text)][0]?.segment.trim()||text;
+}
 export function validDailyReport(data:DailyReport,policy:string,now=Date.now()):boolean{
  return data?.schema_version===1&&data.policy_id===policy&&states.has(data.state)&&Number.isFinite(data.generated_at)&&now-data.generated_at*1000<=45000&&data.generated_at*1000<=now+10000&&/^\d{4}-\d{2}-\d{2}$/.test(data.expected_day)&&(!data.attempt||data.attempt.day===data.expected_day);
 }
