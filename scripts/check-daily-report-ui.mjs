@@ -91,6 +91,15 @@ try{
   assert.equal(await card().locator('.ai-diagnostics pre b').count(),0,'rejected AI output is escaped text');
   assert.equal(await card().locator('.summary:visible').count(),0,'a rejected response is never a published summary');
  }
+ for(const width of [390,768,1280])for(const lang of ['hu','en']){
+  await page.setViewportSize({width,height:844});await open('nas-overnight',lang);
+  assert.match(await card().locator('.overnight-preview').textContent(),lang==='hu'?/Éjfél óta/:/Since midnight/);
+  assert.doesNotMatch(await card().locator('.summary').textContent(),/hibajelzése/,'today must not rewrite yesterday');
+  assert.match(await card().locator('.overnight-summary').textContent(),/még nem igazolt/);
+  await card().locator('.since-midnight summary').click();assert.equal(await card().locator('.since-midnight .evidence').count(),3);
+  assert.match(await card().locator('.since-midnight').textContent(),/Parity-Sync started/);
+  await page.screenshot({path:`${output}/nas-overnight-${lang}-${width}.png`,animations:'disabled',fullPage:true});
+ }
  await open('long-summary');assert.match(await card().locator('.summary').textContent(),/minden rögzített megfigyelés/);await page.keyboard.press('Escape');await card().locator('luma-bottom-sheet').locator('dialog').waitFor({state:'hidden'});assert.ok(await card().locator('ha-card').evaluate(c=>c.getBoundingClientRect().height<230));
  await page.emulateMedia({reducedMotion:'no-preference'});await open('heating-warm');await page.waitForTimeout(380);const animatedSheet=card().locator('luma-bottom-sheet');const beforeClose=await animatedSheet.locator('.sheet').boundingBox();await animatedSheet.locator('.close').click();await page.waitForTimeout(90);const duringClose=await animatedSheet.locator('.sheet').boundingBox();assert.ok(Math.abs(beforeClose.height-duringClose.height)<2,'sheet content keeps its height during the exit animation');await animatedSheet.locator('dialog').waitFor({state:'hidden'});assert.equal(await card().locator('.report-details').count(),0);await page.emulateMedia({reducedMotion:'reduce'});
  await open();await card().evaluate(c=>{c.hass={...c.hass,connection:{},callWS:async()=>{throw Error('New account offline');}};});

@@ -52,6 +52,13 @@ cards never invoke AI or perform NAS operations. Rejected AI responses have a
 separate administrator-only diagnostic disclosure with a reason and escaped,
 bounded response preview; they are never published as the current narrative.
 
+NAS reports also retain a notification timeline, including errors followed by later
+clearance or parity-sync activity. An explicitly separate **Since midnight** section
+shows overnight events saved at report generation, with its own timestamps; it is
+not live status and cannot rewrite yesterday. A compact warning in the card footer
+surfaces overnight NAS alerts. A running sync or disappearing entity never implies
+restored parity protection.
+
 ### Home Insights attention backend
 
 Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1

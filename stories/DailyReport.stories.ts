@@ -3,15 +3,15 @@ import {html} from 'lit';
 import {ref} from 'lit/directives/ref.js';
 import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
-import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle} from '../src/daily-report';
+import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle,ReportAttempt} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;rejected?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
   ai_evidence:[{ref:'episode_1',name:'Boiler',source:'binary_sensor.boiler_fault',message:'The fault flag remained active during the observed interval.',present_at_period_start:true}]};
  const completed={id:'report',day:'2026-11-09',started:now-40,finished:now-30,status:'completed' as const,ai_status:'success',facts,
-  narrative:{summary:'A kazán korábbról áthúzódó jelzése a megfigyelt időszakban fennmaradt. Érdemes átnézni a hibanaplóját.',hypothesis:'Az összefüggés oka a rendelkezésre álló adatokból nem igazolható.',suggested_check:'Nézd át a kazán hibanaplóját és a kapcsolódó érzékelő előzményeit.',evidence_refs:['episode_1']}};
+  narrative:{summary:'A kazán korábbról áthúzódó jelzése a megfigyelt időszakban fennmaradt. Érdemes átnézni a hibanaplóját.',hypothesis:'Az összefüggés oka a rendelkezésre álló adatokból nem igazolható.',suggested_check:'Nézd át a kazán hibanaplóját és a kapcsolódó érzékelő előzményeit.',evidence_refs:['episode_1']} as NonNullable<ReportAttempt['narrative']>};
  const previous={...completed,id:'previous',day:'2026-11-08',started:now-86400,finished:now-86390,narrative:{...completed.narrative,summary:'KORÁBBI: az akkori ellenőrzés nem talált új, igazolt eltérést.'}};
  const data:DailyReport={schema_version:1,policy_id:'demo',timezone:'Europe/Budapest',expected_day:'2026-11-09',generated_at:options.stale?now-60:now,due_at:now-60,state,
   attempt:['missed','waiting'].includes(state)?null:state==='failed'?{...completed,status:'failed',ai_status:'failed',narrative:null,error:'ai_failed'}:state==='running'||state==='stalled'?{...completed,status:'running',finished:null,narrative:null}:completed,
@@ -47,6 +47,14 @@ const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;f
   facts.ai_evidence=[{ref:'storage_observed',name:'Tároló-visszajelzések',source:'binary_sensor.parity_problem',category:'nas'}];
   completed.narrative={summary:empty?'Erre a napra nincs megfigyelt rendszeradat; a nap állapota nem értékelhető.':(partial?'A NAS megfigyelése hiányos volt. ':'')+(finding?'A tároló vagy a parity hibajelzője aktív volt a megfigyelt időszakban; ezt érdemes ellenőrizni.':'A NAS vizsgált állapotai a megfigyelt szakaszokban nem mutattak ellenőrzési küszöböt elérő eltérést.'),hypothesis:'',suggested_check:'',evidence_refs:['storage_observed']};
   data.policy_id='nas:demo';data.nas_profile='demo';
+ }
+ if(options.overnight){
+  facts.notifications={start:'2026-11-09T23:00:00Z',end:'2026-11-10T23:00:00Z',sources:['event.nas'],events:[],attention:false,truncated:false,invalid_events:0};
+  facts.since_midnight={...facts.notifications,start:'2026-11-10T23:00:00Z',end:'2026-11-11T11:00:00Z',attention:true,events:[
+   {source:'event.nas',id:'error',at:'2026-11-11T01:01:00Z',observed_at:'2026-11-11T01:01:05Z',code:'parity_disk_error',label:'Parity-lemez hibajelzése',subject:'Parity disk in error state (disk dsbl)',importance:'ALERT',attention:true},
+   {source:'event.nas',id:'recovered',at:'2026-11-11T09:09:00Z',observed_at:'2026-11-11T09:09:05Z',code:'array_recovered',label:'Array: rendben visszajelzés',subject:'array turned good',importance:'INFO',attention:false},
+   {source:'event.nas',id:'sync',at:'2026-11-11T10:37:00Z',observed_at:'2026-11-11T10:37:05Z',code:'parity_sync',label:'Parity-szinkronizálás',subject:'Parity-Sync started',importance:'WARNING',attention:false}]};
+  completed.narrative={...completed.narrative,summary_since_midnight:'Parity-lemez hibajelzése érkezett, később parity-szinkronizálás indult; a helyreállt paritásvédelem ebből még nem igazolt.'};
  }
  if(options.rejected&&data.attempt){data.attempt.error='invalid_ai_output';data.attempt.diagnostics={schema_version:1,stage:'ai_output_validation',reason:'unknown_evidence',detail:'Unknown evidence reference',candidate_json:JSON.stringify({summary:'<b>Elutasított szöveg</b>',evidence_ids:'invented_reference'}),candidate_truncated:false,allowed_evidence_refs:['episode_1']};}
  if(options.long)completed.narrative.summary='A korábbi napokról áthúzódó jelzés a megfigyelt időszakban továbbra is fennmaradt, de a rendelkezésre álló forrásokból a kiváltó okot és a háztartás működésére gyakorolt tényleges következményét nem lehet biztosan megállapítani. A részletekben minden rögzített megfigyelés külön visszanézhető.';
@@ -91,3 +99,5 @@ export const NasPartial:Story={render:()=>scenario('insufficient_data',{nas:true
 export const NasEmpty:Story={render:()=>scenario('not_run',{nas:true})};
 export const NasFailed:Story={render:()=>scenario('failed',{nas:true})};
 export const RejectedAiResponse:Story={render:()=>scenario('failed',{rejected:true})};
+
+export const NasOvernight:Story={render:()=>scenario('no_anomaly_found',{nas:true,overnight:true})};
