@@ -8,12 +8,12 @@ import {lumaTokens} from '../styles';
 import type {HomeAssistant,LovelaceCard} from '../types';
 import '../components/luma-bottom-sheet';
 import type {LumaBottomSheet} from '../components/luma-bottom-sheet';
-interface Config {type:string;policy?:string;energy_profile?:string;heating_profile?:string;nas_profile?:string;title?:string;due_time?:string;household_path?:string}
+export interface DailyReportConfig {type:string;policy?:string;energy_profile?:string;heating_profile?:string;nas_profile?:string;title?:string;due_time?:string;household_path?:string;presentation?:'hero'}
 
 @customElement('luma-daily-report-card')
 export class LumaDailyReportCard extends LitElement implements LovelaceCard {
  @property({attribute:false}) hass?:HomeAssistant;
- @state() private config?:Config;
+ @state() private config?:DailyReportConfig;
  @state() private data?:DailyReport;
  @state() private error=false;
  @state() private forbidden=false;
@@ -38,8 +38,18 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
   .preview-button:hover{background:color-mix(in srgb,var(--primary-color) 4%,transparent)}
   .preview-button:focus-visible{outline-offset:-3px}.preview-button .icon{grid-column:1;grid-row:1;width:30px;height:30px;border-radius:12px}.preview-button .icon ha-icon{--mdc-icon-size:18px}.preview-copy{display:contents}.preview-head{grid-column:2;grid-row:1;display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 10px}.preview-title{font-size:var(--luma-text-sm);font-weight:650}.preview-period{font-size:var(--luma-text-xs);color:var(--luma-muted)}
   .preview-text{grid-column:1/-1;grid-row:2;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;font-size:var(--luma-text-sm);font-weight:450;line-height:1.55;margin:0;overflow-wrap:anywhere;white-space:pre-wrap}.preview-footer{grid-column:1/-1;grid-row:3;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;font-size:var(--luma-text-xs);line-height:1.5;color:var(--luma-muted);margin-top:0}.preview-quality{color:var(--tone)}.preview-arrow{grid-column:3;grid-row:1;--mdc-icon-size:18px;color:var(--luma-muted);align-self:center}.ai-diagnostics pre{max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--luma-text-xs);line-height:1.6;padding:12px;border-radius:var(--luma-radius-control);background:color-mix(in srgb,var(--primary-text-color) 4%,transparent)}.overnight-preview{color:var(--warning-color);font-weight:650}.overnight-summary{border-left:3px solid var(--warning-color);padding:4px 12px;margin:14px 0}.overnight-summary h3{margin:0}.report-details{min-width:0}.report-details .status{margin-top:0}.report-details .summary{margin-top:8px}
+
+  ha-card.hero-report{background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible}
+  .hero-report .preview-button{padding:0;border-radius:0;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;background:transparent}
+  .hero-report .preview-button:hover .hero-details{text-decoration:underline}
+  .hero-report .preview-button:focus-visible{outline-offset:6px;border-radius:4px}
+  .hero-report .icon,.hero-report .preview-arrow{display:none}
+  .hero-report .preview-head{grid-column:1;grid-row:1}.hero-report .preview-title{font-weight:650;color:var(--luma-muted)}
+  .hero-report .preview-text{grid-column:1;grid-row:2;font-size:var(--luma-text-md);font-weight:500;line-height:1.6;-webkit-line-clamp:3}
+  .hero-report .preview-footer{grid-column:1;grid-row:3}.hero-details{grid-column:2;grid-row:1/4;display:flex;align-items:center;gap:4px;color:var(--primary-color);font-size:var(--luma-text-sm);font-weight:650;white-space:nowrap}
+  @container(max-width:540px){.hero-report .preview-button{grid-template-columns:minmax(0,1fr);gap:8px}.hero-report .hero-details{grid-column:1;grid-row:4;justify-self:start;min-height:32px}.hero-report .preview-text{-webkit-line-clamp:4}}
  `];
- setConfig(config:Config){if([config.policy,config.energy_profile,config.heating_profile,config.nas_profile].filter(Boolean).length!==1)throw Error('Select exactly one report scope');for(const id of [config.energy_profile,config.heating_profile,config.nas_profile])if(id&&!/^[a-z0-9_-]{1,64}$/.test(id))throw Error('Invalid report profile');if(config.due_time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(config.due_time))throw Error('Invalid report time');this.config=config;}
+ setConfig(config:DailyReportConfig){if([config.policy,config.energy_profile,config.heating_profile,config.nas_profile].filter(Boolean).length!==1)throw Error('Select exactly one report scope');for(const id of [config.energy_profile,config.heating_profile,config.nas_profile])if(id&&!/^[a-z0-9_-]{1,64}$/.test(id))throw Error('Invalid report profile');if(config.due_time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(config.due_time))throw Error('Invalid report time');this.config=config;}
  getCardSize(){return 3;}
  connectedCallback(){super.connectedCallback();this.timer=window.setInterval(()=>{this.requestUpdate();void this.refresh();},15000);void this.refresh();}
  disconnectedCallback(){this.epoch++;this.detailsOpen=false;this.detailsMounted=false;this.pendingAction=undefined;this.restoreFocus=false;this.fetched=0;clearInterval(this.timer);super.disconnectedCallback();}
@@ -168,10 +178,11 @@ export class LumaDailyReportCard extends LitElement implements LovelaceCard {
   const period=this.data?new Date(this.data.expected_day+'T12:00:00Z').toLocaleDateString(this.hass.locale?.language,{month:'short',day:'numeric',timeZone:this.data.timezone}):this.t('Previous day','Előző nap');
   const completed=view.report?.finished,at=completed||attempt?.started;
   const timestamp=at?`${completed?this.t('Updated','Frissítve'):this.t('Attempt','Próbálkozás')}: ${new Date(at*1000).toLocaleString(this.hass.locale?.language,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:this.data?.timezone})}`:this.t('Daily','Naponta')+' '+(this.config.due_time||'08:00');
+  const embedded=this.config.presentation==='hero';
   const quality=attempt?.facts?.data_quality,qualifier=quality==='minor_gaps'?this.t('Brief observation gaps','Rövid megfigyelési hiány'):quality==='insufficient_data'?this.t('Partial data','Hiányos adatok'):'';
-  return html`<ha-card style=${`--tone:${color}`}><button class="preview-button" aria-haspopup="dialog" aria-expanded=${String(this.detailsOpen)} aria-label=${title+' · '+period+' · '+status+' · '+this.t('Open full report','Teljes jelentés megnyitása')} @click=${()=>this.openDetails()}>
+  return html`<ha-card class=${embedded?'hero-report':''} style=${`--tone:${color}`}><button class="preview-button" aria-haspopup="dialog" aria-expanded=${String(this.detailsOpen)} aria-label=${title+' · '+period+' · '+status+' · '+this.t('Open full report','Teljes jelentés megnyitása')} @click=${()=>this.openDetails()}>
    <span class="icon"><ha-icon icon=${['failed','missed','stalled','unavailable'].includes(view.state)&&!loading?'mdi:calendar-alert':view.state==='running'?'mdi:progress-clock':'mdi:text-box-outline'}></ha-icon></span>
-   <span class="preview-copy"><span class="preview-head"><span class="preview-title">${title}</span><span class="preview-period">${period}</span></span><span class="preview-text" role="status">${narrative?reportSummaryPreview(narrative.summary,this.hass.locale?.language,quality==='insufficient_data'):status}</span><span class="preview-footer"><span>${timestamp}</span>${qualifier?html`<span class="preview-quality">${qualifier}</span>`:nothing}${view.report&&attempt?.facts?.since_midnight?.attention?html`<span class="overnight-preview">${attempt.facts.since_midnight.events.some(e=>e.code==='parity_disk_error')?this.t('Since midnight: parity alert','Éjfél óta: parity-hibajelzés'):this.t('Since midnight: NAS alerts','Éjfél óta: NAS-jelzések')}</span>`:nothing}<span>${this.t('Details','Részletek')}</span></span></span><ha-icon class="preview-arrow" icon="mdi:chevron-right"></ha-icon>
+   <span class="preview-copy"><span class="preview-head"><span class="preview-title">${title}</span><span class="preview-period">${period}</span></span><span class="preview-text" role="status">${narrative?reportSummaryPreview(narrative.summary,this.hass.locale?.language,quality==='insufficient_data'):status}</span><span class="preview-footer"><span>${timestamp}</span>${qualifier?html`<span class="preview-quality">${qualifier}</span>`:nothing}${view.report&&attempt?.facts?.since_midnight?.attention?html`<span class="overnight-preview">${attempt.facts.since_midnight.events.some(e=>e.code==='parity_disk_error')?this.t('Since midnight: parity alert','Éjfél óta: parity-hibajelzés'):this.t('Since midnight: NAS alerts','Éjfél óta: NAS-jelzések')}</span>`:nothing}${embedded?nothing:html`<span>${this.t('Details','Részletek')}</span>`}</span></span>${embedded?html`<span class="hero-details">${this.t('Details','Részletek')}<ha-icon icon="mdi:chevron-right"></ha-icon></span>`:nothing}<ha-icon class="preview-arrow" icon="mdi:chevron-right"></ha-icon>
   </button></ha-card><luma-bottom-sheet style=${`--tone:${color}`} .open=${this.detailsOpen} .heading=${title} .subtitle=${this.data?this.day(this.data.expected_day):this.t('Previous local calendar day','Előző helyi naptári nap')} .icon=${'mdi:text-box-outline'} .maxWidth=${760} .closeLabel=${this.t('Close','Bezárás')} @sheet-dismiss=${()=>{this.detailsOpen=false;}} @sheet-closed=${()=>this.afterClose()}>${this.detailsMounted?this.renderDetails():nothing}</luma-bottom-sheet>`;
  }
 

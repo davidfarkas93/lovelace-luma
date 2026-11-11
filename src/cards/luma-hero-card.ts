@@ -1,4 +1,6 @@
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
+import { ref } from "lit/directives/ref.js";
+import { LumaDailyReportCard, type DailyReportConfig } from "./luma-daily-report-card";
 import { customElement, property, state } from "lit/decorators.js";
 import {
   entityIcon,
@@ -35,6 +37,7 @@ interface LumaHeroConfig {
   state_map?: Record<string,string>;
   language?: string;
   summary_groups?: HeroSummaryGroup[];
+  report?: Omit<DailyReportConfig,"type"|"presentation">;
 }
 
 @customElement("luma-hero-card")
@@ -58,6 +61,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
       }
 
+      .report {margin-top:20px;padding-top:18px;border-top:1px solid var(--luma-border);min-width:0}
       .top {
         display: grid;
         grid-template-columns: 58px minmax(0, 1fr) auto;
@@ -271,10 +275,11 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
     return 3 + (this.config?.banners?.length || 0);
   }
 
-  protected shouldUpdate(changed: PropertyValues<this>): boolean {
-    if (!changed.has("hass")) return true;
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    if (!changed.has("hass") || changed.has("config")) return true;
     const previous = changed.get("hass") as HomeAssistant | undefined;
     if (!previous || !this.hass || !this.config) return true;
+    if(this.config.report || previous.connection!==this.hass.connection || previous.locale?.language!==this.hass.locale?.language)return true;
     return this.entityIds.some((id) => previous.states[id] !== this.hass?.states[id]);
   }
 
@@ -370,7 +375,8 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         tabindex=${this.config.tap_action ? "0" : "-1"}
         @click=${() => runAction(this, this.hass!, this.config?.tap_action, this.config?.entity)}
         @keydown=${(event: KeyboardEvent) => {
-          if (event.key === "Enter" || event.key === " ") {
+          if (event.target===event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
             void runAction(this, this.hass!, this.config?.tap_action, this.config?.entity);
           }
         }}
@@ -385,6 +391,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         ${banners.length
           ? html`<div class="banners">${banners.map((item) => this.renderBanner(item))}</div>`
           : nothing}
+        ${this.config.report?html`<div class="report" @click=${(e:Event)=>e.stopPropagation()} @keydown=${(e:Event)=>e.stopPropagation()}><luma-daily-report-card .hass=${this.hass} ${ref(node=>{if(node)(node as LumaDailyReportCard).setConfig({type:'custom:luma-daily-report-card',...this.config!.report,presentation:'hero'});})}></luma-daily-report-card></div>`:nothing}
       </ha-card>
     `;
   }

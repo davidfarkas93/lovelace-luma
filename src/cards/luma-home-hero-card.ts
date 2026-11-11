@@ -16,6 +16,7 @@ import { lumaTokens } from "../styles";
 import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { attentionAckValue, attentionSummaries, attentionOverview } from "../attention";
 import "./luma-attention-card";
+import "../components/luma-weather-advice";
 import { ref } from "lit/directives/ref.js";
 import { AttentionSubscription, attentionPolicy, dismissAttentionNotification, policyRows } from "../attention-runtime";
 import type {
@@ -202,7 +203,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         font-size: 13px;
         line-height: 1.35;
       }
-      .weather-advice{grid-area:advice;margin:8px 0 0;max-width:65ch;color:var(--primary-text-color);font-size:var(--luma-text-sm);line-height:1.55;overflow-wrap:anywhere;font-weight:450}.weather-advice.unavailable{color:var(--luma-muted)}
+      luma-weather-advice{grid-area:advice;min-width:0}
       button {
         font: inherit;
       }
@@ -826,9 +827,6 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this.attentionSubscription.update(this.hass,this.config?.attention_policy);
-    clearTimeout(this.adviceExpiry);
-    const validUntil=this.hass?.states[this.config?.weather_advice_entity||'']?.attributes.valid_until;
-    if(typeof validUntil==='number'&&validUntil*1000>Date.now())this.adviceExpiry=window.setTimeout(()=>this.requestUpdate(),Math.min(2147483647,validUntil*1000-Date.now()+50));
     // Incident actions live inside the otherwise clickable weather hero.
     // Stop their click from reaching the hero after the child action runs.
     this.renderRoot
@@ -836,7 +834,6 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       ?.addEventListener("click", this.stopIncidentClick);
   }
 
-  private adviceExpiry?:number;
   private stopIncidentClick = (event: Event): void => event.stopPropagation();
   private attentionSubscription = new AttentionSubscription(()=>this.requestUpdate());
   private get acknowledgementsEntity() { return this.config?.acknowledgements_entity || attentionPolicy(this.config?.attention_policy)?.acknowledgements_entity; }
@@ -845,7 +842,6 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.attentionSubscription.disconnect();
-    clearTimeout(this.adviceExpiry);
     this.detachAlarmListeners();
   }
 
@@ -1300,13 +1296,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private clothingAdvice(){
-    const id=this.config?.weather_advice_entity;if(!id||!this.hass)return nothing;
-    const entity=this.hass.states[id],a=entity?.attributes||{},now=Date.now()/1000;
-    let day='';try{day=new Intl.DateTimeFormat('en-CA',{timeZone:this.hass.config?.time_zone||Intl.DateTimeFormat().resolvedOptions().timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replace(/\//g,'-');}catch{day='';}
-    const valid=!!entity&&!entity.attributes.restored&&!['unknown','unavailable',''].includes(entity.state)&&a.status==='ready'&&a.weather_entity===this.config?.weather_entity&&a.day===day&&typeof a.generated_at==='number'&&a.generated_at<=now+10&&typeof a.valid_until==='number'&&a.valid_until>now&&entity.state.length<=200;
-    return html`<p class=${`weather-advice${valid?'':' unavailable'}`}>${valid?entity.state:this.tWeatherAdvice()}</p>`;
+    return this.config?.weather_advice_entity?html`<luma-weather-advice .hass=${this.hass} .entityId=${this.config.weather_advice_entity} .weatherEntity=${this.config.weather_entity}></luma-weather-advice>`:nothing;
   }
-  private tWeatherAdvice(){return localized(this.hass,'A fresh clothing tip is not available yet.','Még nincs friss öltözködési tipp.');}
 
   render() {
     if (!this.hass || !this.config) return nothing;

@@ -1,5 +1,29 @@
 # Luma
 
+### Daily summaries inside the hero (0.57)
+
+`custom:luma-hero-card` accepts an optional `report` object using the existing
+report scope (`policy`, `energy_profile`, `heating_profile` or `nas_profile`),
+`title`, `due_time` and `household_path`. The saved narrative, period, completion
+or attempt time and data-quality qualifier appear as part of the hero, after a
+subtle divider. The Details entry opens the same shared report sheet as the
+standalone card; it never follows the hero's navigation or runs AI/device actions.
+The report has no separate background, border, card title icon or duplicated row.
+Failure, missing runs, private access restrictions, stale data and prior successful
+results retain the existing semantics and account/scope isolation. The hero's live
+accent and status remain independent of yesterday's report. Standalone cards remain
+supported; remove the old standalone instance when adopting an embedded report.
+
+```yaml
+type: custom:luma-hero-card
+name: Energy
+icon: mdi:lightning-bolt
+report:
+  energy_profile: home
+  title: Yesterday’s energy balance
+  due_time: '08:00'
+```
+
 ### Previous-day reports
 
 Luma 0.50 + Home Insights 0.4 provides `custom:luma-daily-report-card` with `policy`
@@ -892,15 +916,19 @@ The popup has a scrim, a draggable dismiss handle, and an edit-mode preview so
 it remains selectable in the Lovelace editor.
 
 The Home Hero accepts optional `weather_advice_entity`, a sensor containing a short
-forecast-based clothing suggestion. Home Insights 0.9 provides the native generator
-and sensor; configure its weather source to match `weather_entity`. The text appears
-as a plain paragraph immediately below the existing weather data. No separate card,
-report sheet, AI badge or dashboard-triggered model call is added. The sensor must
-publish `status: ready`, today's `day` in HA's timezone, `weather_entity`, numeric
-Unix-second `generated_at` and `valid_until`, and text of at most 200 characters.
-Old, unavailable, wrong-source or expired advice gets a brief unavailable message;
-a timer expires it even without a new HA state event. Existing Hero configurations
-keep their layout when the optional binding is absent.
+forecast-based clothing suggestion. Home Insights 0.10 also publishes a bounded,
+weather-only morning/afternoon/evening projection from today's remaining native
+hourly forecast. The tip stays a plain inline paragraph below the weather data;
+a small Details button opens the shared sheet with the tip and three readable
+period descriptions, temperatures, precipitation chance and explicitly forecast
+sunny hours. Missing, elapsed and partially sampled periods remain distinct.
+No timing is inferred from the daily minimum/maximum or filled from tomorrow.
+The renderer never claims observed weather or full-period coverage from sparse
+points. Opening details makes no API/AI/service calls. Source, local day, restored
+state and expiry are checked again in the browser; expired advice loses both its
+text and its detail action. The previous sensor-only format shows an explicit
+hourly-data empty state until refreshed. The generator uses the existing native
+AI Task without tools; entity mappings and scheduling remain runtime config.
 
 ## Home hero example
 

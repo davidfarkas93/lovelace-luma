@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle,ReportAttempt} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -62,7 +62,8 @@ const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;f
  const hass=createMockHass({});
  hass.callService=async()=>{throw Error('Report card must not call services');};
  hass.callWS=async command=>{if(command.type!=='home_insights/report')throw Error('Unexpected command');if(options.forbidden)throw {code:'unauthorized'};if(options.offline)throw Error('Offline');return structuredClone(data) as never;};
- return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...(options.nas?{nas_profile:'demo',title:'Tegnapi NAS-áttekintés'}:options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',household_path:'#household-context'})});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card></div>`;
+ const report={...(options.nas?{nas_profile:'demo',title:'Tegnapi NAS-áttekintés'}:options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',title:'Reggeli visszatekintés',household_path:'#household-context'})};
+ return html`<div style="width:1000px;max-width:calc(100vw - 48px)">${options.hero?html`<luma-hero-card .hass=${hass} ${ref(node=>{if(node)(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-hero-card',name:options.energy?'Energia':options.heating?'Fűtés és hűtés':options.nas?'Storage & Power':'Üzemeltetés',subtitle:'Élő állapot és vezérlők',icon:options.energy?'mdi:lightning-bolt':options.heating?'mdi:home-thermometer-outline':options.nas?'mdi:database':'mdi:wrench-cog',tap_action:{action:'navigate',navigation_path:'#overview'},report});})}></luma-hero-card>`:html`<luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...report});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card>`}</div>`;
 };
 const meta:Meta={title:'Cards/Daily report',render:()=>scenario(),parameters:{controls:{disable:true}}};
 export default meta;type Story=StoryObj;
@@ -101,3 +102,12 @@ export const NasFailed:Story={render:()=>scenario('failed',{nas:true})};
 export const RejectedAiResponse:Story={render:()=>scenario('failed',{rejected:true})};
 
 export const NasOvernight:Story={render:()=>scenario('no_anomaly_found',{nas:true,overnight:true})};
+
+export const HeroEnergy:Story={render:()=>scenario('attention_needed',{energy:true,hero:true})};
+export const HeroHeating:Story={render:()=>scenario('no_anomaly_found',{heating:true,warm:true,hero:true})};
+export const HeroNas:Story={render:()=>scenario('no_anomaly_found',{nas:true,overnight:true,hero:true})};
+export const HeroOperations:Story={render:()=>scenario('attention_needed',{hero:true})};
+export const HeroFailed:Story={render:()=>scenario('failed',{hero:true})};
+export const HeroMissed:Story={render:()=>scenario('missed',{hero:true})};
+export const HeroPartial:Story={render:()=>scenario('insufficient_data',{heating:true,hero:true})};
+export const HeroRestricted:Story={render:()=>scenario('failed',{hero:true,forbidden:true})};

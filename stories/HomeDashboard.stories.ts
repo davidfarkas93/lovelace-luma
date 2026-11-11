@@ -97,10 +97,12 @@ export const HiddenActivities:Story={render:()=>renderCard("custom:luma-home-her
 
 const adviceScenario=(mode='ready')=>{
  const now=Date.now()/1000,day=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- return renderCard('custom:luma-home-hero-card',{...config,weather_advice_entity:'sensor.clothing_tip',incidents:[],banners:[],appliances:[],irrigation_entity:undefined,irrigation_zone_entities:[],waste_items:[]},{'weather.home':{...entities['weather.home'],state:'cloudy',attributes:{...entities['weather.home'].attributes,temperature:11}},'sensor.clothing_tip':{state:mode==='failed'?'unavailable':'Ma rétegesen öltözz: egy könnyű felső fölé vigyél kabátot. Esőkabát is jól jöhet.',attributes:{status:mode==='failed'?'failed':'ready',weather_entity:mode==='wrong-source'?'weather.other':'weather.home',day:mode==='yesterday'?'2020-01-01':day,generated_at:now-30,valid_until:mode==='expired'?now-1:now+3600}}},1080);
+ return renderCard('custom:luma-home-hero-card',{...config,weather_advice_entity:'sensor.clothing_tip',incidents:[],banners:[],appliances:[],irrigation_entity:undefined,irrigation_zone_entities:[],waste_items:[]},{'weather.home':{...entities['weather.home'],state:'cloudy',attributes:{...entities['weather.home'].attributes,temperature:11}},'sensor.clothing_tip':{state:mode==='failed'?'unavailable':'Ma rétegesen öltözz: egy könnyű felső fölé vigyél kabátot. Esőkabát is jól jöhet.',attributes:{status:mode==='failed'?'failed':'ready',weather_entity:mode==='wrong-source'?'weather.other':'weather.home',day:mode==='yesterday'?'2020-01-01':day,periods:mode==='no-hourly'?undefined:[{key:'morning',status:'partial',samples:[{hour:10,temperature_c:8,wind_kmh:12,rain_probability_percent:70,condition:'rainy'},{hour:11,temperature_c:9,wind_kmh:10,rain_probability_percent:50,condition:'cloudy'}]},{key:'afternoon',status:'available',samples:[12,13,14,15,16,17].map(hour=>({hour,temperature_c:hour<16?12:11,wind_kmh:15,rain_probability_percent:10,condition:hour<14?'partlycloudy':'sunny'}))},{key:'evening',status:'missing',samples:[]}],generated_at:now-30,valid_until:mode==='expired'?now-1:now+3600}}},1080);
 };
 export const ClothingAdvice:Story={render:()=>adviceScenario()};
 export const ClothingAdviceExpired:Story={render:()=>adviceScenario('expired')};
 export const ClothingAdviceYesterday:Story={render:()=>adviceScenario('yesterday')};
 export const ClothingAdviceFailed:Story={render:()=>adviceScenario('failed')};
 export const ClothingAdviceWrongSource:Story={render:()=>adviceScenario('wrong-source')};
+
+export const ClothingAdviceNoHourly:Story={render:()=>adviceScenario('no-hourly')};
