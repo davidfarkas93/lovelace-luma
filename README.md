@@ -11,6 +11,8 @@ The card is a compact, tappable previous-day summary: report date, the first
 complete sentence of the saved narrative and its completion time. Measurements,
 coverage percentages and technical disclosures live in the shared bottom sheet.
 A visible data-quality qualifier accompanies partial/minor-gap observations;
+known backend partial-data disclaimers stay in the full report while the preview
+uses the daily finding alongside that explicit qualifier;
 failed, missed, waiting and unavailable states replace the current summary explicitly.
 An earlier successful result appears only in its separately dated disclosure.
 Opening the report never runs AI or controls a device.

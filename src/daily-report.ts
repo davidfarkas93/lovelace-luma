@@ -21,8 +21,15 @@ export interface ReportAttempt {id:string;day:string;started:number;finished:num
 export interface DailyReport {schema_version:1;policy_id:string;energy_profile?:string|null;heating_profile?:string|null;timezone:string;expected_day:string;generated_at:number;due_at:number;state:ReportState;attempt:ReportAttempt|null;last_success:ReportAttempt|null;last_attempt?:{day:string;started:number}|null}
 const states=new Set<ReportState>(['waiting','running','missed','stalled','failed','not_run','insufficient_data','attention_needed','no_anomaly_found']);
 /** Keep a complete sentence, including its qualifier; details retain the full narrative. */
-export function reportSummaryPreview(summary:string,language='en'):string{
- const text=summary.trim();
+export function reportSummaryPreview(summary:string,language='en',partialQualifierVisible=false):string{
+ let text=summary.trim();
+ // These are backend-owned disclaimers, shown separately as an explicit badge.
+ // Never drop an arbitrary first sentence or remove the only available message.
+ if(partialQualifierVisible){
+  for(const prefix of ['A fűtési visszajelzések megfigyelése hiányos volt.','A napi energiaadatok vagy az összehasonlítás hiányosak.','Az előző nap csak részben volt megfigyelve.']){
+   if(text.startsWith(prefix)&&text.slice(prefix.length).trim())text=text.slice(prefix.length).trim();
+  }
+ }
  if(typeof Intl.Segmenter!=='function')return text;
  return [...new Intl.Segmenter(language,{granularity:'sentence'}).segment(text)][0]?.segment.trim()||text;
 }

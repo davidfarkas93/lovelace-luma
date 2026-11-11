@@ -17,4 +17,7 @@ assert.equal(exports.validDailyReport({...data,policy_id:'heating:demo'},'energy
 assert.equal(exports.dailyReportView({...data,attempt:{...attempt,facts:{data_quality:'minor_gaps'}}},false,now).tone,'primary','brief gaps stay visible without a whole-day success or warning tint');
 assert.equal(exports.reportSummaryPreview('A termelés 4.63 kWh volt. A különbség oka nem ismert.','hu'),'A termelés 4.63 kWh volt.','a decimal point must not cut off a measured statement');
 assert.equal(exports.reportSummaryPreview('A megfigyelt égésekben nem látszott gyors újraindulás. Meleg előzmény is volt.','hu'),'A megfigyelt égésekben nem látszott gyors újraindulás.','the observed-scope qualifier remains in the preview');
+assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyelése hiányos volt. A megfigyelt égésekben nem volt gyors újraindulás.','hu',true),'A megfigyelt égésekben nem volt gyors újraindulás.','a separate partial-data qualifier leaves room for the actual daily finding');
+assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyelése hiányos volt. A megfigyelt égésekben nem volt gyors újraindulás.','hu'),'A fűtési visszajelzések megfigyelése hiányos volt.','the qualifier cannot disappear unless explicitly shown elsewhere');
+assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyelése hiányos volt.','hu',true),'A fűtési visszajelzések megfigyelése hiányos volt.');
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');

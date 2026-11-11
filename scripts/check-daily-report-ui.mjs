@@ -52,7 +52,7 @@ try{
   await open('energy-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
  }
  for(const width of [390,768,1280])for(const lang of ['hu','en']){
-  await page.setViewportSize({width,height:844});await open('heating-partial',lang);
+  await page.setViewportSize({width,height:844});await open('heating-partial',lang);assert.doesNotMatch(await card().locator('.preview-text').textContent(),/megfigyelése hiányos volt/);assert.match(await card().locator('.preview-text').textContent(),/újraindulási/);assert.match(await card().locator('.preview-quality').textContent(),lang==='hu'?/Hiányos adatok/:/Partial data/);
   assert.match(await card().locator('.status').textContent(),lang==='hu'?/Részleges megfigyelés/:/Partial observation/);
   assert.equal(await card().locator('.metric').count(),4);
   assert.match((await card().locator('.metric strong').allTextContents())[0],/≥6/);
