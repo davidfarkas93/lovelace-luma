@@ -21,6 +21,7 @@ export class LumaWeatherAdvice extends LitElement{
  @state() private open=false;
  @state() private mounted=false;
  private expiry?:number;
+ private restoreFocus=false;
  private binding='';
  private connection?:object;
  static styles=[lumaTokens,css`
@@ -31,8 +32,8 @@ export class LumaWeatherAdvice extends LitElement{
   button:hover{text-decoration:underline}button:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}button ha-icon{--mdc-icon-size:15px}
   .detail-summary{font-size:var(--luma-text-md);margin:0 0 18px}.period{padding:16px 0;border-top:1px solid var(--luma-border)}h3{margin:0 0 7px;font-size:var(--luma-text-md)}.period p{font-size:var(--luma-text-sm)}small{display:block;font-size:var(--luma-text-xs);line-height:1.6;color:var(--luma-muted);margin-top:6px}.forecast-note{margin-top:16px}
  `];
- disconnectedCallback(){clearTimeout(this.expiry);this.open=false;this.mounted=false;super.disconnectedCallback();}
- protected willUpdate(){const binding=JSON.stringify([this.entityId,this.weatherEntity]);const connection=this.hass?.connection||this.hass?.callWS||this.hass;if(binding!==this.binding||this.connection!==connection){this.open=false;this.mounted=false;this.binding=binding;this.connection=connection;}}
+ disconnectedCallback(){clearTimeout(this.expiry);this.open=false;this.mounted=false;this.restoreFocus=false;super.disconnectedCallback();}
+ protected willUpdate(){const binding=JSON.stringify([this.entityId,this.weatherEntity]);const connection=this.hass?.connection||this.hass?.callWS||this.hass;if(binding!==this.binding||this.connection!==connection){this.open=false;this.mounted=false;this.restoreFocus=false;this.binding=binding;this.connection=connection;}}
  protected updated(){clearTimeout(this.expiry);const until=this.hass?.states[this.entityId]?.attributes.valid_until;if(finite(until)&&until*1000>Date.now())this.expiry=window.setTimeout(()=>this.requestUpdate(),Math.min(2147483647,until*1000-Date.now()+50));if(!this.current()&&this.open){this.open=false;this.mounted=false;}}
  private t(en:string,hu:string){return localized(this.hass,en,hu);}
  private current(){
@@ -72,8 +73,8 @@ export class LumaWeatherAdvice extends LitElement{
  render(){
   const entity=this.current();const a=entity?.attributes;const periods=this.periods();
   const labels:{[key:string]:[string,string]}={morning:['Morning · 06–12','Délelőtt · 06–12'],afternoon:['Afternoon · 12–18','Délután · 12–18'],evening:['Evening · 18–24','Este · 18–24']};
-  return html`<p class=${`weather-advice${entity?'':' unavailable'}`}>${entity?entity.state:this.t('A fresh clothing tip is not available yet.','Még nincs friss öltözködési tipp.')}${entity?html`<button class="weather-details" aria-haspopup="dialog" aria-expanded=${String(this.open)} @click=${(e:Event)=>{e.stopPropagation();this.mounted=true;this.open=true;}} @keydown=${(e:Event)=>e.stopPropagation()}>${this.t('Details','Részletek')}<ha-icon icon="mdi:chevron-right"></ha-icon></button>`:nothing}</p>
-  <luma-bottom-sheet .open=${this.open} .heading=${this.t('Today’s weather & clothing','Mai időjárás és öltözködés')} .subtitle=${a?new Date(a.day+'T12:00:00Z').toLocaleDateString(this.hass?.locale?.language,{month:'long',day:'numeric',timeZone:this.hass?.config?.time_zone}):''} .icon=${'mdi:weather-partly-cloudy'} .closeLabel=${this.t('Close','Bezárás')} .maxWidth=${700} @click=${(e:Event)=>e.stopPropagation()} @keydown=${(e:Event)=>e.stopPropagation()} @sheet-dismiss=${()=>{this.open=false;}} @sheet-closed=${()=>{this.mounted=false;this.renderRoot.querySelector<HTMLButtonElement>('.weather-details')?.focus({preventScroll:true});}}>
+  return html`<p class=${`weather-advice${entity?'':' unavailable'}`}>${entity?entity.state:this.t('A fresh clothing tip is not available yet.','Még nincs friss öltözködési tipp.')}${entity?html`<button class="weather-details" aria-haspopup="dialog" aria-expanded=${String(this.open)} @click=${(e:Event)=>{e.stopPropagation();this.restoreFocus=true;this.mounted=true;this.open=true;}} @keydown=${(e:Event)=>e.stopPropagation()}>${this.t('Details','Részletek')}<ha-icon icon="mdi:chevron-right"></ha-icon></button>`:nothing}</p>
+  <luma-bottom-sheet .open=${this.open} .heading=${this.t('Today’s weather & clothing','Mai időjárás és öltözködés')} .subtitle=${a?new Date(a.day+'T12:00:00Z').toLocaleDateString(this.hass?.locale?.language,{month:'long',day:'numeric',timeZone:this.hass?.config?.time_zone}):''} .icon=${'mdi:weather-partly-cloudy'} .closeLabel=${this.t('Close','Bezárás')} .maxWidth=${700} @click=${(e:Event)=>e.stopPropagation()} @keydown=${(e:Event)=>e.stopPropagation()} @sheet-dismiss=${()=>{this.open=false;}} @sheet-closed=${()=>{const restore=this.restoreFocus;this.restoreFocus=false;this.mounted=false;if(restore&&!this.open)this.renderRoot.querySelector<HTMLButtonElement>('.weather-details')?.focus({preventScroll:true});}}>
   ${this.mounted&&entity?html`<div class="weather-report"><p class="detail-summary">${entity.state}</p>${periods.length===3?periods.map(p=>html`<section class="period"><h3>${this.t(...labels[p.key])}</h3><p>${this.description(p)}</p>${p.status==='partial'?html`<small>${this.t('Hourly data covers only part of the remaining period.','Az órás adatok a hátralévő napszaknak csak egy részét fedik le.')}</small>`:nothing}</section>`):html`<p class="muted">${this.t('An hourly breakdown is not available yet.','Napszakos bontás még nem érhető el.')}</p>`}<small class="forecast-note">${this.t('Hourly forecast for the remaining parts of today.','Órás előrejelzés a mai nap még hátralévő időszakaira.')}</small><small>${this.t('Updated','Frissítve')}: ${new Date(Number(a!.generated_at)*1000).toLocaleString(this.hass?.locale?.language,{timeZone:this.hass?.config?.time_zone})}</small></div>`:nothing}
   </luma-bottom-sheet>`;
  }

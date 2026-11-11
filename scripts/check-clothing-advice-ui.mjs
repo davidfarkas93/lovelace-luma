@@ -7,6 +7,7 @@ try{for(const width of [390,768,1280])for(const lang of ['hu','en']){
  await page.setViewportSize({width,height:844});await page.goto(`http://127.0.0.1:6006/iframe.html?id=patterns-main-dashboard-hero--clothing-advice&viewMode=story&globals=locale:${lang}`);
  const hero=page.locator('luma-home-hero-card');await hero.locator('.weather-advice').waitFor();
  assert.match(await hero.locator('.weather-advice').textContent(),/rétegesen/);
+ await page.waitForTimeout(350);assert.equal(await hero.locator('.weather-details').evaluate(n=>n.getRootNode().activeElement===n),false,'a closed sheet must not steal focus on page load');
  assert.equal(await hero.locator('luma-daily-report-card').count(),0,'advice stays a text line, not a separate report card');
  const weather=await hero.locator('.subtitle').first().boundingBox(),advice=await hero.locator('.weather-advice').boundingBox();assert.ok(advice.y>=weather.y+weather.height,'advice follows weather data');
  assert.ok(await hero.locator('.weather-advice').evaluate(n=>n.scrollWidth<=n.clientWidth+1));
