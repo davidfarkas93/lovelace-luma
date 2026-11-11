@@ -33,6 +33,7 @@ interface LumaHomeHeroConfig {
   type: string;
   name?: string;
   weather_entity: string;
+  weather_advice_entity?: string;
   alarm_entity?: string;
   alarm_action?: LumaAction;
   alarm_popover?: boolean;
@@ -168,7 +169,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       .top {
         display: grid;
         grid-template-columns: 58px minmax(0, 1fr) minmax(280px, 420px);
-        grid-template-areas: "icon title status" "icon subtitle status";
+        grid-template-areas: "icon title status" "icon subtitle status" "icon advice status";
         align-items: center;
         gap: 0 17px;
       }
@@ -201,6 +202,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         font-size: 13px;
         line-height: 1.35;
       }
+      .weather-advice{grid-area:advice;margin:8px 0 0;max-width:65ch;color:var(--primary-text-color);font-size:var(--luma-text-sm);line-height:1.55;overflow-wrap:anywhere;font-weight:450}.weather-advice.unavailable{color:var(--luma-muted)}
       button {
         font: inherit;
       }
@@ -716,7 +718,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       @media (max-width: 900px) {
         .top {
           grid-template-columns: 58px minmax(0, 1fr);
-          grid-template-areas: "icon title" "icon subtitle" "status status";
+          grid-template-areas: "icon title" "icon subtitle" "advice advice" "status status";
           gap: 0 14px;
         }
         .status {
@@ -730,7 +732,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         }
         .top {
           grid-template-columns: 46px minmax(0, 1fr);
-          grid-template-areas: "icon title" "icon subtitle" "status status";
+          grid-template-areas: "icon title" "icon subtitle" "advice advice" "status status";
           gap: 0 12px;
         }
         .weather-icon {
@@ -824,6 +826,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this.attentionSubscription.update(this.hass,this.config?.attention_policy);
+    clearTimeout(this.adviceExpiry);
+    const validUntil=this.hass?.states[this.config?.weather_advice_entity||'']?.attributes.valid_until;
+    if(typeof validUntil==='number'&&validUntil*1000>Date.now())this.adviceExpiry=window.setTimeout(()=>this.requestUpdate(),Math.min(2147483647,validUntil*1000-Date.now()+50));
     // Incident actions live inside the otherwise clickable weather hero.
     // Stop their click from reaching the hero after the child action runs.
     this.renderRoot
@@ -831,6 +836,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       ?.addEventListener("click", this.stopIncidentClick);
   }
 
+  private adviceExpiry?:number;
   private stopIncidentClick = (event: Event): void => event.stopPropagation();
   private attentionSubscription = new AttentionSubscription(()=>this.requestUpdate());
   private get acknowledgementsEntity() { return this.config?.acknowledgements_entity || attentionPolicy(this.config?.attention_policy)?.acknowledgements_entity; }
@@ -839,6 +845,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.attentionSubscription.disconnect();
+    clearTimeout(this.adviceExpiry);
     this.detachAlarmListeners();
   }
 
@@ -918,6 +925,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     if (!this.hass || !this.config) return [];
     const fixed = [
       this.config.weather_entity,
+      this.config.weather_advice_entity,
       this.config.alarm_entity,
       this.config.notifications_entity,
       this.acknowledgementsEntity,
@@ -1291,6 +1299,15 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     </div>`;
   }
 
+  private clothingAdvice(){
+    const id=this.config?.weather_advice_entity;if(!id||!this.hass)return nothing;
+    const entity=this.hass.states[id],a=entity?.attributes||{},now=Date.now()/1000;
+    let day='';try{day=new Intl.DateTimeFormat('en-CA',{timeZone:this.hass.config?.time_zone||Intl.DateTimeFormat().resolvedOptions().timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replace(/\//g,'-');}catch{day='';}
+    const valid=!!entity&&!entity.attributes.restored&&!['unknown','unavailable',''].includes(entity.state)&&a.status==='ready'&&a.weather_entity===this.config?.weather_entity&&a.day===day&&typeof a.generated_at==='number'&&a.generated_at<=now+10&&typeof a.valid_until==='number'&&a.valid_until>now&&entity.state.length<=200;
+    return html`<p class=${`weather-advice${valid?'':' unavailable'}`}>${valid?entity.state:this.tWeatherAdvice()}</p>`;
+  }
+  private tWeatherAdvice(){return localized(this.hass,'A fresh clothing tip is not available yet.','Még nincs friss öltözködési tipp.');}
+
   render() {
     if (!this.hass || !this.config) return nothing;
     const weather = this.hass.states[this.config.weather_entity],
@@ -1469,6 +1486,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
             </div>
             <h2>${this.greeting()}</h2>
             <div class="subtitle">${subtitle}</div>
+            ${this.clothingAdvice()}
             <div class="status">
               <button
                 class="active interactive"

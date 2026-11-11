@@ -891,6 +891,17 @@ cards:
 The popup has a scrim, a draggable dismiss handle, and an edit-mode preview so
 it remains selectable in the Lovelace editor.
 
+The Home Hero accepts optional `weather_advice_entity`, a sensor containing a short
+forecast-based clothing suggestion. Home Insights 0.9 provides the native generator
+and sensor; configure its weather source to match `weather_entity`. The text appears
+as a plain paragraph immediately below the existing weather data. No separate card,
+report sheet, AI badge or dashboard-triggered model call is added. The sensor must
+publish `status: ready`, today's `day` in HA's timezone, `weather_entity`, numeric
+Unix-second `generated_at` and `valid_until`, and text of at most 200 characters.
+Old, unavailable, wrong-source or expired advice gets a brief unavailable message;
+a timer expires it even without a new HA state event. Existing Hero configurations
+keep their layout when the optional binding is absent.
+
 ## Home hero example
 
 ```yaml

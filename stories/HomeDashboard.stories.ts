@@ -93,3 +93,14 @@ const busyEntities = {
 export const ManyActivities:Story={render:()=>renderCard("custom:luma-home-hero-card",busyConfig,busyEntities,1080)};
 export const AlwaysExpanded:Story={render:()=>renderCard("custom:luma-home-hero-card",{...busyConfig,banner_collapse_threshold:0},busyEntities,1080)};
 export const HiddenActivities:Story={render:()=>renderCard("custom:luma-home-hero-card",{...busyConfig,irrigation_entity:undefined,irrigation_zone_entities:[],waste_items:[]},{...busyEntities,"binary_sensor.washer_running":{state:"off"},"lawn_mower.garden":{state:"unavailable"},"sensor.charger_status":{state:"unknown"}},1080)};
+
+
+const adviceScenario=(mode='ready')=>{
+ const now=Date.now()/1000,day=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ return renderCard('custom:luma-home-hero-card',{...config,weather_advice_entity:'sensor.clothing_tip',incidents:[],banners:[],appliances:[],irrigation_entity:undefined,irrigation_zone_entities:[],waste_items:[]},{'weather.home':{...entities['weather.home'],state:'cloudy',attributes:{...entities['weather.home'].attributes,temperature:11}},'sensor.clothing_tip':{state:mode==='failed'?'unavailable':'Ma rétegesen öltözz: egy könnyű felső fölé vigyél kabátot. Esőkabát is jól jöhet.',attributes:{status:mode==='failed'?'failed':'ready',weather_entity:mode==='wrong-source'?'weather.other':'weather.home',day:mode==='yesterday'?'2020-01-01':day,generated_at:now-30,valid_until:mode==='expired'?now-1:now+3600}}},1080);
+};
+export const ClothingAdvice:Story={render:()=>adviceScenario()};
+export const ClothingAdviceExpired:Story={render:()=>adviceScenario('expired')};
+export const ClothingAdviceYesterday:Story={render:()=>adviceScenario('yesterday')};
+export const ClothingAdviceFailed:Story={render:()=>adviceScenario('failed')};
+export const ClothingAdviceWrongSource:Story={render:()=>adviceScenario('wrong-source')};
