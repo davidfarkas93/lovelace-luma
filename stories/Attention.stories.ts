@@ -111,7 +111,7 @@ export const RepairsFailed:Story={render:()=>reviewScenario({repairs:"error"})};
 
 import { attentionSnapshot, type AttentionEntry } from "../src/attention";
 import { refreshAttentionBackend } from "../src/attention-runtime";
-const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolean;readonly?:boolean;lostResponse?:boolean;snoozedOnly?:boolean})=>{
+const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolean;readonly?:boolean;lostResponse?:boolean;snoozedOnly?:boolean;readHistory?:boolean})=>{
  const backendPolicy=window.lumaAttentionPolicies!["demo-review"];
  window.lumaAttentionPolicies!["demo-backend"]={version:1,revision:"Backend binding",rules:[],backend:{policy_id:"demo"},acknowledgements_entity:"input_text.ack"};
  const hass=createMockHass({...reviewEntities,...(handling?.snoozedOnly?{"alarm_control_panel.demo":{state:"disarmed"},"light.demo":{state:"on"}}:{})});
@@ -151,6 +151,7 @@ const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolea
    const rows=attentionSnapshot(hass,backendPolicy,external,Date.now()).filter(row=>(!cleared||row.kind!=='update')&&(!handling?.snoozedOnly||row.source==='update.weather')).map(row=>{
     if(!handling||!['active','installing','event'].includes(row.status))return row;
     const episode=`episode:${row.id}`,state=metadata[episode]||(handling?.snoozedOnly?{revision:1,snooze_override:true,snoozed_until:Date.now()/1000+86400}:{revision:0,snooze_override:false});metadata[episode]=state;
+    if(handling?.readHistory&&!state.seen_at){state.seen_at=Date.now()/1000-120;state.seen_by='Household member';state.revision=1;history[episode]=[{seq:1,observed:state.seen_at,type:'attention_handling_recorded',operation:'seen',actor_name:'Household member'}];}
     return {...row,episodeId:episode,canHandle:!handling.readonly,handling:state};
    });
    return {schema_version:1,policy_id:'demo',policy_hash:'storybook',policy_revision:backendPolicy.revision,generated_at:Date.now(),policy:backendPolicy,rows} as never;
@@ -168,3 +169,5 @@ export const HandlingReadonly:Story={render:()=>backendScenario(false,{readonly:
 export const HandlingLostResponse:Story={render:()=>backendScenario(false,{lostResponse:true})};
 
 export const SnoozedOnly:Story={render:()=>backendScenario(false,{snoozedOnly:true})};
+
+export const HandlingReadHistory:Story={render:()=>backendScenario(false,{readHistory:true})};

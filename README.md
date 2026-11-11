@@ -83,7 +83,7 @@ loading, errors and expired observations are visible. Private cache data is rese
 between HA connections and locales. Standalone browser policies remain supported.
 
 Luma **0.49 + Home Insights 0.3** adds durable handling inside the existing detail
-surface: mark as read, report a user-performed fix, add a plain-text note and read
+surface: report a user-performed fix, add a plain-text note and read
 paged episode history. Source observations remain authoritative; these metadata
 operations never close a fault or install an update. Group handling is atomic,
 revision-checked and audited per member. Lost responses retry the same request ID.
@@ -94,8 +94,10 @@ Backend episode snoozes replace the short legacy helper for these clients. A new
 episode gets fresh handling state; critical/non-dismissible rows cannot be snoozed.
 Snoozed alerts are hidden from the main hero and default active list, and remain
 accessible through the explicit Snoozed filter. Backend unsnooze overrides obsolete
-legacy helper state. Mark as read shows review time/actor and does not hide or resolve
-the alert; use Snooze to hide it. Desktop attention chips share sibling chip sizing.
+legacy helper state. The available handling actions are fix claims and notes; use
+Snooze to temporarily hide eligible alerts. Mark as read and its separate status
+have been removed; existing read receipts remain in episode history. No implicit
+read receipt is written when opening an item. Desktop attention chips share sibling chip sizing.
 Standalone policies retain their existing helper behavior. Refresh all open clients
 after upgrading: pre-0.49 clients do not understand backend-owned snooze metadata.
 Notes are not automatic exceptions; approved conditional household knowledge stays

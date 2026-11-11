@@ -55,7 +55,7 @@ export class LumaAttentionHandling extends LitElement {
   try{
    await recordAttentionHandling(this.hass,this.policy,this.entries,operation,{...(this.note.trim()?{note:this.note.trim()}:{})});
    if(epoch!==this.generation)return;
-   this.confirming=false;this.editing=false;this.note='';this.message=operation==='seen'?this.t('Marked as read. Use Snooze if you want to hide this alert until later.','Elolvasottnak jelölve. Ha későbbre el szeretnéd rejteni, használd a szüneteltetést.'):this.t('Recorded. The source condition is unchanged.','Rögzítve. A forrás állapotát ez nem módosítja.');
+   this.confirming=false;this.editing=false;this.note='';this.message=this.t('Recorded. The source condition is unchanged.','Rögzítve. A forrás állapotát ez nem módosítja.');
    for(const row of this.entries)if(this.histories.has(row.episodeId!))void this.load(row);
   }catch{
    if(epoch!==this.generation)return;
@@ -70,12 +70,12 @@ export class LumaAttentionHandling extends LitElement {
  }
  render(){
   const entries=this.entries.filter(r=>r.episodeId);if(!entries.length)return nothing;
-  const writable=entries.every(r=>r.canHandle),allSeen=entries.every(r=>r.handling?.seen_at),allFixed=entries.every(r=>r.handling?.claimed_fixed_at);
+  const writable=entries.every(r=>r.canHandle),allFixed=entries.every(r=>r.handling?.claimed_fixed_at);
   return html`<h3>${this.t('Handling & history','Kezelés és előzmények')}</h3>
    ${entries.length>1?html`<p class="muted">${this.t(`Group handling: all ${entries.length} components.`,`Csoportos kezelés: mind a ${entries.length} összetevő.`)}</p>`:nothing}
-   <p class="muted">${this.t('Mark as read records that you reviewed this item. Snooze hides it; recovery is reported by the source.','Az elolvasás jelölése rögzíti, hogy átnézted a jelzést. A szüneteltetés rejti el; a rendeződést a forrás jelzi.')}</p>${allSeen?html`<p class="seen-state muted">${this.t('Read','Elolvasva')} · ${this.date(Math.max(...entries.map(r=>r.handling?.seen_at||0)))}${entries.length===1&&entries[0].handling?.seen_by?` · ${entries[0].handling.seen_by}`:''}</p>`:nothing}
+
    ${allFixed?html`<p class="muted">${this.t('A fix was reported. Actual recovery is determined by the source.','Javítás jelezve. A tényleges rendeződést a forrás állapota igazolja.')}</p>`:nothing}
-   ${writable?html`<div class="actions"><button data-handling="seen" ?disabled=${this.busy||!!allSeen} @click=${()=>this.record('seen')}>${allSeen?this.t('Read','Elolvasva'):this.t('Mark as read','Elolvasottnak jelölöm')}</button><button data-handling="claimed_fixed" ?disabled=${this.busy||!!allFixed} @click=${()=>{this.confirming=true;this.editing=false;this.error='';}}>${this.t('I fixed it','Megoldottam')}</button><button data-handling="note" ?disabled=${this.busy} @click=${()=>{this.editing=true;this.confirming=false;this.error='';}}>${this.t('Add note','Megjegyzés')}</button></div>`:nothing}
+   ${writable?html`<div class="actions"><button data-handling="claimed_fixed" ?disabled=${this.busy||!!allFixed} @click=${()=>{this.confirming=true;this.editing=false;this.error='';}}>${this.t('I fixed it','Megoldottam')}</button><button data-handling="note" ?disabled=${this.busy} @click=${()=>{this.editing=true;this.confirming=false;this.error='';}}>${this.t('Add note','Megjegyzés')}</button></div>`:nothing}
    ${this.confirming||this.editing?html`<section class="review" role="group" aria-label=${this.t('Record handling','Kezelés rögzítése')}>
     ${this.confirming?html`<p>${this.t('Record that you performed a fix? This does not close the episode. An active source alert remains visible.','Rögzítjük, hogy javítást végeztél? Ez nem zárja le az epizódot. Az aktív forrásjelzés látható marad.')}</p>`:nothing}
     <label>${this.t('Note','Megjegyzés')}${this.confirming?this.t(' (optional)',' (opcionális)'):''}<textarea maxlength="1000" .value=${this.note} @input=${(e:Event)=>this.note=(e.target as HTMLTextAreaElement).value}></textarea></label>
