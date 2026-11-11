@@ -17,6 +17,7 @@ try{
   assert.equal(await handling().locator('details.history').count(),2,'one readable history per group member');
   await handling().locator('[data-handling="seen"]').click();
   await handling().locator('[data-handling="seen"]:disabled').waitFor();
+  assert.match(await handling().locator('.seen-state').textContent(),lang==='hu'?/Elolvasva/:/Read/);
   assert.equal((await calls()).length,1);assert.equal((await calls())[0].targets.length,2);
   await handling().locator('[data-handling="claimed_fixed"]').click();assert.equal((await calls()).length,1,'review does not record a fix');
   await handling().locator('textarea').fill('Checked the connection.');

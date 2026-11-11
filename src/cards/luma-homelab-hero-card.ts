@@ -31,7 +31,7 @@ export class LumaHomelabHeroCard extends LitElement implements LovelaceCard {
       const rows=policyRows(this.config.attention_policy,this.hass!).filter(x=>(!this.config?.attention_scope||x.scope===this.config.attention_scope||x.scope==="system")&&x.kind!=="update");
       const overview=attentionOverview(rows,this.hass!);
       if(overview.loading)return {total:overview.issues,tone:"var(--secondary-text-color)",subtitle:overview.text,badge:localized(this.hass,"CHECKING","ELLENŐRZÉS")};
-      const active=attentionSummaries(rows,undefined,true),missing=new Set(rows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
+      const active=attentionSummaries(rows),missing=new Set(rows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
       return {total:active.length,tone:active.some(x=>x.tone==="error")?"var(--error-color)":active.length||missing?"var(--warning-color)":"var(--success-color)",subtitle:active.length?localized(this.hass,`${active.length} incidents · ${missing} unavailable sources`,`${active.length} incidens · ${missing} nem elérhető forrás`):missing?localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`):localized(this.hass,"All monitored sources are clear","A felügyelt források rendben"),badge:!active.length&&missing?localized(this.hass,"DATA UNAVAILABLE","ADATHIÁNY"):undefined};
     }
     const rules=this.config?.status_rules||[],groups=new Map<string,number>();

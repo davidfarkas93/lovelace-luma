@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -37,12 +37,24 @@ const scenario=(state:ReportState='attention_needed',options:{offline?:boolean;f
   if(options.warm){facts.assessment='no_anomaly_found';facts.data_quality='minor_gaps';facts.coverage_percent=99.878;facts.coverage_seconds=86294.71;facts.unobserved_seconds=105.29;facts.observation_gaps={count:2,longest_seconds:60,intervals:[{start:'2026-11-09T21:50:00Z',end:'2026-11-09T21:51:00Z',seconds:60},{start:'2026-11-09T22:39:00Z',end:'2026-11-09T22:39:45.290Z',seconds:45.29}],truncated:false};facts.burner.counts_are_lower_bounds=true;data.state='no_anomaly_found';completed.narrative={summary:'Voltak rövid fűtési égések, de a megfigyelt égések között nem alakult ki gyors újraindulási sorozat. A rövid égések egy része már meleg rendszerben történt; ez összeegyeztethető a nálad megszokott hőntartással, önmagában nem hibajel.',hypothesis:'',suggested_check:'',evidence_refs:['heating_burns','warm_operation']};}
   data.policy_id='heating:demo';data.heating_profile='demo';
  }
+ if(options.nas){
+  const partial=state==='insufficient_data',empty=state==='not_run',finding=state==='attention_needed';
+  facts.scope='nas_health';facts.counts={};facts.profile={minimum_hot_seconds:600};facts.coverage_seconds=empty?0:partial?82800:86400;facts.coverage_percent=100*facts.coverage_seconds/86400;facts.unobserved_seconds=86400-facts.coverage_seconds;facts.counts_are_lower_bounds=partial||empty;
+  const signal=(source:string,active:number,known=empty?0:86400)=>({source,known_seconds:known,active_seconds:active,inactive_seconds:known-active,observed_starts:active?1:0});
+  facts.signals={array_running:signal('binary_sensor.array',empty?0:86400),parity_problem:signal('binary_sensor.parity_problem',finding?1200:0),parity_running:signal('binary_sensor.parity_running',empty?0:3600),ups_status:signal('sensor.ups_status',finding?180:0,partial?0:empty?0:86400)};
+  facts.disks=[{id:'disk1',name:'Disk one',source:'sensor.disk_temperature',health_source:'binary_sensor.disk_health',warn_celsius:50,maximum_celsius:empty?null:38,maximum_recorded_at:empty?null:'2026-11-09T12:00:00Z',known_seconds:empty?0:86400,standby_seconds:0,health_known_seconds:empty?0:86400,health_problem_seconds:0,hot_seconds:0,longest_hot_seconds:0,sustained_hot:false}];
+  facts.ups_warning_flags=finding?['LB']:[];facts.parity_max_reported_errors=empty?null:finding?3:0;
+  facts.ai_evidence=[{ref:'storage_observed',name:'Tároló-visszajelzések',source:'binary_sensor.parity_problem',category:'nas'}];
+  completed.narrative={summary:empty?'Erre a napra nincs megfigyelt rendszeradat; a nap állapota nem értékelhető.':(partial?'A NAS megfigyelése hiányos volt. ':'')+(finding?'A tároló vagy a parity hibajelzője aktív volt a megfigyelt időszakban; ezt érdemes ellenőrizni.':'A NAS vizsgált állapotai a megfigyelt szakaszokban nem mutattak ellenőrzési küszöböt elérő eltérést.'),hypothesis:'',suggested_check:'',evidence_refs:['storage_observed']};
+  data.policy_id='nas:demo';data.nas_profile='demo';
+ }
+ if(options.rejected&&data.attempt){data.attempt.error='invalid_ai_output';data.attempt.diagnostics={schema_version:1,stage:'ai_output_validation',reason:'unknown_evidence',detail:'Unknown evidence reference',candidate_json:JSON.stringify({summary:'<b>Elutasított szöveg</b>',evidence_ids:'invented_reference'}),candidate_truncated:false,allowed_evidence_refs:['episode_1']};}
  if(options.long)completed.narrative.summary='A korábbi napokról áthúzódó jelzés a megfigyelt időszakban továbbra is fennmaradt, de a rendelkezésre álló forrásokból a kiváltó okot és a háztartás működésére gyakorolt tényleges következményét nem lehet biztosan megállapítani. A részletekben minden rögzített megfigyelés külön visszanézhető.';
  window.lumaAttentionPolicies={...window.lumaAttentionPolicies,report_demo:{version:1,revision:'demo',rules:[],backend:{policy_id:'demo'}}};
  const hass=createMockHass({});
  hass.callService=async()=>{throw Error('Report card must not call services');};
  hass.callWS=async command=>{if(command.type!=='home_insights/report')throw Error('Unexpected command');if(options.forbidden)throw {code:'unauthorized'};if(options.offline)throw Error('Offline');return structuredClone(data) as never;};
- return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...(options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',household_path:'#household-context'})});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card></div>`;
+ return html`<div style="width:1000px;max-width:calc(100vw - 48px)"><luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...(options.nas?{nas_profile:'demo',title:'Tegnapi NAS-áttekintés'}:options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',household_path:'#household-context'})});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card></div>`;
 };
 const meta:Meta={title:'Cards/Daily report',render:()=>scenario(),parameters:{controls:{disable:true}}};
 export default meta;type Story=StoryObj;
@@ -72,3 +84,10 @@ export const HeatingWarm:Story={render:()=>scenario('attention_needed',{heating:
 
 export const HeatingDetails:Story={render:()=>scenario('attention_needed',{heating:true,warm:true,detailsOpen:true})};
 export const LongSummary:Story={render:()=>scenario('attention_needed',{long:true})};
+
+export const Nas:Story={render:()=>scenario('no_anomaly_found',{nas:true})};
+export const NasFindings:Story={render:()=>scenario('attention_needed',{nas:true})};
+export const NasPartial:Story={render:()=>scenario('insufficient_data',{nas:true})};
+export const NasEmpty:Story={render:()=>scenario('not_run',{nas:true})};
+export const NasFailed:Story={render:()=>scenario('failed',{nas:true})};
+export const RejectedAiResponse:Story={render:()=>scenario('failed',{rejected:true})};

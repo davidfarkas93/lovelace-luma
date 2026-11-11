@@ -33,7 +33,7 @@ export interface AttentionPolicy {
 export interface AttentionEntry {
   episodeId?: string;
   canHandle?: boolean;
-  handling?: {revision:number;seen_at?:number;claimed_fixed_at?:number;snooze_override:boolean;snoozed_until?:number|null};
+  handling?: {revision:number;seen_at?:number;seen_by?:string;claimed_fixed_at?:number;snooze_override:boolean;snoozed_until?:number|null};
   id: string;
   key: string;
   rule: string;
@@ -377,6 +377,6 @@ export function attentionOverview(rows:AttentionEntry[], hass:HomeAssistant) {
   const missing=new Set(rows.filter(row=>row.status==="unavailable").map(row=>row.source)).size;
   const loading=rows.some(row=>row.status==="loading");
   const snoozed=new Set(rows.filter(row=>row.snoozedUntil).map(row=>row.key)).size;
-  const parts=[issues.length ? localized(hass,`${issues.length} ${issues.length===1?"issue":"issues"}`,`${issues.length} ügy`) : "",updates ? localized(hass,`${updates} ${updates===1?"updatable component":"updatable components"}`,`${updates} frissíthető összetevő`) : "",missing ? localized(hass,`${missing} ${missing===1?"data gap":"data gaps"}`,`${missing} adatkimaradás`) : "", loading ? localized(hass,"Checking sources…","Adatforrások ellenőrzése…") : "",snoozed ? localized(hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`) : ""].filter(Boolean);
+  const parts=[issues.length ? localized(hass,`${issues.length} ${issues.length===1?"issue":"issues"}`,`${issues.length} ügy`) : "",updates ? localized(hass,`${updates} ${updates===1?"updatable component":"updatable components"}`,`${updates} frissíthető összetevő`) : "",missing ? localized(hass,`${missing} ${missing===1?"data gap":"data gaps"}`,`${missing} adatkimaradás`) : "", loading ? localized(hass,"Checking sources…","Adatforrások ellenőrzése…") : ""].filter(Boolean);
   return {issues:issues.length,updates,missing,loading,snoozed,critical:issues.some(row=>row.tone==="error"),text:parts.join(" · ") || localized(hass,"No active issues","Nincs aktív ügy")};
 }

@@ -69,6 +69,28 @@ try{
   await open('heating-empty',lang);assert.ok((await card().locator('.metric strong').allTextContents()).every(s=>s.trim()==='—'));
   await open('heating-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
  }
+ for(const width of [390,768,1280])for(const lang of ['hu','en']){
+  await page.setViewportSize({width,height:844});await open('nas',lang);
+  assert.equal(await card().locator('.metric').count(),4);
+  assert.match(await card().locator('.summary').textContent(),/NAS/);
+  await card().locator('.coverage summary').click();
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/futó ellenőrzés nem hiba/:/running check is not a fault/);
+  assert.match(await card().locator('.coverage').textContent(),/38/);
+  assert.match(await card().locator('.coverage').textContent(),lang==='hu'?/nem az új napi hibák/:/not a count of new daily errors/);
+  await page.screenshot({path:`${output}/nas-${lang}-${width}.png`,animations:'disabled',fullPage:true});
+  await page.keyboard.press('Escape');await card().locator('luma-bottom-sheet').locator('dialog').waitFor({state:'hidden'});
+  await page.screenshot({path:`${output}/nas-compact-${lang}-${width}.png`,animations:'disabled',fullPage:true});
+  await open('nas-findings',lang);assert.match(await card().locator('.summary').textContent(),/hibajelzője/);
+  await open('nas-partial',lang);assert.equal((await card().locator('.metric strong').allTextContents())[3].trim(),'—','missing UPS observations cannot be zero battery events');
+  assert.match(await card().locator('.preview-quality').textContent(),lang==='hu'?/Hiányos/:/Partial/);
+  await open('nas-empty',lang);assert.ok((await card().locator('.metric strong').allTextContents()).every(v=>v.trim()==='—'));
+  await open('nas-failed',lang);assert.equal(await card().locator('.summary:visible').count(),0);
+  await open('rejected-ai-response',lang);await card().locator('.ai-diagnostics summary').click();
+  assert.match(await card().locator('.ai-diagnostics').textContent(),/unknown_evidence/);
+  assert.match(await card().locator('.ai-diagnostics pre').textContent(),/<b>Elutasított/);
+  assert.equal(await card().locator('.ai-diagnostics pre b').count(),0,'rejected AI output is escaped text');
+  assert.equal(await card().locator('.summary:visible').count(),0,'a rejected response is never a published summary');
+ }
  await open('long-summary');assert.match(await card().locator('.summary').textContent(),/minden rögzített megfigyelés/);await page.keyboard.press('Escape');await card().locator('luma-bottom-sheet').locator('dialog').waitFor({state:'hidden'});assert.ok(await card().locator('ha-card').evaluate(c=>c.getBoundingClientRect().height<230));
  await page.emulateMedia({reducedMotion:'no-preference'});await open('heating-warm');await page.waitForTimeout(380);const animatedSheet=card().locator('luma-bottom-sheet');const beforeClose=await animatedSheet.locator('.sheet').boundingBox();await animatedSheet.locator('.close').click();await page.waitForTimeout(90);const duringClose=await animatedSheet.locator('.sheet').boundingBox();assert.ok(Math.abs(beforeClose.height-duringClose.height)<2,'sheet content keeps its height during the exit animation');await animatedSheet.locator('dialog').waitFor({state:'hidden'});assert.equal(await card().locator('.report-details').count(),0);await page.emulateMedia({reducedMotion:'reduce'});
  await open();await card().evaluate(c=>{c.hass={...c.hass,connection:{},callWS:async()=>{throw Error('New account offline');}};});

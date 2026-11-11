@@ -111,10 +111,10 @@ export const RepairsFailed:Story={render:()=>reviewScenario({repairs:"error"})};
 
 import { attentionSnapshot, type AttentionEntry } from "../src/attention";
 import { refreshAttentionBackend } from "../src/attention-runtime";
-const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolean;readonly?:boolean;lostResponse?:boolean})=>{
+const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolean;readonly?:boolean;lostResponse?:boolean;snoozedOnly?:boolean})=>{
  const backendPolicy=window.lumaAttentionPolicies!["demo-review"];
  window.lumaAttentionPolicies!["demo-backend"]={version:1,revision:"Backend binding",rules:[],backend:{policy_id:"demo"},acknowledgements_entity:"input_text.ack"};
- const hass=createMockHass(reviewEntities);
+ const hass=createMockHass({...reviewEntities,...(handling?.snoozedOnly?{"alarm_control_panel.demo":{state:"disarmed"},"light.demo":{state:"on"}}:{})});
  const original=hass.callWS!;
  const metadata:Record<string,NonNullable<AttentionEntry['handling']>>={},history:Record<string,Array<Record<string,unknown>>>={};
  const calls:unknown[]=[],committed=new Set<string>();let sequence=1,lost=false,cleared=false;
@@ -131,7 +131,7 @@ const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolea
      const state=metadata[target.episode_id]||{revision:0,snooze_override:false};
      if(state.revision!==target.expected_revision)throw Error('Revision changed');
      const updated={...state,revision:state.revision+1};
-     if(request.operation==='seen')updated.seen_at=Date.now()/1000;
+     if(request.operation==='seen'){updated.seen_at=Date.now()/1000;updated.seen_by='Household member';}
      if(request.operation==='claimed_fixed')updated.claimed_fixed_at=Date.now()/1000;
      if(['snooze','unsnooze'].includes(request.operation)){updated.snooze_override=true;updated.snoozed_until=request.until||null;}
      metadata[target.episode_id]=updated;
@@ -148,16 +148,16 @@ const backendScenario=(failed=false,handling?:{failure?:boolean;conflict?:boolea
   if(command.type==='home_insights/attention'){
    if(failed)throw Error('Observer unavailable');
    const external={registry:hass.entities||{},notifications:[{notification_id:'plants-due',title:'Indoor plants',message:'Watering is due'}],readiness:{registry:'ready' as const,notifications:'ready' as const,repairs:'ready' as const,integrations:'ready' as const},repairs:{issues:[]},integrations:[]};
-   const rows=attentionSnapshot(hass,backendPolicy,external,Date.now()).filter(row=>!cleared||row.kind!=='update').map(row=>{
+   const rows=attentionSnapshot(hass,backendPolicy,external,Date.now()).filter(row=>(!cleared||row.kind!=='update')&&(!handling?.snoozedOnly||row.source==='update.weather')).map(row=>{
     if(!handling||!['active','installing','event'].includes(row.status))return row;
-    const episode=`episode:${row.id}`,state=metadata[episode]||{revision:0,snooze_override:false};
+    const episode=`episode:${row.id}`,state=metadata[episode]||(handling?.snoozedOnly?{revision:1,snooze_override:true,snoozed_until:Date.now()/1000+86400}:{revision:0,snooze_override:false});metadata[episode]=state;
     return {...row,episodeId:episode,canHandle:!handling.readonly,handling:state};
    });
    return {schema_version:1,policy_id:'demo',policy_hash:'storybook',policy_revision:backendPolicy.revision,generated_at:Date.now(),policy:backendPolicy,rows} as never;
   }
   return original(command);
  };
- return html`<div style="width:1050px;max-width:calc(100vw - 48px)"><luma-home-hero-card .hass=${hass} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card)card.setConfig({type:'custom:luma-home-hero-card',weather_entity:'weather.demo',attention_policy:'demo-backend'})})}></luma-home-hero-card></div>`;
+ return html`<div style="width:1050px;max-width:calc(100vw - 48px)"><luma-home-hero-card .hass=${hass} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card)card.setConfig({type:'custom:luma-home-hero-card',weather_entity:'weather.demo',attention_policy:'demo-backend',...(handling?.snoozedOnly?{alarm_entity:'alarm_control_panel.demo'}:{})})})}></luma-home-hero-card></div>`;
 };
 export const BackendObserver:Story={render:()=>backendScenario()};
 export const BackendUnavailable:Story={render:()=>backendScenario(true)};
@@ -166,3 +166,5 @@ export const HandlingFailure:Story={render:()=>backendScenario(false,{failure:tr
 export const HandlingConflict:Story={render:()=>backendScenario(false,{conflict:true})};
 export const HandlingReadonly:Story={render:()=>backendScenario(false,{readonly:true})};
 export const HandlingLostResponse:Story={render:()=>backendScenario(false,{lostResponse:true})};
+
+export const SnoozedOnly:Story={render:()=>backendScenario(false,{snoozedOnly:true})};

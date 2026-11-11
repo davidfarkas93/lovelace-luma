@@ -21,3 +21,7 @@ assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyel�
 assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyelése hiányos volt. A megfigyelt égésekben nem volt gyors újraindulás.','hu'),'A fűtési visszajelzések megfigyelése hiányos volt.','the qualifier cannot disappear unless explicitly shown elsewhere');
 assert.equal(exports.reportSummaryPreview('A fűtési visszajelzések megfigyelése hiányos volt.','hu',true),'A fűtési visszajelzések megfigyelése hiányos volt.');
 console.log('Daily report: policy/date/freshness contract, failed/missed/interrupted runs and previous-success separation passed.');
+
+assert.ok(exports.validDailyReport({...data,policy_id:'nas:demo',nas_profile:'demo'},'nas:demo',now));
+assert.equal(exports.validDailyReport({...data,policy_id:'nas:demo'},'heating:demo',now),false);
+assert.equal(exports.reportSummaryPreview('A NAS megfigyelése hiányos volt. Az UPS jelzést adott.','hu',true),'Az UPS jelzést adott.');

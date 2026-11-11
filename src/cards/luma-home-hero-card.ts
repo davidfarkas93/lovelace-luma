@@ -247,7 +247,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         --mdc-icon-size: 16px;
       }
       .attention {
-        min-height:44px;max-width:100%;line-height:1.4;
+        max-width:100%;
         color: var(--attention-color);
         background: color-mix(in srgb, var(--attention-color) 12%, transparent);
       }
@@ -1081,7 +1081,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   private incidentCandidates(): Incident[] {
     if (!this.hass || !this.config) return [];
-    if (this.config.attention_policy) return attentionSummaries(policyRows(this.config.attention_policy,this.hass),undefined,true).map(row=>({
+    if (this.config.attention_policy) return attentionSummaries(policyRows(this.config.attention_policy,this.hass)).map(row=>({
       key:row.key,message:row.message,tone:row.tone,path:row.path,entity:this.hass!.states[row.source]?row.source:undefined,dismissible:row.dismissible,notificationId:row.notificationId,
     })).sort((a,b)=>Number(b.tone==="error")-Number(a.tone==="error"));
     const found: Incident[] = [];
@@ -1135,6 +1135,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private incidents(): Incident[] {
+    if(this.config?.attention_policy)return this.incidentCandidates();
     const ack = this.ackMap(),
       now = Date.now() / 1000;
     return this.incidentCandidates().filter(
@@ -1519,12 +1520,12 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                     ? "mdi:alert-octagon"
                     : issues.length
                       ? "mdi:alert-circle-outline"
-                      : missing ? "mdi:cloud-question-outline" : snoozed ? "mdi:bell-sleep-outline" : "mdi:check-circle-outline"}
+                      : missing ? "mdi:cloud-question-outline" : "mdi:check-circle-outline"}
                 ></ha-icon
                 ><span
                   >${overview ? overview.text : issues.length
                     ? localized(this.hass,`${issues.length} notices`,`${issues.length} jelzés`)
-                    : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : snoozed ? localized(this.hass,`${snoozed} snoozed`,`${snoozed} szüneteltetve`) : localized(this.hass,"All good","Rendben")}</span
+                    : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : localized(this.hass,"No active alerts","Nincs aktív jelzés")}</span
                 >
               </button>
             </div>

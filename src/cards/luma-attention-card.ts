@@ -326,10 +326,10 @@ export class LumaAttentionCard extends LitElement implements LovelaceCard {
     const all = policyRows(this.config.policy, this.hass).filter(row => !this.config?.scope || row.scope === this.config.scope || row.scope === "system");
     const relevant = attentionCoverageRows(all.filter(row => mode === "diagnostics" || (mode === "updates" ? row.kind === "update" || row.scope === "system" : row.kind !== "update")), this.hass);
     const loading = all.some(row=>row.status==="loading");
-    const active = activeAttention(relevant, undefined, true), missing = relevant.filter(row => row.status === "unavailable");
+    const active = activeAttention(relevant), missing = relevant.filter(row => row.status === "unavailable");
     const snoozed = new Set(relevant.filter(row => row.snoozedUntil).map(row => row.key)).size;
-    let rows = mode === "diagnostics" ? relevant : mode === "updates" ? relevant.filter(row => ["active", "installing", "unavailable"].includes(row.status)) : attentionSummaries(relevant, undefined, true);
-    if (mode === "diagnostics") rows = rows.filter(row => this.filter === "all" || (this.filter === "snoozed" ? !!row.snoozedUntil : this.filter === "active" ? ["active", "installing"].includes(row.status) : row.status === this.filter));
+    let rows = mode === "diagnostics" ? relevant : mode === "updates" ? relevant.filter(row => ["active", "installing", "unavailable"].includes(row.status)&&!row.snoozedUntil) : attentionSummaries(relevant);
+    if (mode === "diagnostics") rows = rows.filter(row => this.filter === "all" || (this.filter === "snoozed" ? !!row.snoozedUntil : this.filter === "active" ? ["active", "installing"].includes(row.status)&&!row.snoozedUntil : row.status === this.filter));
     const query = this.query.trim().toLowerCase();
     if (query) rows = rows.filter(row => `${row.name} ${row.source} ${row.rule} ${row.affectedRules?.join(" ") || ""} ${row.category} ${row.message} ${row.reason}`.toLowerCase().includes(query));
     const sourceSelected = (this.selected && this.selectedUpdateCategory ? relevant.find(row=>row.kind==="update" && row.category===this.selectedUpdateCategory && ["active","installing"].includes(row.status)) : undefined) || relevant.find(row => row.id === this.selected);

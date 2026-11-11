@@ -43,6 +43,15 @@ an explicit data-quality note with neutral styling, preserving `≥` totals. Lar
 or interrupted observation remains insufficient; a previous success cannot hide
 an unsuccessful current run. No boiler controls are attached to a report.
 
+Luma **0.55 + Home Insights 0.8** adds `nas_profile` as the fourth mutually exclusive
+report selector. The compact NAS summary opens measured array/parity state, disk
+maximum temperatures and sustained review thresholds, UPS battery intervals and
+coverage in the existing sheet. Unknown measurements stay unknown; a running parity
+check is not a fault, and battery operation does not prove a grid outage. Report
+cards never invoke AI or perform NAS operations. Rejected AI responses have a
+separate administrator-only diagnostic disclosure with a reason and escaped,
+bounded response preview; they are never published as the current narrative.
+
 ### Home Insights attention backend
 
 Luma 0.48 can consume authoritative rows from Home Insights 0.2. Import the v1
@@ -67,7 +76,7 @@ loading, errors and expired observations are visible. Private cache data is rese
 between HA connections and locales. Standalone browser policies remain supported.
 
 Luma **0.49 + Home Insights 0.3** adds durable handling inside the existing detail
-surface: mark seen, report a user-performed fix, add a plain-text note and read
+surface: mark as read, report a user-performed fix, add a plain-text note and read
 paged episode history. Source observations remain authoritative; these metadata
 operations never close a fault or install an update. Group handling is atomic,
 revision-checked and audited per member. Lost responses retry the same request ID.
@@ -76,6 +85,10 @@ permission, and native non-entity channels require an administrator.
 
 Backend episode snoozes replace the short legacy helper for these clients. A new
 episode gets fresh handling state; critical/non-dismissible rows cannot be snoozed.
+Snoozed alerts are hidden from the main hero and default active list, and remain
+accessible through the explicit Snoozed filter. Backend unsnooze overrides obsolete
+legacy helper state. Mark as read shows review time/actor and does not hide or resolve
+the alert; use Snooze to hide it. Desktop attention chips share sibling chip sizing.
 Standalone policies retain their existing helper behavior. Refresh all open clients
 after upgrading: pre-0.49 clients do not understand backend-owned snooze metadata.
 Notes are not automatic exceptions; approved conditional household knowledge stays
