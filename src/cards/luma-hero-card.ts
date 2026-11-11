@@ -61,7 +61,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
       }
 
-      .report {margin-top:20px;padding-top:18px;border-top:1px solid var(--luma-border);min-width:0}
+      .report {grid-column:1/-1;margin-top:20px;padding-top:18px;border-top:1px solid var(--luma-border);min-width:0}
       .top {
         display: grid;
         grid-template-columns: 58px minmax(0, 1fr) auto;

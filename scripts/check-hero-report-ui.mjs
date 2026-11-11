@@ -11,6 +11,7 @@ try{
   assert.equal(await report.locator('.metric').count(),0);assert.equal(await page.locator('luma-daily-report-card').count(),1);
   assert.ok(await report.locator('ha-card').evaluate(n=>getComputedStyle(n).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(n).borderTopWidth==='0px'),'the report has no separate card surface');
   assert.ok(await hero.locator('ha-card').first().evaluate(n=>n.scrollWidth<=n.clientWidth+1));
+  const outer=await hero.locator('ha-card').first().boundingBox(),summary=await hero.locator('.report').boundingBox();assert.ok(summary.width>outer.width*.8,'summary must span the hero even with inline chips');
   await page.screenshot({path:`${output}/${scope}-${lang}-${width}.png`,animations:'disabled'});
   await report.locator('.preview-button').click();await sheet.locator('dialog[open]').waitFor();assert.equal(await page.evaluate(()=>location.hash),'','detail click must not navigate the hero');
   await report.locator('.report-details').waitFor();assert.ok(await report.locator('.metric').count()>=3);
