@@ -25,3 +25,6 @@ console.log('Daily report: policy/date/freshness contract, failed/missed/interru
 assert.ok(exports.validDailyReport({...data,policy_id:'nas:demo',nas_profile:'demo'},'nas:demo',now));
 assert.equal(exports.validDailyReport({...data,policy_id:'nas:demo'},'heating:demo',now),false);
 assert.equal(exports.reportSummaryPreview('A NAS megfigyelése hiányos volt. Az UPS jelzést adott.','hu',true),'Az UPS jelzést adott.');
+assert.equal(exports.reportHeadline({summary:'Az array röviden leállt.',headline:'A parity ellenőrzés befejeződött.'},'hu'),'A parity ellenőrzés befejeződött.','the report focus is independent of detail ordering');
+assert.equal(exports.reportHeadline({summary:'A NAS megfigyelése hiányos volt. A megfigyelt időszakban az UPS jelzést adott.'},'hu'),'A megfigyelt időszakban az UPS jelzést adott.','legacy reports retain the observed-scope qualifier');
+assert.equal(exports.reportHeadline({summary:'A megfigyelt időszakban nem volt gyors újraindulás.',headline:'x'.repeat(501)},'hu'),'A megfigyelt időszakban nem volt gyors újraindulás.','an oversized focus falls back to a bounded sentence');

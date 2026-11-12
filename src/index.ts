@@ -59,7 +59,7 @@ import "./cards/luma-ev-overview-card";
 import "./cards/luma-ev-solar-readiness-card";
 
 const cards = [
-  { type:"luma-daily-report-card", name:"Luma Daily Report", description:"Compact previous-day summary opening a shared detail sheet with measurements, coverage and separately dated earlier results." },
+  { type:"luma-daily-report-card", name:"Luma Daily Report", description:"Focused previous-day interpretation with a minimal hero presentation and full metadata, evidence and chronology in the shared detail sheet." },
   { type:"luma-household-context-card", name:"Luma Household Context", description:"Review and approve durable household knowledge, conditional exceptions and rule change history." },
   { type:"luma-attention-card", name:"Luma Attention", description:"Shared policy incidents, automatically discovered updates and source coverage with explicit snoozed, pending and unavailable states." },
   { type:"luma-ev-overview-card", name:"Luma EV Overview", description:"Context-aware EV charging state, Solar opportunity and live charging-source overview." },
@@ -168,7 +168,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.57.2 ",
+  "%c LUMA %c 0.58.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

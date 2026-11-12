@@ -4,9 +4,9 @@
 
 `custom:luma-hero-card` accepts an optional `report` object using the existing
 report scope (`policy`, `energy_profile`, `heating_profile` or `nas_profile`),
-`title`, `due_time` and `household_path`. The saved narrative, period, completion
-or attempt time and data-quality qualifier appear as part of the hero, after a
-subtle divider. The Details entry opens the same shared report sheet as the
+`title`, `due_time` and `household_path`. The separate saved headline appears as part of the hero after a subtle divider.
+The hero contains only the short previous-day finding and Details. Report date,
+completion/attempt time and data-quality information remain in the detail sheet. The Details entry opens the same shared report sheet as the
 standalone card; it never follows the hero's navigation or runs AI/device actions.
 The report has no separate background, border, card title icon or duplicated row.
 Failure, missing runs, private access restrictions, stale data and prior successful
@@ -1369,3 +1369,23 @@ the actual discovery → policy → embedded path as well as notification group/
 updates at 390/768/1280 px in English/Hungarian. It captures mock service calls and
 covers confirmation, capability gating, 0% progress, target changes, busy/failure
 states and keeping remaining group members reachable. It never installs a live update.
+
+
+### Minimal report heroes and focused interpretation (0.58)
+
+Home Insights 0.11 supplies an optional `narrative.headline` independent of detail
+sentence ordering. Embedded report heroes show this focus and Details, without a
+second title, date, updated/attempt timestamp, quality badge or overnight meta row.
+The previous-day scope is expressed naturally in the text. Full dates, attempts,
+completion, data quality, coverage, sources, source-group observation counts and
+since-midnight chronology remain in the existing shared sheet. An independent solar
+forecast snapshot can show its recorded cutoff/value/source and the limits of
+comparing different measurement definitions. Opening a panel invokes no AI/action.
+
+Failure, missed/stalled runs, waiting and unavailable states still replace the
+current focus explicitly. A previous success cannot masquerade as the current run.
+The observed-scope qualifier remains part of a meaningful headline; hiding technical
+metadata never turns missing observations into a claim of full-day health. Legacy
+reports retain a sentence preview; standalone card presentation remains compatible.
+Keyboard, focus return, account isolation and deferred More Info use the shared
+sheet behavior. The hero focus wraps fully instead of clipping its final qualifier.

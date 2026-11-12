@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle,ReportAttempt} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{focused?:boolean;hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -58,6 +58,7 @@ const scenario=(state:ReportState='attention_needed',options:{hero?:boolean;offl
  }
  if(options.rejected&&data.attempt){data.attempt.error='invalid_ai_output';data.attempt.diagnostics={schema_version:1,stage:'ai_output_validation',reason:'unknown_evidence',detail:'Unknown evidence reference',candidate_json:JSON.stringify({summary:'<b>Elutasított szöveg</b>',evidence_ids:'invented_reference'}),candidate_truncated:false,allowed_evidence_refs:['episode_1']};}
  if(options.long)completed.narrative.summary='A korábbi napokról áthúzódó jelzés a megfigyelt időszakban továbbra is fennmaradt, de a rendelkezésre álló forrásokból a kiváltó okot és a háztartás működésére gyakorolt tényleges következményét nem lehet biztosan megállapítani. A részletekben minden rögzített megfigyelés külön visszanézhető.';
+ if(options.focused){(completed.narrative as typeof completed.narrative & {headline?:string})={...completed.narrative,headline:'Parity-lemez hibajelzése után a szinkronizálás nulla jelzett hibával befejeződött.',summary:'Az array a nap egy részében leállított állapotot jelzett. Parity-lemez hibajelzése után a szinkronizálás nulla jelzett hibával befejeződött.'};}
  window.lumaAttentionPolicies={...window.lumaAttentionPolicies,report_demo:{version:1,revision:'demo',rules:[],backend:{policy_id:'demo'}}};
  const hass=createMockHass({"sensor.solar_live":{state:"2.4",attributes:{unit_of_measurement:"kWh"}},"sensor.consumption_live":{state:"10.78",attributes:{unit_of_measurement:"kWh"}}});
  hass.callService=async()=>{throw Error('Report card must not call services');};
@@ -111,3 +112,5 @@ export const HeroFailed:Story={render:()=>scenario('failed',{hero:true})};
 export const HeroMissed:Story={render:()=>scenario('missed',{hero:true})};
 export const HeroPartial:Story={render:()=>scenario('insufficient_data',{heating:true,hero:true})};
 export const HeroRestricted:Story={render:()=>scenario('failed',{hero:true,forbidden:true})};
+
+export const HeroNasFocused:Story={render:()=>scenario('attention_needed',{hero:true,nas:true,focused:true})};
