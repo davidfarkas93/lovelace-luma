@@ -61,7 +61,8 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.08);
       }
 
-      .report {grid-column:1/-1;margin-top:20px;padding-top:18px;border-top:1px solid var(--luma-border);min-width:0}
+      .hero.has-report {padding-bottom:14px}
+      .report {grid-column:1/-1;margin-top:12px;padding-top:10px;border-top:1px solid var(--luma-border);min-width:0}
       .top {
         display: grid;
         grid-template-columns: 58px minmax(0, 1fr) auto;
@@ -219,6 +220,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
         .hero {
           padding: 18px;
         }
+        .hero.has-report {padding-bottom:12px}
 
         .hero.chips-inline {
           display: block;
@@ -370,7 +372,7 @@ export class LumaHeroCard extends LitElement implements LovelaceCard {
 
     return html`
       <ha-card
-        class=${`hero ${this.config.chips_inline ? "chips-inline" : ""} ${this.config.tap_action ? "interactive" : ""}`}
+        class=${`hero ${this.config.report ? "has-report" : ""} ${this.config.chips_inline ? "chips-inline" : ""} ${this.config.tap_action ? "interactive" : ""}`}
         style=${`--luma-accent:${accent};margin-top:${this.config.top_spacing || 0}px`}
         tabindex=${this.config.tap_action ? "0" : "-1"}
         @click=${() => runAction(this, this.hass!, this.config?.tap_action, this.config?.entity)}
