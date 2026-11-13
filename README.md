@@ -354,6 +354,14 @@ view so only one host responds. Keep embedded popup hashes unique within the vie
 The dock also opens with Enter or Space; swipe and playback buttons keep their
 existing behavior.
 
+On mobile the persistent dock is a compact 46 px strip, separated from the navbar
+by 4 px. Small artwork and two short text lines keep the device and current title
+visible, while playback/player-switch buttons retain 44 px touch targets. Tapping
+the strip opens the full remote; it does not add another expansion layer. The dock
+stays visible while a configured device is on, idle, playing, paused or buffering,
+and disappears for off, unavailable, unknown or missing activity states. Mobile
+bottom-space reservation shrinks with the dock and is released when it disappears.
+
 For a consistent five-item primary bar, configure four labelled `routes` and a
 `menu` with named `groups`. The fifth item opens the shared Luma sheet with large,
 grouped links. All URLs, labels, icons and grouping remain dashboard configuration.

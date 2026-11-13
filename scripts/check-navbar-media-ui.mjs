@@ -21,6 +21,14 @@ try{
     // A navbar in a separate dashboard has no other remote-popup card to rely on.
     await page.evaluate(()=>{history.replaceState(null,'','/dashboard-security/security?camera=front');window.dispatchEvent(new Event('location-changed'));});
     assert.equal(await navbar().locator('luma-popup-card').count(),2);
+    if(width<768){
+      const dock=await navbar().locator('.media-dock').boundingBox(),nav=await navbar().locator('.primary').boundingBox();
+      assert.ok(dock.height<=46.5,'mobile dock remains a compact strip');
+      assert.ok(Math.abs(nav.y-dock.y-dock.height-4)<1,'compact strip sits just 4 px above navigation');
+      for(const selector of ['.control','.pager']){const target=await navbar().locator(selector).boundingBox();assert.ok(target.width>=44&&target.height>=44,'compact controls retain touch targets');}
+      assert.equal(await navbar().locator('.primary-space').evaluate(n=>n.getBoundingClientRect().height),150,'bottom reservation follows the smaller dock');
+    }
+    await page.screenshot({path:`${output}/compact-${lang}-${width}.png`,animations:'disabled'});
     await navbar().locator('.media-dock .title').click();await sheet(0).locator('dialog[open]').waitFor();
     await remote(0).locator('.nav .ok').waitFor();assert.equal(new URL(page.url()).pathname,'/dashboard-security/security');
     assert.equal(new URL(page.url()).search,'?camera=front');assert.equal(new URL(page.url()).hash,'#tv-remote');
@@ -63,6 +71,17 @@ try{
     }
     return results;
   });assert.deepEqual(validation,[true,true,true]);
+  // The dock persists while the device is on/idle, and releases its space when off.
+  await page.setViewportSize({width:390,height:844});await openStory('compact-media');
+  assert.equal(await navbar().locator('.media-dock.has-art').count(),1);
+  assert.ok(await navbar().locator('.media-dock').evaluate(n=>{const dock=n.getBoundingClientRect(),controls=n.querySelector('.controls').getBoundingClientRect(),title=n.querySelector('.title').getBoundingClientRect();return controls.right<=dock.right&&title.left>=dock.left&&title.right<=controls.left;}),'artwork and long titles leave controls inside the dock');
+  await page.screenshot({path:`${output}/compact-artwork-390.png`,animations:'disabled'});
+  await navbar().locator('.pager').click();assert.match(await navbar().locator('.media-dock .meta').textContent(),/Hálószoba/);
+  assert.equal(await navbar().locator('.control').count(),0,'idle devices do not show an invented playback action');
+  await navbar().evaluate(n=>{n.hass={...n.hass,states:{'media_player.tv':{...n.hass.states['media_player.tv'],state:'off'},'media_player.bedroom':{...n.hass.states['media_player.bedroom'],state:'unavailable'}}};});
+  await navbar().locator('.media-dock').waitFor({state:'detached'});
+  await page.waitForFunction(()=>{const n=document.querySelector('luma-story-host')?.shadowRoot?.querySelector('luma-navbar-card');return n?.shadowRoot?.querySelector('.primary-space')?.getBoundingClientRect().height===110;});
+  assert.equal(await navbar().locator('.primary-space').evaluate(n=>n.getBoundingClientRect().height),110,'inactive media leaves no extra bottom reservation');
   assert.deepEqual(errors,[]);
   console.log('Navbar media: owned remotes across dashboard paths, HU/EN mobile/tablet/desktop, no navigation or opening-time device actions, selected targets, live HA updates, deep links, keyboard, Back/Escape/close/backdrop, playback isolation and legacy hash compatibility passed.');
 }finally{await browser.close();}
