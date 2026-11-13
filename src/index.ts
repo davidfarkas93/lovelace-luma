@@ -71,7 +71,7 @@ const cards = [
   { type:"luma-storage-card", name:"Luma Storage", description:"Unified disk capacity, temperature and SMART health with configurable state/attribute sources." },
   { type:"luma-service-grid-card", name:"Luma Services", description:"Unified application availability, container counts and confirmed stack operations with runtime discovery." },
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
-  { type:"luma-navbar-card", name:"Luma Navbar", description:"Consistent primary navigation, a grouped menu and an artwork-aware active-media dock." },
+  { type:"luma-navbar-card", name:"Luma Navbar", description:"Consistent primary navigation, a grouped menu and an active-media dock with dashboard-independent controls." },
   { type:"luma-route-tabs-card", name:"Luma Route Tabs", description:"Accessible, scrollable section-page links with active-route matching." },
   { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
@@ -168,7 +168,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.59.0 ",
+  "%c LUMA %c 0.60.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

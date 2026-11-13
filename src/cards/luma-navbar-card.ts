@@ -1,13 +1,16 @@
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { ref } from "lit/directives/ref.js";
 import { mediaAppName } from "../helpers";
 import { localized, localize } from "../localize";
 import { navigateRoute, routeIsActive, type NavigationRoute } from "../navigation";
 import { lumaTokens } from "../styles";
 import "../components/luma-bottom-sheet";
+import "./luma-popup-card";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-interface MediaItem{entity:string;activity_entity?:string;name:string;popup:string;artwork_entity?:string}
+interface MediaPopup{hash:string;name?:string;subtitle?:string;icon?:string;max_width?:number;cards:Record<string,unknown>[]}
+interface MediaItem{entity:string;activity_entity?:string;name:string;popup:string|MediaPopup;artwork_entity?:string}
 interface MenuGroup { name:string; icon?:string; items:NavigationRoute[] }
 interface Menu { name?:string; hash?:string; groups:MenuGroup[] }
 interface Config{type:string;routes:Record<string,unknown>[];menu?:Menu;media_players?:MediaItem[];app_names?:Record<string,string>}
@@ -26,6 +29,7 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
     if(!this.menuOpen)this.ownsMenuEntry=false;
   };
   private child?:HTMLElement&LovelaceCard;
+  private mediaPopupConfigs=new WeakMap<HTMLElement,MediaPopup>();
   private dragStart?:{x:number;y:number};
   private suppressOpen=false;
   static styles=[lumaTokens,css`
@@ -61,6 +65,16 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
       if(c.routes.length!==4||c.routes.some(route=>!route.url||!route.label))throw new Error("Grouped navigation requires four labelled primary routes.");
       if(!Array.isArray(c.menu.groups)||c.menu.groups.some(group=>!group.name||!Array.isArray(group.items)||group.items.some(item=>!item.url||!item.label)))throw new Error("Navigation menu groups require names and labelled item URLs.");
     }
+    const popupHashes=new Set<string>();
+    for(const item of c.media_players||[]){
+      if(!item.popup)throw new Error("Media players require a popup hash or popup configuration.");
+      if(typeof item.popup!=="string"){
+        const popup=item.popup,hash=typeof popup.hash==="string"?popup.hash.replace(/^#/,""):"";
+        if(!hash||!Array.isArray(popup.cards)||!popup.cards.length)throw new Error("Media popups require a hash and a non-empty cards list.");
+        if(popupHashes.has(hash)||(c.menu&&hash===(c.menu.hash||"navigation").replace(/^#/,"")))throw new Error("Media popup hashes must be unique and distinct from the menu hash.");
+        popupHashes.add(hash);
+      }
+    }
     this.config=c;this.locationChanged();void this.mount();
   }
   connectedCallback(){super.connectedCallback();for(const name of ["hashchange","location-changed","popstate"])window.addEventListener(name,this.locationChanged);this.locationChanged()}
@@ -93,7 +107,21 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
   private async mount(){if(!this.config||this.config.menu||!this.renderRoot.querySelector(".host"))return;const helpers=await window.loadCardHelpers?.();if(!helpers)return;const cfg={type:"custom:navbar-card",mobile:{show_labels:true},desktop:{show_labels:true,position:"left",min_width:768},routes:this.config.routes,styles:".navbar-card{z-index:100!important;background:color-mix(in srgb,var(--card-background-color) 88%,transparent)!important;backdrop-filter:blur(24px) saturate(150%);border:1px solid color-mix(in srgb,var(--primary-text-color) 9%,transparent);border-radius:20px;box-shadow:0 16px 45px rgba(0,0,0,.10);margin:12px 0 16px;overflow:hidden}"};this.child=helpers.createCardElement(cfg) as HTMLElement&LovelaceCard;if(this.hass)this.child.hass=this.hass;const host=this.renderRoot.querySelector(".host")!;host.replaceChildren(this.child)}
   private activeMedia(){if(!this.hass)return[];const active=["on","playing","paused","buffering"];return(this.config?.media_players||[]).filter(item=>active.includes(this.hass!.states[item.activity_entity||item.entity]?.state))}
   private open(hash:string){if(window.location.hash===hash)window.dispatchEvent(new HashChangeEvent("hashchange"));else window.location.hash=hash}
-  private openMedia(hash:string){if(this.suppressOpen){this.suppressOpen=false;return}this.open(hash)}
+  private openMedia(item:MediaItem){if(this.suppressOpen){this.suppressOpen=false;return}const hash=typeof item.popup==="string"?item.popup:item.popup.hash;this.open(hash.startsWith("#")?hash:"#"+hash)}
+  private mediaKeydown(event:KeyboardEvent,item:MediaItem){if(event.target!==event.currentTarget||!["Enter"," "].includes(event.key))return;event.preventDefault();this.openMedia(item)}
+  private renderMediaPopups(){
+    return(this.config?.media_players||[]).map(item=>{
+      if(typeof item.popup==="string")return nothing;
+      const popup=item.popup;
+      return html`<luma-popup-card .hass=${this.hass} ${ref(node=>{
+        const card=node as (HTMLElement&LovelaceCard)|undefined;
+        if(card&&this.mediaPopupConfigs.get(card)!==popup){
+          card.setConfig({type:"custom:luma-popup-card",icon:"mdi:television",...popup,name:popup.name||item.name});
+          this.mediaPopupConfigs.set(card,popup);
+        }
+      })}></luma-popup-card>`;
+    });
+  }
   private selectMedia(event:Event,index:number){event.stopPropagation();this.selectedMedia=index}
   private dragBegin(event:PointerEvent){if((event.target as Element)?.closest?.("button"))return;this.dragStart={x:event.clientX,y:event.clientY};(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)}
   private dragEnd(event:PointerEvent,count:number){
@@ -123,6 +151,6 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
     const title=String(attrs.media_title||mediaAppName(entity,this.config.app_names)||entity?.attributes.friendly_name||"Média");
     const hasPlayback=this.hasPlayback(entity);
     const state=hasPlayback?(entity?.state==="paused"?"Szüneteltetve":"Lejátszás"):"Aktív";
-    return html`${item?html`<div class=${`media-dock ${this.config.menu?"grouped-media":""} ${artwork?"has-art":""}`} role="button" tabindex="0" @pointerdown=${this.dragBegin} @pointerup=${(event:PointerEvent)=>this.dragEnd(event,active.length)} @pointercancel=${this.dragCancel} @click=${()=>this.openMedia(item.popup)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art">${artwork?html`<img src=${artwork} alt="">`:html`<ha-icon icon="mdi:television-play"></ha-icon>`}</div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<button class="pager" title="Aktív lejátszó váltása" aria-label="Aktív lejátszó váltása, ${selected+1}/${active.length}" @click=${(event:Event)=>this.selectMedia(event,(selected+1)%active.length)}>${active.map((_,index)=>html`<span class=${`dot ${index===selected?"active":""}`}></span>`)}</button>`:nothing}${hasPlayback?html`<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button>`:nothing}</div></div>`:nothing}${this.renderNavigation(Boolean(item))}`
+    return html`${item?html`<div class=${`media-dock ${this.config.menu?"grouped-media":""} ${artwork?"has-art":""}`} role="button" tabindex="0" @pointerdown=${this.dragBegin} @pointerup=${(event:PointerEvent)=>this.dragEnd(event,active.length)} @pointercancel=${this.dragCancel} @keydown=${(event:KeyboardEvent)=>this.mediaKeydown(event,item)} @click=${()=>this.openMedia(item)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art">${artwork?html`<img src=${artwork} alt="">`:html`<ha-icon icon="mdi:television-play"></ha-icon>`}</div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<button class="pager" title="Aktív lejátszó váltása" aria-label="Aktív lejátszó váltása, ${selected+1}/${active.length}" @click=${(event:Event)=>this.selectMedia(event,(selected+1)%active.length)}>${active.map((_,index)=>html`<span class=${`dot ${index===selected?"active":""}`}></span>`)}</button>`:nothing}${hasPlayback?html`<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button>`:nothing}</div></div>`:nothing}${this.renderNavigation(Boolean(item))}${this.renderMediaPopups()}`
   }
 }

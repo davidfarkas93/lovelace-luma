@@ -24,6 +24,10 @@ export default meta;
 type Story=StoryObj;
 export const GroupedNavigation:Story={render:()=>renderCard("custom:luma-navbar-card",groupedConfig,{},900)};
 export const WithActiveMedia:Story={render:()=>renderCard("custom:luma-navbar-card",{...groupedConfig,media_players:[{entity:"media_player.tv",name:"Nappali",popup:"#remote"}]},{"media_player.tv":{state:"playing",attributes:{media_title:"Film",media_duration:1200}}},900)};
+export const WithEmbeddedRemotes:Story={render:()=>renderCard("custom:luma-navbar-card",{...groupedConfig,media_players:[
+  {entity:"media_player.tv",name:"Nappali",popup:{hash:"tv-remote",name:"Nappali TV",icon:"mdi:television",max_width:760,cards:[{type:"custom:luma-remote-card",remote_entity:"remote.tv",media_entity:"media_player.tv",name:"Nappali TV",apps:[{name:"YouTube",icon:"mdi:youtube",activity:"com.google.android.youtube.tv"}]}]}},
+  {entity:"media_player.bedroom",name:"Hálószoba",popup:{hash:"bedroom-remote",name:"Hálószoba TV",cards:[{type:"custom:luma-remote-card",remote_entity:"remote.bedroom",media_entity:"media_player.bedroom",name:"Hálószoba TV"}]}}
+]},{"media_player.tv":{state:"playing",attributes:{media_title:"Film",media_duration:1200}},"remote.tv":{state:"on"},"media_player.bedroom":{state:"on",attributes:{friendly_name:"Hálószoba TV"}},"remote.bedroom":{state:"on"}},900)};
 export const SectionNavigation:Story={render:()=>renderCard("custom:luma-route-tabs-card",{name:"Öntözés",routes:[
   {url:"/demo/irrigation",label:"Áttekintés",icon:"mdi:sprinkler"},
   {url:"/demo/irrigation-schedules",label:"Ütemezés",icon:"mdi:calendar-clock"},

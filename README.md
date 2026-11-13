@@ -344,6 +344,16 @@ dock horizontally or tap its subtle page indicator to switch players; tapping
 the dock opens the selected player's configured popup. `app_names` can map
 integration-specific package IDs to friendly labels.
 
+For controls that work from every dashboard, make `popup` an object with `hash`
+and `cards`, plus optional `name`, `subtitle`, `icon` and `max_width`. The navbar
+hosts the existing Luma popup shell and its cards on the current view, so opening
+and closing a remote keeps the current dashboard. A hash-only string still opens
+an independently configured popup, which must exist on that view. When migrating
+to an embedded popup, remove the standalone popup with the same hash from that
+view so only one host responds. Keep embedded popup hashes unique within the view.
+The dock also opens with Enter or Space; swipe and playback buttons keep their
+existing behavior.
+
 For a consistent five-item primary bar, configure four labelled `routes` and a
 `menu` with named `groups`. The fifth item opens the shared Luma sheet with large,
 grouped links. All URLs, labels, icons and grouping remain dashboard configuration.
@@ -394,7 +404,15 @@ routes:
 media_players:
   - entity: media_player.living_room
     name: Living room
-    popup: "#living-room-remote"
+    popup:
+      hash: living-room-remote
+      name: Living room TV
+      icon: mdi:television
+      max_width: 760
+      cards:
+        - type: custom:luma-remote-card
+          remote_entity: remote.living_room
+          media_entity: media_player.living_room
 ```
 
 `luma-cover-card` supports `master`, `group`, and `compact` variants, allowing
