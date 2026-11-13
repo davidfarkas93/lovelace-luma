@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle,ReportAttempt} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{focused?:boolean;hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{operationsContext?:boolean;focused?:boolean;hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -16,6 +16,14 @@ const scenario=(state:ReportState='attention_needed',options:{focused?:boolean;h
  const data:DailyReport={schema_version:1,policy_id:'demo',timezone:'Europe/Budapest',expected_day:'2026-11-09',generated_at:options.stale?now-60:now,due_at:now-60,state,
   attempt:['missed','waiting'].includes(state)?null:state==='failed'?{...completed,status:'failed',ai_status:'failed',narrative:null,error:'ai_failed'}:state==='running'||state==='stalled'?{...completed,status:'running',finished:null,narrative:null}:completed,
   last_success:['failed','missed','stalled','waiting','running'].includes(state)?previous:completed};
+ if(options.operationsContext){
+  facts.data_quality='insufficient_data';facts.coverage_percent=99.9;facts.coverage_seconds=86310;
+  facts.observation_scope={observer_unobserved_seconds:60,source_incomplete_seconds:30,complete_day_verdict_possible:false,findings_are_observed_only:true,automation_trace_audit:'not_collected'};
+  facts.report_overview={sources_requiring_review:1,sources_observed_cleared:2,sources_snoozed_at_end:1,notification_sources_handled:1,previously_observed_sources:1};
+  facts.ai_evidence![0].history={previously_observed:true,first_observed_at:'2026-11-08T16:00:00Z',actual_fault_start_known:false};
+  completed.narrative.headline='Kazán: a korábbról ismert jelzés nap végén is aktív volt.';
+  completed.narrative.observation_note='A jelzésfigyelő egyes időszakokban nem rögzített; egyes források állapota átmenetileg nem volt ellenőrizhető. A rögzített események értékelhetők, de a kimaradt szakaszokról nincs elég adat.';
+ }
  if(options.energy){
   facts.scope='energy_statistics';facts.counts={};facts.profile={deviation_percent:50,deviation_kwh:3};
   facts.metrics=(['solar','grid_import','grid_export','ev'] as const).map((key,i)=>({key,name:['Napelemtermelés','Hálózati import','Hálózati export','Autótöltés'][i],source:'sensor.'+key,value:state==='insufficient_data'&&key==='ev'?null:[4.63,11.82,2.01,0][i],unit:'kWh',status:state==='insufficient_data'&&key==='ev'?'unknown_history_boundaries':'complete',statistics:{hours:24,expected_hours:24,reason:null},history:{status:'known_boundaries',boundary_states_known:true,unavailable_seconds:1.34},baseline:{status:'complete',days:14,requested_days:14,median:[17,13,6,8][i]},delta_kwh:[-12.37,-1.18,-3.99,-8][i],delta_percent:[-72.8,-9.1,-66.5,-100][i],deviation:key==='solar'?'below_recent_days':null})) satisfies EnergyMetric[];
@@ -114,3 +122,6 @@ export const HeroPartial:Story={render:()=>scenario('insufficient_data',{heating
 export const HeroRestricted:Story={render:()=>scenario('failed',{hero:true,forbidden:true})};
 
 export const HeroNasFocused:Story={render:()=>scenario('attention_needed',{hero:true,nas:true,focused:true})};
+
+export const OperationsContext:Story={render:()=>scenario('attention_needed',{operationsContext:true,hero:true})};
+export const HandledSignals:Story={render:()=>scenario('no_action_needed')};

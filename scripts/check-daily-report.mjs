@@ -28,3 +28,6 @@ assert.equal(exports.reportSummaryPreview('A NAS megfigyelése hiányos volt. Az
 assert.equal(exports.reportHeadline({summary:'Az array röviden leállt.',headline:'A parity ellenőrzés befejeződött.'},'hu'),'A parity ellenőrzés befejeződött.','the report focus is independent of detail ordering');
 assert.equal(exports.reportHeadline({summary:'A NAS megfigyelése hiányos volt. A megfigyelt időszakban az UPS jelzést adott.'},'hu'),'A megfigyelt időszakban az UPS jelzést adott.','legacy reports retain the observed-scope qualifier');
 assert.equal(exports.reportHeadline({summary:'A megfigyelt időszakban nem volt gyors újraindulás.',headline:'x'.repeat(501)},'hu'),'A megfigyelt időszakban nem volt gyors újraindulás.','an oversized focus falls back to a bounded sentence');
+
+assert.ok(exports.validDailyReport({...data,state:'no_action_needed'},'home',now));
+assert.equal(exports.dailyReportView({...data,state:'no_action_needed'},false,now).tone,'primary','handled signals are not an all-clear or an active fault');

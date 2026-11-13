@@ -1,5 +1,5 @@
-export type ReportState='waiting'|'running'|'missed'|'stalled'|'failed'|'not_run'|'insufficient_data'|'attention_needed'|'no_anomaly_found'|'unavailable';
-export interface ReportEvidence {group?:{observations:number;open_at_end:boolean;observed_clearance:boolean;snoozed_at_end:boolean};ref:string;name:string;source?:string;category?:string;message?:string;present_at_period_start?:boolean;initial?:boolean;close_reason?:string|null}
+export type ReportState='waiting'|'running'|'missed'|'stalled'|'failed'|'not_run'|'insufficient_data'|'attention_needed'|'no_action_needed'|'no_anomaly_found'|'unavailable';
+export interface ReportEvidence {history?:{previously_observed:boolean;first_observed_at:string;actual_fault_start_known:boolean};delivery_handling?:{status:string;at:string;source_repair_confirmed:boolean};group?:{observations:number;open_at_end:boolean;observed_clearance:boolean;snoozed_at_end:boolean};ref:string;name:string;source?:string;category?:string;message?:string;present_at_period_start?:boolean;initial?:boolean;close_reason?:string|null}
 export interface EnergyMetric {
  key:'solar'|'grid_import'|'grid_export'|'ev';name:string;source:string;value:number|null;unit:'kWh';status:string;
  statistics:{hours:number;expected_hours:number;reason:string|null};history:{status:string;boundary_states_known:boolean;unavailable_seconds:number};
@@ -15,6 +15,8 @@ export interface NasSignal {source:string;known_seconds:number;active_seconds:nu
 export interface NasDisk {id:string;name:string;source:string;health_source:string;warn_celsius:number;maximum_celsius:number|null;maximum_recorded_at:string|null;known_seconds:number;standby_seconds:number;health_known_seconds:number;health_problem_seconds:number;hot_seconds:number;longest_hot_seconds:number;sustained_hot:boolean}
 export interface ReportDiagnostics {schema_version:number;stage:string;reason:string;detail:string;candidate_json:string;candidate_truncated:boolean;allowed_evidence_refs:string[]}
 export interface ReportFacts {
+ report_overview?:{sources_requiring_review:number;sources_observed_cleared:number;sources_snoozed_at_end:number;notification_sources_handled:number;previously_observed_sources:number};
+ observation_scope?:{observer_unobserved_seconds:number;source_incomplete_seconds:number;complete_day_verdict_possible:boolean;findings_are_observed_only:boolean;automation_trace_audit:string};
  solar_forecast?:{source:string;status:string;value_kwh:number|null;cutoff_at:string;recorded_at:string|null;comparison_basis:string};notifications?:NasTimeline;since_midnight?:NasTimeline;scope?:string;metrics?:EnergyMetric[];profile?:EnergyProfile|HeatingProfile|NasProfile;
  burner?:{observed_ignitions:number|null;observed_seconds:number|null;counts_are_lower_bounds:boolean;carried_into_day:boolean};cycles?:HeatingCycles;unobserved_seconds?:number;mode_coverage_seconds?:number;
  observation_gaps?:{count:number;longest_seconds:number;intervals:{start:string;end:string;seconds:number}[];truncated:boolean};
@@ -23,9 +25,9 @@ export interface ReportFacts {
  counts:Record<string,Record<string,number>>;availability?:{sources_with_gaps:number|null;whole_day_details:boolean};
  ai_evidence?:ReportEvidence[];limitations?:string[];
 }
-export interface ReportAttempt {id:string;day:string;started:number;finished:number|null;status:'running'|'failed'|'completed';ai_status:string;error?:string|null;diagnostics?:ReportDiagnostics|null;facts:ReportFacts|null;narrative:{headline?:string;summary_since_midnight?:string;summary:string;hypothesis:string;suggested_check:string;evidence_refs:string[]}|null}
+export interface ReportAttempt {id:string;day:string;started:number;finished:number|null;status:'running'|'failed'|'completed';ai_status:string;error?:string|null;diagnostics?:ReportDiagnostics|null;facts:ReportFacts|null;narrative:{observation_note?:string;headline?:string;summary_since_midnight?:string;summary:string;hypothesis:string;suggested_check:string;evidence_refs:string[]}|null}
 export interface DailyReport {schema_version:1;policy_id:string;energy_profile?:string|null;heating_profile?:string|null;nas_profile?:string|null;timezone:string;expected_day:string;generated_at:number;due_at:number;state:ReportState;attempt:ReportAttempt|null;last_success:ReportAttempt|null;last_attempt?:{day:string;started:number}|null}
-const states=new Set<ReportState>(['waiting','running','missed','stalled','failed','not_run','insufficient_data','attention_needed','no_anomaly_found']);
+const states=new Set<ReportState>(['waiting','running','missed','stalled','failed','not_run','insufficient_data','attention_needed','no_action_needed','no_anomaly_found']);
 /** Keep a complete sentence, including its qualifier; details retain the full narrative. */
 export function reportSummaryPreview(summary:string,language='en',partialQualifierVisible=false):string{
  let text=summary.trim();

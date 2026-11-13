@@ -1389,3 +1389,14 @@ metadata never turns missing observations into a claim of full-day health. Legac
 reports retain a sentence preview; standalone card presentation remains compatible.
 Keyboard, focus return, account isolation and deferred More Info use the shared
 sheet behavior. The hero focus wraps fully instead of clipping its final qualifier.
+
+### Operational report context (0.59)
+
+Home Insights 0.13 reports distinguish handled/closed signals (`no_action_needed`)
+from an all-clear and from an unobserved or incomplete day. Install Luma 0.59 before
+upgrading the backend. The existing detail sheet can show the observation limitation,
+source-group handling/clearance counts, observer gaps versus incomplete source states,
+and an earlier-day observation label. These optional fields remain inside the detail
+view; embedded hero summaries keep only their concise focus and Details. Older backend
+reports continue to render without invented counts. No dashboard binding change or
+additional device action is required.
