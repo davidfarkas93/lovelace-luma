@@ -1,6 +1,6 @@
 {
   "name": "lovelace-luma",
-  "version": "0.64.1",
+  "version": "0.64.2",
   "description": "A vibrant, context-aware dashboard suite for Home Assistant.",
   "license": "MIT",
   "author": "David Farkas",

@@ -28,7 +28,7 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     .card{padding:14px;display:grid;gap:8px}
     .header{width:100%;padding:0;border:0;background:transparent;text-align:left;color:inherit;border-radius:14px;display:flex;align-items:center;gap:10px;min-width:0}
     .icon{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:14px;color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}
-    .icon ha-icon{--mdc-icon-size:23px}.name{font-size:14px;flex:1;min-width:0;overflow-wrap:anywhere}
+    .icon ha-icon{--mdc-icon-size:23px}.header-copy{display:grid;gap:3px;flex:1;min-width:0}.name{font-size:14px;min-width:0;overflow-wrap:anywhere}.header-activity{display:flex;flex-wrap:wrap;gap:3px 10px}
     .details-cue{--mdc-icon-size:17px;flex-shrink:0;color:var(--luma-muted);opacity:.65}button.header:hover .details-cue{opacity:1}button.header{min-height:44px}
     .metrics{display:grid;grid-template-columns:var(--metric-columns);gap:8px;margin:0;color:var(--primary-text-color)}
     .metric{min-width:0;text-align:left;background:transparent;border:0;border-radius:10px;padding:8px;min-height:44px;color:inherit;display:flex;flex-direction:column;gap:2px;justify-content:flex-start}
@@ -37,13 +37,13 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     .unit{font-size:11px;font-weight:500;letter-spacing:0;color:var(--luma-muted)}.missing{font-size:12px;font-weight:500;letter-spacing:0;color:var(--luma-muted)}
     .metric-value.flagged{background:color-mix(in srgb,var(--metric-tone) 9%,transparent)}
     .metric-value.flagged .unit{color:inherit}
-    .reading{min-width:0;overflow-wrap:anywhere}.unit{white-space:nowrap;flex-shrink:0}
+    .reading{min-width:0;white-space:nowrap}.unit{white-space:nowrap;flex-shrink:0}
     .metric[data-severity="warning"]{--metric-tone:var(--luma-state-warning)}
     .metric[data-severity="error"]{--metric-tone:var(--luma-state-error)}
     .trend{align-self:center;flex-shrink:0;font-size:12px;font-weight:600;line-height:1;margin-left:1px}
     .context{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--luma-muted);margin-top:0}
     .outside{display:inline-flex;gap:5px;align-items:center}.outside ha-icon{--mdc-icon-size:16px}
-    .operation{display:inline-flex;gap:5px;align-items:center;padding:2px 6px;border-radius:8px;font-size:11px}.operation ha-icon{--mdc-icon-size:15px}
+    .operation{display:inline-flex;gap:5px;align-items:center;padding:0;background:transparent;font-size:11px;font-weight:500;color:var(--luma-muted)}.operation ha-icon{--mdc-icon-size:15px}
     .detail-climate{border-top:1px solid var(--luma-border);padding-top:12px;min-width:0}
     .detail{display:grid;gap:16px;color:var(--primary-text-color);font-size:12px}
     .section{display:grid;gap:6px;min-width:0}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 8px;min-height:28px}
@@ -60,6 +60,7 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     @container(max-width:300px){.context-measurements{grid-template-columns:1fr}}
     .detail-link{min-height:44px;color:var(--primary-text-color);justify-content:space-between;font-size:12px}.detail-link ha-icon{--mdc-icon-size:18px;color:var(--luma-muted)}
     @container(max-width:360px){.card{padding:12px;gap:8px}.header{gap:8px}.icon{width:44px;height:44px}.name{font-size:14px}.status{font-size:11px}.metric-value{font-size:16px;gap:3px;padding:4px 5px}.metrics{gap:6px}.metric{padding:6px}.unit{font-size:10px}.trend{font-size:11px;margin-left:0}}
+    @container(min-width:271px) and (max-width:320px){.metric{padding:6px 4px}.metric-value{font-size:15px;gap:2px;padding:4px}.unit{font-size:9px}.trend{font-size:10px}}
     @container(max-width:270px){.header{flex-wrap:wrap}.status{order:3}.metrics{grid-template-columns:1fr}.metric{min-height:44px}.climate-header{flex-wrap:wrap}.climate-state{margin-left:0}.settings{margin-left:0}}
   `];
   setConfig(c:Config){
@@ -128,15 +129,15 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     if(c.display==='details')return this.renderDetails(result,tone,label);
     const activity=comfortActivity(this.hass,{...c,air_conditioner_entity:c.climate?undefined:c.air_conditioner_entity});
     const navigable=c.tap_action&&c.tap_action.action!=='none';
-    const header=html`<span class="icon"><ha-icon icon=${c.icon||'mdi:home-thermometer-outline'}></ha-icon></span><span class="name">${c.name||localized(this.hass,'Comfort','Komfort')}</span><span class="status"><span class="dot" aria-hidden="true"></span>${label}</span>${navigable?html`<ha-icon class="details-cue" icon="mdi:chevron-right"></ha-icon>`:nothing}`;
+    const header=html`<span class="icon"><ha-icon icon=${c.icon||'mdi:home-thermometer-outline'}></ha-icon></span><span class="header-copy"><span class="name">${c.name||localized(this.hass,'Comfort','Komfort')}</span>${activity.length?html`<span class="header-activity">${activity.map(a=>html`<span class="operation" style=${`--activity-color:${a.color}`}><ha-icon icon=${a.icon}></ha-icon>${localized(this.hass,a.en,a.hu)}</span>`)}</span>`:nothing}</span><span class="status"><span class="dot" aria-hidden="true"></span>${label}</span>${navigable?html`<ha-icon class="details-cue" icon="mdi:chevron-right"></ha-icon>`:nothing}`;
     return html`<ha-card class="card" style=${`--tone:${tone}`}>
-      ${navigable?html`<button class="header" aria-label=${`${c.name||localized(this.hass,'Comfort','Komfort')} · ${label} · ${localized(this.hass,'Details and controls','Részletek és vezérlés')}`} @click=${()=>runAction(this,this.hass!,c.tap_action)}>${header}</button>`:html`<div class="header">${header}</div>`}
-      <div class="metrics" style=${`--metric-columns:${c.pm25_entity?'minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr)':'repeat(2,minmax(0,1fr))'}`}>
+      ${navigable?html`<button class="header" aria-label=${`${c.name||localized(this.hass,'Comfort','Komfort')} · ${label}${activity.map(a=>` · ${localized(this.hass,a.en,a.hu)}`).join('')} · ${localized(this.hass,'Details and controls','Részletek és vezérlés')}`} @click=${()=>runAction(this,this.hass!,c.tap_action)}>${header}</button>`:html`<div class="header">${header}</div>`}
+      <div class="metrics" style=${`--metric-columns:${c.pm25_entity?'repeat(3,minmax(0,1fr))':'repeat(2,minmax(0,1fr))'}`}>
         ${this.metric(c.temperature_entity,c.temperature_label||localized(this.hass,'Indoor','Bent'),1,'°C',result.metrics.temperature)}
         ${this.metric(c.humidity_entity,c.humidity_label||localized(this.hass,'Humidity','Páratartalom'),0,'%',result.metrics.humidity)}
         ${c.pm25_entity?this.metric(c.pm25_entity,c.pm25_label||'PM2.5',0,'µg/m³',result.metrics.pm25):nothing}
       </div>
-      ${c.outdoor_temperature_entity||activity.length?html`<div class="context">${c.outdoor_temperature_entity?html`<span class="outside"><ha-icon icon="mdi:thermometer"></ha-icon>${localized(this.hass,'Outside','Kint')}: ${out===null?localized(this.hass,'No data','Nincs adat'):`${formatNumber(this.hass,out,1)} ${this.hass.states[c.outdoor_temperature_entity]?.attributes.unit_of_measurement||'°C'}`}</span>`:nothing}${activity.map(a=>html`<span class="operation" style=${`--activity-color:${a.color}`}><ha-icon icon=${a.icon}></ha-icon>${localized(this.hass,a.en,a.hu)}</span>`)}</div>`:nothing}
+      ${c.outdoor_temperature_entity?html`<div class="context">${c.outdoor_temperature_entity?html`<span class="outside"><ha-icon icon="mdi:thermometer"></ha-icon>${localized(this.hass,'Outside','Kint')}: ${out===null?localized(this.hass,'No data','Nincs adat'):`${formatNumber(this.hass,out,1)} ${this.hass.states[c.outdoor_temperature_entity]?.attributes.unit_of_measurement||'°C'}`}</span>`:nothing}</div>`:nothing}
       ${this.renderClimate()}
     </ha-card>`;
   }

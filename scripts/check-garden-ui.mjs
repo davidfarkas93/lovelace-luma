@@ -14,6 +14,13 @@ try{
   if(story==='missing'){assert.match(await camera.locator('.title').textContent(),/nem elérhető/);assert.equal(await camera.locator('img').count(),0);assert.equal(await camera.locator('.media').isDisabled(),true);}
   if(story==='no-events')assert.match(await camera.locator('.title').textContent(),/Nincs friss/);
   for(const card of await page.locator('luma-metric-card,luma-camera-activity-card').all())assert.deepEqual(await card.locator('ha-card,.value,.content,.actions').evaluateAll(ns=>ns.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],'no clipping');
+  if(story!=='no-events'){
+   const pair=page.locator('luma-metric-card').filter({has:page.locator('.label',{hasText:/^(Fűnyíró|Öntözés)$/})});
+   // HA's native grid top-aligns cards; the card surface must still fill its row.
+   await pair.evaluateAll(ns=>ns.forEach(n=>{n.style.alignSelf='start';n.parentElement.style.alignItems='start';}));
+   const heights=await pair.locator('ha-card').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().height));
+   assert.equal(heights.length,2);assert.ok(Math.abs(heights[0]-heights[1])<1,'paired status cards fill the same row height');
+  }
   if(story==='active')assert.match(await page.locator('luma-metric-card .status').first().textContent(),/Füvet nyír/);
   await page.screenshot({path:`${out}/${story}-${width}-${theme}.png`,fullPage:true});
  }

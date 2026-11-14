@@ -16,6 +16,11 @@ try{
   for(const story of ['integrated','cooling','warning','missing','alongside-rooms']){
    const card=await open(story,mode);
    assert.deepEqual(await card.locator('.card,.metric,.header,.actions').evaluateAll(ns=>ns.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],'no overflow');
+   assert.ok(await card.locator('.reading').evaluateAll(ns=>ns.every(n=>n.scrollWidth<=n.clientWidth+1)),'numeric readings stay on one line without clipping');
+   const widths=await card.locator('.metrics .metric').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().width));
+   assert.ok(Math.max(...widths)-Math.min(...widths)<1,'measurement columns have equal widths');
+   assert.equal(await card.locator('.context').count(),0,'no separate activity footer');
+   assert.equal(await card.locator('.header .operation').count(),1,'heating activity belongs to the header');
    if(story==='integrated'){assert.equal(await card.locator('.climate').count(),0);assert.match(await card.locator('ha-card').getAttribute('style'),/success/);}
    if(story==='cooling'){assert.match(await card.locator('.climate-state').textContent(),/Épp hűt.*24 °C/);assert.equal(await card.locator('.operation').count(),1,'no duplicate AC activity chip');}
    if(story==='warning'){assert.equal(await card.locator('.reason').count(),0);assert.equal(await card.locator('.metric[data-severity=warning]').count(),1);assert.match(await card.locator('.metric[data-severity=warning]').getAttribute('aria-label'),/Emelkedett PM2.5/);assert.equal(await card.locator('.metric[data-severity=warning] .trend').textContent(),'↑');assert.ok(await card.locator('.metric-value.flagged').evaluate(n=>{const v=n.querySelector('.reading').getBoundingClientRect(),u=n.querySelector('.unit').getBoundingClientRect(),t=n.querySelector('.trend').getBoundingClientRect();return t.left>=u.right&&u.left>=v.right&&t.top<v.bottom;}),'value, unit and marker stay inline');assert.match(await card.locator('ha-card').getAttribute('style'),/warning/);}
