@@ -73,7 +73,7 @@ const cards = [
   { type:"luma-discovery-card", name:"Luma Discovery", description:"Fast runtime discovery for favorites, incidents, infrastructure updates, and Komodo deployments." },
   { type:"luma-navbar-card", name:"Luma Navbar", description:"Consistent primary navigation, a grouped menu and an active-media dock with dashboard-independent controls." },
   { type:"luma-route-tabs-card", name:"Luma Route Tabs", description:"Accessible, scrollable section-page links with active-route matching." },
-  { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest security event with on-demand live camera access." },
+  { type:"luma-camera-activity-card", name:"Luma Camera Activity", description:"Latest recorded camera event with quiet context and distinct live-view shortcuts." },
   { type:"luma-layout-card", name:"Luma Layout", description:"A responsive card grid with independent desktop, tablet and mobile columns." },
   { type:"luma-appliance-card", name:"Luma Appliance", description:"A contextual appliance status card with remaining time and progress." },
   { type:"luma-entity-grid-card", name:"Luma Entity Grid", description:"A fast runtime-filtered responsive entity collection without auto-entities templates." },
@@ -132,7 +132,7 @@ const cards = [
     type:"luma-room-card",name:"Luma Room",description:"A contextual room card with environment and quick controls.",
   },
   {
-    type:"luma-metric-card",name:"Luma Metric",description:"A compact primary and secondary entity metric card.",
+    type:"luma-metric-card",name:"Luma Metric",description:"Primary and secondary measurements with optional compact reading or device-status presentation.",
   },
   {
     type: "luma-control-group-card",
@@ -168,7 +168,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.63.0 ",
+  "%c LUMA %c 0.64.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

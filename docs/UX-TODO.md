@@ -240,4 +240,15 @@ further Luma refinement.
 - [x] Preview active/idle/off/missing/restored states across mobile/tablet/desktop.
 - [x] Review the local Storybook detail panel with David.
 - [x] Prepare the approved v0.63.0 release, including the reusable compact climate control and extra-mode menu.
-- [ ] Install the release and replace the live environment popup contents with the details variant; preserve all existing measurement sources and the climate navigation link.
+- [x] Install v0.63.0 and replace the live environment popup contents with the details variant; all 14 existing measurement/control sources and the climate navigation link were preserved.
+
+### Garden and camera refinement — v0.64.0
+
+- [x] Add opt-in status and compact measurement presentations to Metric.
+- [x] Align mower/irrigation title, icon, status and supporting typography with Room/Comfort/Gate.
+- [x] Give daily solar production a restrained value/unit hierarchy.
+- [x] Preview a main page with outside temperature in the weather header only; remove its duplicate summary card and Comfort context value in the preview.
+- [x] Refine camera event hierarchy and distinguish recording from live-view controls.
+- [x] Clear stale snapshots and distinguish unavailable activity from an empty timeline.
+- [x] Review the combined local Storybook preview with David.
+- [ ] Publish/install and migrate only the intended main-view configuration after approval.

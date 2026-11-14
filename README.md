@@ -1607,3 +1607,38 @@ Luma-styled “More modes” popover. Its trigger highlights an active extra mod
 the state label still names the actual mode/activity. The menu supports arrow
 keys, Escape and outside dismissal. Selection remains authoritative to HA.
 Keyboard order follows direct modes → more modes → settings.
+
+### Compact garden and system summaries (v0.64.0)
+
+`custom:luma-metric-card` supports two optional presentation variants:
+
+- `display: status`: device name first, followed by a shared dot/text status.
+- `display: compact`: restrained numeric reading with a subordinate unit.
+
+The default presentation remains available for existing dashboards. Optional
+`warning_states` and `error_states` complement `active_states`; unavailable or
+restored entities remain neutral and cannot inherit an apparently healthy
+mapped state. `error_states` take precedence over warning and active states.
+Configure mappings, entities and navigation in the dashboard, as before.
+
+```yaml
+type: custom:luma-metric-card
+display: status
+entity: lawn_mower.garden
+name: Mower
+active_states: [mowing, returning]
+warning_states: [paused]
+error_states: [error]
+tap_action:
+  action: more-info
+```
+
+Camera activity uses a quieter surface and labels its thumbnail as a recording,
+with location, event age/type, separate live-view shortcuts and a timeline link.
+Unavailable/restored timelines do not supply stale events or thumbnails; missing
+activity data is distinguished from an available, empty event list.
+
+See **Design review / Garden and camera** for proposed, active, missing-data,
+empty-camera and main-page context stories. The illustrative camera image is a
+local mock, not an actual surveillance image. `scripts/check-garden-ui.mjs`
+checks responsive layout, state semantics and navigation using mocked data.
