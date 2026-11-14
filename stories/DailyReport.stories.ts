@@ -5,7 +5,7 @@ import '../src/index';
 import {createMockHass} from '../storybook/mock-hass';
 import type {DailyReport,ReportState,ReportFacts,EnergyMetric,HeatingCycle,ReportAttempt} from '../src/daily-report';
 import type {LovelaceCard} from '../src/types';
-const scenario=(state:ReportState='attention_needed',options:{operationsContext?:boolean;focused?:boolean;hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
+const scenario=(state:ReportState='attention_needed',options:{energyPlanning?:boolean;planningExpired?:boolean;planningMissing?:boolean;operationsContext?:boolean;focused?:boolean;hero?:boolean;offline?:boolean;forbidden?:boolean;stale?:boolean;energy?:boolean;heating?:boolean;warm?:boolean;detailsOpen?:boolean;long?:boolean;nas?:boolean;overnight?:boolean;rejected?:boolean}={})=>{
  const now=Date.now()/1000;
  const facts:ReportFacts={day:'2026-11-09',assessment:state,data_quality:state==='insufficient_data'?'insufficient_data':'complete',coverage_seconds:state==='insufficient_data'?1200:86400,window_seconds:86400,coverage_percent:state==='insufficient_data'?1.4:100,
   counts:{issues:{sources_present:1,carried_over:1,recurrences:0},updates:{sources_present:2},events:{}},availability:{whole_day_details:state!=='insufficient_data',sources_with_gaps:state==='insufficient_data'?null:0},
@@ -30,6 +30,11 @@ const scenario=(state:ReportState='attention_needed',options:{operationsContext?
   facts.ai_evidence=[{ref:'solar',name:'Napelemtermelés',source:'sensor.solar',category:'energy'}];
   completed.narrative={summary:'A Napelemtermelés a korábbi napok mediánja alatt maradt; az Autótöltés rögzített energiája nem nőtt.',hypothesis:'',suggested_check:'Napelemtermelés: hasonlítsd össze a nap órás görbéjét a korábbi napokéval; az eltérés oka a napi összesítésből nem állapítható meg.',evidence_refs:['solar','ev']};
   data.policy_id='energy:demo';data.energy_profile='demo';
+ }
+ if(options.energyPlanning){
+  const planningDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  facts.today_planning={day:planningDay,timezone:'Europe/Budapest',saved_at:now-30,status:options.planningMissing?'insufficient_data':'opportunity',reason:options.planningMissing?'stale_or_wrong_day':'forecast_thresholds_met',forecast_kwh:options.planningMissing?null:22,remaining_kwh:options.planningMissing?null:20,peak_kw:3.6,peak_at:now+3600,forecast_updated_at:now-300,minimum_charging_kw:4.1,valid_until:options.planningExpired?now-1:now+7200,allow_grid_assist:true,surplus_known:false,charging_need_known:false,sources:{forecast_entity:'sensor.forecast'},thresholds:{minimum_remaining_kwh:5,minimum_peak_kw:2}};
+  completed.narrative.today={day:planningDay,saved_at:now-30,valid_until:facts.today_planning.valid_until,status:facts.today_planning.status,headline:'Kedvező napelemtermelés várható; ha töltenéd az autót, érdemes napközbenre időzíteni.',summary:options.planningMissing?'Nincs elég friss előrejelzési adat.':'Ha ma töltenéd az autót, érdemes napközbenre időzíteni: kedvező napelemtermelés várható. Hálózati rásegítésre is szükség lehet.',limitation:'A teljes termelés nem az autó számára elérhető többlet. A ház fogyasztása és az autó töltési igénye nem ismert.',evidence_refs:['today_forecast']};
  }
  if(options.heating){
   const partial=state==='insufficient_data',empty=state==='not_run',idle=state==='no_anomaly_found';
@@ -71,7 +76,7 @@ const scenario=(state:ReportState='attention_needed',options:{operationsContext?
  const hass=createMockHass({"sensor.solar_live":{state:"2.4",attributes:{unit_of_measurement:"kWh"}},"sensor.consumption_live":{state:"10.78",attributes:{unit_of_measurement:"kWh"}}});
  hass.callService=async()=>{throw Error('Report card must not call services');};
  hass.callWS=async command=>{if(command.type!=='home_insights/report')throw Error('Unexpected command');if(options.forbidden)throw {code:'unauthorized'};if(options.offline)throw Error('Offline');return structuredClone(data) as never;};
- const report={...(options.nas?{nas_profile:'demo',title:'Tegnapi NAS-áttekintés'}:options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:'Tegnapi energiamérleg'}:{policy:'report_demo',title:'Reggeli visszatekintés',household_path:'#household-context'})};
+ const report={...(options.nas?{nas_profile:'demo',title:'Tegnapi NAS-áttekintés'}:options.heating?{heating_profile:'demo',title:'Tegnapi kazánüzem'}:options.energy?{energy_profile:'demo',title:options.energyPlanning?'Reggeli energiaáttekintés':'Tegnapi energiamérleg'}:{policy:'report_demo',title:'Reggeli visszatekintés',household_path:'#household-context'})};
  return html`<div style="width:1000px;max-width:calc(100vw - 48px)">${options.hero?html`<luma-hero-card .hass=${hass} ${ref(node=>{if(node)(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-hero-card',name:options.energy?'Energia':options.heating?'Fűtés és hűtés':options.nas?'Storage & Power':'Üzemeltetés',subtitle:'Élő állapot és vezérlők',chips_inline:!!options.energy,chips:options.energy?[{entity:'sensor.solar_live',name:'Mai termelés',show_state:true},{entity:'sensor.consumption_live',name:'Mai fogyasztás',show_state:true}]:[],icon:options.energy?'mdi:lightning-bolt':options.heating?'mdi:home-thermometer-outline':options.nas?'mdi:database':'mdi:wrench-cog',tap_action:{action:'navigate',navigation_path:'#overview'},report});})}></luma-hero-card>`:html`<luma-daily-report-card .hass=${hass} ${ref(node=>{if(node){(node as HTMLElement & LovelaceCard).setConfig({type:'custom:luma-daily-report-card',...report});if(options.detailsOpen)requestAnimationFrame(()=>node.shadowRoot?.querySelector<HTMLButtonElement>('.preview-button')?.click());}})}></luma-daily-report-card>`}</div>`;
 };
 const meta:Meta={title:'Cards/Daily report',render:()=>scenario(),parameters:{controls:{disable:true}}};
@@ -125,3 +130,7 @@ export const HeroNasFocused:Story={render:()=>scenario('attention_needed',{hero:
 
 export const OperationsContext:Story={render:()=>scenario('attention_needed',{operationsContext:true,hero:true})};
 export const HandledSignals:Story={render:()=>scenario('no_action_needed')};
+
+export const EnergyPlanning:Story={render:()=>scenario('no_anomaly_found',{energy:true,hero:true,energyPlanning:true})};
+export const EnergyPlanningExpired:Story={render:()=>scenario('no_anomaly_found',{energy:true,hero:true,energyPlanning:true,planningExpired:true})};
+export const EnergyPlanningMissing:Story={render:()=>scenario('no_anomaly_found',{energy:true,hero:true,energyPlanning:true,planningMissing:true})};

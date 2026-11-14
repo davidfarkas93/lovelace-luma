@@ -31,3 +31,9 @@ assert.equal(exports.reportHeadline({summary:'A megfigyelt időszakban nem volt 
 
 assert.ok(exports.validDailyReport({...data,state:'no_action_needed'},'home',now));
 assert.equal(exports.dailyReportView({...data,state:'no_action_needed'},false,now).tone,'primary','handled signals are not an all-clear or an active fault');
+
+const planningNow=Date.parse('2026-11-14T08:00:00Z'),todayAdvice={day:'2026-11-14',saved_at:planningNow/1000-10,valid_until:planningNow/1000+7200,status:'opportunity',headline:'Ha ma töltenéd az autót…'};
+assert.ok(exports.currentTodayAdvice(todayAdvice,'Europe/Budapest',planningNow));
+for(const changes of [{valid_until:planningNow/1000},{valid_until:null},{day:'2026-11-13'},{saved_at:planningNow/1000+20},{status:'insufficient_data'},{valid_until:planningNow/1000+13*3600}])assert.equal(exports.currentTodayAdvice({...todayAdvice,...changes},'Europe/Budapest',planningNow),undefined,'unavailable, expired or another-day advice cannot look current');
+assert.equal(exports.currentTodayAdvice(todayAdvice,'invalid/timezone',planningNow),undefined);
+assert.equal(exports.currentTodayAdvice({...todayAdvice,day:'2026-11-13'},'Europe/Budapest',Date.parse('2026-11-13T23:30:00Z')),undefined,'local midnight retires yesterday’s advice');

@@ -1426,3 +1426,14 @@ and an earlier-day observation label. These optional fields remain inside the de
 view; embedded hero summaries keep only their concise focus and Details. Older backend
 reports continue to render without invented counts. No dashboard binding change or
 additional device action is required.
+
+### Same-day energy planning (0.61)
+
+With Home Insights 0.14 and an explicitly configured charging-planning profile, a
+valid, dated forecast opportunity can take the energy hero's focus under **Today**.
+The previous day's measured review remains separate in details. Forecast energy,
+remaining energy, peak, charger minimum, freshness and the conditional suggestion's
+limits are visible in the same read-only sheet. No charge-start or settings action
+is added. Expired, wrong-day or insufficient advice cannot appear current; the hero
+falls back to the retrospective focus. Existing reports without planning retain their
+presentation. The profile owns the data sources and advisory thresholds.
