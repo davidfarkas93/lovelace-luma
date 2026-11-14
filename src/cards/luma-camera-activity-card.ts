@@ -377,7 +377,7 @@ export class LumaCameraActivityCard extends LitElement implements LovelaceCard {
       }
     `,
     lumaSurfaceStyles,lumaInteractionStyles,css`
-      :host{container-type:inline-size}ha-card{grid-template-columns:128px minmax(0,1fr);min-height:132px}.media{min-height:132px}.content{padding:14px;gap:10px}.eyebrow{font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--luma-muted)}.eyebrow ha-icon{--mdc-icon-size:15px}.title{font-size:14px;font-weight:650;margin-top:5px}.time{font-size:11px;margin-top:4px}.actions{flex-wrap:wrap;overflow:visible;gap:4px}.action{min-height:44px;font-size:11px;font-weight:500;padding:8px;border-radius:10px;background:transparent;color:var(--primary-text-color);width:auto}.action:hover{background:var(--luma-hover-surface)}.action span{display:inline}.all{display:inline-flex}.live-label{font-size:10px;color:var(--luma-muted);flex-basis:100%}.placeholder::after{animation:none;display:none}.placeholder.loading::after{display:block;animation:shimmer 1.5s infinite}.media-play{width:36px;height:36px}.media-caption{position:absolute;left:8px;top:8px;padding:4px 6px;border-radius:6px;font-size:10px;color:white;background:#0009}.action.primary{background:transparent;color:var(--primary-text-color)}
+      :host{container-type:inline-size}ha-card{grid-template-columns:128px minmax(0,1fr);min-height:112px}.media{min-height:112px}.content{padding:14px;gap:10px}.eyebrow{font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--luma-muted)}.eyebrow ha-icon{--mdc-icon-size:15px}.title{font-size:14px;font-weight:650;margin-top:0;line-height:1.4}.event-kind{font-size:11px;font-weight:500;color:var(--luma-muted)}.time{font-size:11px;margin-top:4px}.actions{flex-wrap:wrap;overflow:visible;gap:4px}.action{min-height:44px;font-size:11px;font-weight:500;padding:8px;border-radius:10px;background:transparent;color:var(--primary-text-color);width:auto}.action:hover{background:var(--luma-hover-surface)}.action span{display:inline}.all{display:inline-flex}.live-label{font-size:10px;color:var(--luma-muted);flex-basis:100%}.placeholder::after{animation:none;display:none}.placeholder.loading::after{display:block;animation:shimmer 1.5s infinite}.media-play{width:36px;height:36px}.media-caption{position:absolute;left:8px;top:8px;padding:4px 6px;border-radius:6px;font-size:10px;color:white;background:#0009}.action.primary{background:transparent;color:var(--primary-text-color)}
       @container(max-width:380px){ha-card{grid-template-columns:96px minmax(0,1fr)}.content{padding:12px;gap:8px}.action{padding:6px}.media-play{right:8px;bottom:8px}}
       @container(max-width:260px){ha-card{grid-template-columns:1fr}.media{min-height:110px}}
       @media(prefers-reduced-motion:reduce){.placeholder.loading::after{animation:none}.media img{transition:none}}
@@ -545,22 +545,21 @@ export class LumaCameraActivityCard extends LitElement implements LovelaceCard {
         </button>
         <div class="content">
           <div class="copy">
-            <div class="eyebrow">${latest?localized(this.hass,"Latest event","Legutóbbi esemény"):localized(this.hass,"Camera activity","Kameraaktivitás")}</div>
             <div class="title">
-              ${latest ? latest.camera.name : unavailable?localized(this.hass,"Activity unavailable","Aktivitás nem elérhető"):localized(this.hass,"No recent events","Nincs friss esemény")}
+              ${latest ? html`${latest.camera.name}<span class="event-kind"> · ${localized(this.hass,{Személy:"Person",Jármű:"Vehicle",Állat:"Animal",Csengetés:"Doorbell",Mozgás:"Motion",Csomag:"Package"}[m.label]||m.label,m.label)}</span>` : unavailable?localized(this.hass,"Activity unavailable","Aktivitás nem elérhető"):localized(this.hass,"No recent events","Nincs friss esemény")}
             </div>
             <div class="time">
               ${latest
-                ? `${this.relative(latest.event.timestamp)} · ${localized(this.hass,{Személy:"Person",Jármű:"Vehicle",Állat:"Animal",Csengetés:"Doorbell",Mozgás:"Motion",Csomag:"Package"}[m.label]||m.label,m.label)}`
+                ? `${this.relative(latest.event.timestamp)} · ${localized(this.hass,"latest event","legutóbbi esemény")}`
                 : localized(this.hass,"Use the live-view buttons to open cameras","A kamerák elérhetők az élőkép gombokkal")}
             </div>
           </div>
           ${latest&&unavailable?html`<div class="time">${localized(this.hass,"Some cameras are unavailable","Egyes kamerák nem elérhetők")}</div>`:nothing}
-          <div class="actions"><span class="live-label">${localized(this.hass,"Live view","Élőkép")}</span>
+          <div class="actions">
             ${this.config.cameras.map(
               (c) =>
                 html`<button
-                  aria-label=${`${c.name} · ${localized(this.hass,"Live view","Élőkép")}`} class=${`action ${c === latest?.camera ? "primary" : ""}`}
+                  title=${`${c.name} · ${localized(this.hass,"Live view","Élőkép")}`} aria-label=${`${c.name} · ${localized(this.hass,"Live view","Élőkép")}`} class=${`action ${c === latest?.camera ? "primary" : ""}`}
                   @click=${() => {
                     this.selected = undefined;
                     this.live = c;
