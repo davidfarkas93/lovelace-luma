@@ -12,6 +12,7 @@ import {
   applianceSeconds,
 } from "../appliance";
 import { localize, localized, localizedMap } from "../localize";
+import {entityAvailable,finiteMeasurement,formatNumber,missingLabel,presentedState} from "../presentation";
 import { lumaTokens } from "../styles";
 import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { attentionAckValue, attentionSummaries, attentionOverview } from "../attention";
@@ -910,7 +911,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   protected shouldUpdate(changed: PropertyValues<this>): boolean {
     if (!changed.has("hass")) return true;
     const old = changed.get("hass") as HomeAssistant | undefined;
-    if (!old || !this.hass) return true;
+    if (!old || !this.hass || old.locale !== this.hass.locale) return true;
     if (this.config?.attention_policy || old.entities !== this.hass.entities) return true;
     return this.watchedIds.some(
       (id) => old.states[id] !== this.hass!.states[id],
@@ -1302,13 +1303,15 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   render() {
     if (!this.hass || !this.config) return nothing;
     const weather = this.hass.states[this.config.weather_entity],
-      state = weather?.state || "unknown",
-      a = weather?.attributes || {},
-      wind = Number(a.wind_speed) || 0;
+      weatherAvailable = entityAvailable(weather),
+      state = weatherAvailable ? weather.state : "unknown",
+      a = weatherAvailable ? weather.attributes : {},
+      temperature = finiteMeasurement(a.temperature),
+      wind = finiteMeasurement(a.wind_speed);
     const attentionRows = this.config.attention_policy ? policyRows(this.config.attention_policy,this.hass) : [];
     const overview = this.config.attention_policy ? attentionOverview(attentionRows,this.hass) : undefined;
     const snoozed = new Set(attentionRows.filter(x=>x.snoozedUntil).map(x=>x.key)).size;
-    const missing = new Set(attentionRows.filter(x=>x.status==="unavailable").map(x=>x.source)).size;
+    const missing = new Set([...attentionRows.filter(x=>x.status==="unavailable").map(x=>x.source),...(!weatherAvailable?[this.config.weather_entity]:[]),...(this.config.alarm_entity&&!entityAvailable(this.hass.states[this.config.alarm_entity])?[this.config.alarm_entity]:[])]).size;
     const issues = this.incidents(),
       critical = issues.some((x) => x.tone === "error"),
       attentionColor = overview?.loading && !overview.issues && !missing ? "var(--secondary-text-color)" : overview && !overview.issues && !missing && overview.updates ? "var(--primary-color)" : critical
@@ -1317,16 +1320,16 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           ? "var(--warning-color)"
           : "var(--success-color)",
       active = this.activeCount(),
-      accent = this.accent(state, Number(a.temperature), issues);
+      accent = this.accent(state, temperature ?? NaN, issues);
     const subtitle = [
-      localizedMap(this.hass,weatherLabelsEn,weatherLabelsHu,state),
-      a.temperature != null
-        ? `${a.temperature} ${a.temperature_unit || "°C"}`
+      weatherAvailable?localizedMap(this.hass,weatherLabelsEn,weatherLabelsHu,state):missingLabel(this.hass,weather),
+      temperature !== null
+        ? `${formatNumber(this.hass,temperature)} ${a.temperature_unit || "°C"}`
         : "",
-      wind ? `${localized(this.hass,"wind","szél")} ${wind} ${a.wind_speed_unit || "km/h"}` : "",
-      overview ? overview.text : issues.length
+      wind !== null ? `${localized(this.hass,"wind","szél")} ${formatNumber(this.hass,wind)} ${a.wind_speed_unit || "km/h"}` : "",
+      overview ? `${overview.text}${missing?localized(this.hass,` • ${missing} data sources unavailable`,` • ${missing} adatforrás nem elérhető`):""}` : issues.length
         ? localized(this.hass,`${issues.length} warnings`,`${issues.length} figyelmeztetés`)
-        : missing ? localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`) : localized(this.hass,"all systems operational","minden rendszer rendben"),
+        : missing ? localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`) : localized(this.hass,"no active alerts","nincs aktív jelzés"),
     ]
       .filter(Boolean)
       .join(" • ");
@@ -1334,8 +1337,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         ? this.hass.states[this.config.alarm_entity]
         : undefined,
       armed =
-        alarm && !["disarmed", "unknown", "unavailable"].includes(alarm.state),
-      alarmColor = armed ? "var(--warning-color)" : "var(--success-color)";
+        entityAvailable(alarm) && alarm.state !== "disarmed",
+      alarmColor = !entityAvailable(alarm) ? "var(--secondary-text-color)" : armed ? "var(--warning-color)" : "var(--success-color)";
     const banners = [...(this.config.banners || [])];
     const irrigation = this.irrigationSummary();
     const irrigationRemainingEntity = this.config.irrigation_remaining_entity
@@ -1467,7 +1470,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
             this.config?.tap_action || { action: "more-info" },
             this.config?.weather_entity,
           )}
-        >${this.renderWeatherFx(state, wind)}
+        >${this.renderWeatherFx(state, wind ?? 0)}
         <div class="content">
           <div class="top">
             <div class="weather-icon">
@@ -1491,7 +1494,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                 ><span>${localized(this.hass,"Active","Aktív")}</span>${active > 0
                   ? html`<span class="active-badge">${active}</span>`
                   : nothing}</button
-              >${alarm
+              >${this.config.alarm_entity
                 ? html`<button
                     class="alarm interactive"
                     aria-haspopup=${this.config.alarm_popover
@@ -1501,7 +1504,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                     style=${`--alarm-color:${alarmColor}`}
                     @click=${(e: Event) => {
                       e.stopPropagation();
-                      this.config?.alarm_popover
+                      this.config?.alarm_popover && entityAvailable(alarm)
                         ? this.toggleAlarmPopover()
                         : void runAction(
                             this,
@@ -1514,7 +1517,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                     }}
                   >
                     <ha-icon icon="mdi:shield-home-outline"></ha-icon
-                    ><span>${entityState(this.hass, alarm)}</span>
+                    ><span>${presentedState(this.hass, alarm)}</span>
                   </button>`
                 : nothing}<button
                 class="attention interactive"
@@ -1532,7 +1535,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                       : missing ? "mdi:cloud-question-outline" : "mdi:check-circle-outline"}
                 ></ha-icon
                 ><span
-                  >${overview ? overview.text : issues.length
+                  >${overview ? `${overview.text}${missing?localized(this.hass,` • ${missing} data sources unavailable`,` • ${missing} adatforrás nem elérhető`):""}` : issues.length
                     ? localized(this.hass,`${issues.length} notices`,`${issues.length} jelzés`)
                     : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : localized(this.hass,"No active alerts","Nincs aktív jelzés")}</span
                 >
@@ -1608,7 +1611,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                 <div>
                   <div class="alarm-popover-title">${localized(this.hass,"Alarm","Riasztó")}</div>
                   <div class="alarm-popover-state">
-                    ${entityState(this.hass, alarm)}
+                    ${presentedState(this.hass, alarm)}
                   </div>
                 </div>
                 <button

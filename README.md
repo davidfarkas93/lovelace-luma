@@ -1454,3 +1454,24 @@ Gate popovers focus their close button on opening; Escape or dismissal returns
 focus to the summary. Gate commands require a second tap in both full and popover
 modes. Sending disables repeat commands, failures allow retry, and unavailable
 states use a neutral tone instead of a success color. Tests use mocked services.
+
+### Measurement availability and locale
+
+Metric, Comfort, Room and Home Hero update their built-in copy and number
+formatting when the frontend language changes. Explicit labels/state maps win;
+HA's translated entity state is used when available. Numeric zero remains a valid
+measurement; blank, missing, unknown, unavailable and restored entity data do not
+become zero. Restored values are labelled as awaiting fresh data. Independent HA
+number-format overrides are not yet applied by these shared number helpers.
+
+Comfort reports incomplete data if temperature, humidity or a configured PM2.5
+source is missing. A known warning/error still takes priority and missing sources
+remain listed. Optional outside temperature does not determine indoor comfort.
+Source units are shown; configured thresholds are in those same units.
+
+Metric's `format`, `absolute`, `positive_suffix` and `negative_suffix` apply to the
+primary value only; secondary values use their own decimals/suffix. Time formatting
+honors the frontend's 12/24-hour preference and preserves an explicit `time_locale`.
+Room commands are disabled when their entity is unavailable/restored; More Info
+remains available. Home Hero never displays stale weather attributes as current,
+and labels missing alarm data explicitly rather than showing a success color.

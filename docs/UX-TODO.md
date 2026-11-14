@@ -63,7 +63,7 @@ Evidence: live Otthon/overview mobile and desktop renders; src/styles.ts, src/lo
 
 ### UX-07 Localization and formatting
 - [ ] Audit hardcoded built-in text; use shared localization while preserving explicit dashboard labels.
-- [ ] Verify locale changes update already mounted cards even when entity objects stay unchanged (Metric shouldUpdate currently checks entity identity only).
+- [x] Verify locale changes update already mounted Metric, Comfort, Room and Home Hero cards even when entity objects stay unchanged. Other cards remain to audit.
 - [ ] Define number/unit/date/time formatting via HA locale preferences; preserve decimals, configured suffixes and explicit time_locale behavior.
 - [ ] Distinguish “Open” as a command from “Open” as navigation; use domain-specific state labels.
 - Acceptance: English/Hungarian fixtures are internally consistent; Hungarian decimals and units are correct; live locale switching works; custom text remains untouched.
@@ -130,3 +130,14 @@ First-slice validation: npm run check, npm run build and npm run build:docs pass
 - Remaining: whole-library inventory/migration, comprehensive focus trap review, measured contrast, localization/number formatting, and remaining UX-04 numeric comparison. Partial pilot completion is not completion of the entire UX backlog.
 
 Final 0.61.1 verification: all required checks/builds passed; the browser suite passed again against the built static Storybook (not only the dev server). Inspected mobile light Metric, dark Room and dark Gate confirmation captures. Confirmation uses warning tint. The previous server stopped before the last rerun; restarting a localhost-only static server resolved the harness connection failure. No real HA actions were invoked.
+
+
+## State presentation slice — 0.61.2
+
+- Added a shared presentation module: rejects blank/null/nonfinite measurements and restored entity values, preserves real zero, formats numbers by frontend language, and distinguishes unavailable/unknown/awaiting-fresh-data text. Explicit state maps and HA-native translations take precedence.
+- Metric: localized numeric values, no units on missing measurements, neutral unavailable accent, separate primary time/duration/absolute/sign formatting from secondary values, and frontend time-format preference support with explicit time_locale preserved.
+- Comfort: required temperature/humidity and configured PM2.5 must be available before “Comfortable”; partial data is neutral. Known warning/error conditions still win, with missing sources named alongside them. Optional outdoor data does not gate indoor comfort. Displayed units come from source entities where available; configured temperature thresholds remain in the source measurement's units.
+- Room: missing environmental measurements remain visible, unavailable/restored command controls are disabled, More Info stays accessible, unknown toggle state does not falsely announce aria-pressed=false. State labels have native translation/localized fallback and real units.
+- Home Hero: unavailable/restored weather attributes are suppressed, genuine zero wind remains visible, unavailable/missing alarm is neutral and visible, core missing sources join the attention summary. Quiet unmonitored state says “no active alerts” rather than claiming all systems operational.
+- Locale changes refresh all four components without an entity change. This slice follows language for numeric formatting; full independent HA number-format preferences and whole-library migration remain open.
+- Validation: pure model regression added to npm run check; 24 light/dark responsive browser captures plus mounted-component locale switching, zero/blank/restored/partial states, severity preservation and independent secondary formatting pass. Files: scripts/check-presentation.mjs, scripts/check-state-presentation-ui.mjs. Evidence: /private/tmp/luma-state-ui. Main check, bundle and docs build passed. No physical device actions were used.
