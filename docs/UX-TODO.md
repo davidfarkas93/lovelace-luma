@@ -141,3 +141,31 @@ Final 0.61.1 verification: all required checks/builds passed; the browser suite 
 - Home Hero: unavailable/restored weather attributes are suppressed, genuine zero wind remains visible, unavailable/missing alarm is neutral and visible, core missing sources join the attention summary. Quiet unmonitored state says “no active alerts” rather than claiming all systems operational.
 - Locale changes refresh all four components without an entity change. This slice follows language for numeric formatting; full independent HA number-format preferences and whole-library migration remain open.
 - Validation: pure model regression added to npm run check; 24 light/dark responsive browser captures plus mounted-component locale switching, zero/blank/restored/partial states, severity preservation and independent secondary formatting pass. Files: scripts/check-presentation.mjs, scripts/check-state-presentation-ui.mjs. Evidence: /private/tmp/luma-state-ui. Main check, bundle and docs build passed. No physical device actions were used.
+
+## Surface/contrast pilot — 0.61.3
+
+UX-05/06/08: Metric, Room, Gate and Comfort now opt into shared lumaSurfaceStyles.
+Room identity color is restricted to its icon. Active light/fan/media controls use
+the informational role rather than warning/success colors; a stationary open cover
+is neutral. Closed gates and normal comfort are neutral; open gate attention and
+Comfort warning/error remain visibly labeled. Explicit accent overrides remain.
+Text uses primary or stronger supporting theme colors; semantic hues are
+supplemental icon/badge accents. Control borders/focus are distinct. Card surfaces,
+radii and low elevation are shared. PM2.5 particle animation is removed; actual
+measurements and threshold evaluation are unchanged. Theme background transitions
+were removed from Metric/Comfort to avoid a transient mismatch with new text color.
+
+Added Storybook State Gallery plus scripts/check-surfaces-ui.mjs. Reference light
+and dark themes at 390/768/1280: 348 text samples (including Gate confirmation),
+minimum text contrast 7.68:1, control boundary 3.07:1, focus 13.13:1. 12 captures and
+raw measured pairs are in /private/tmp/luma-surfaces-ui/contrast.json. Solid computed
+backgrounds are alpha-composited through ancestor/shadow boundaries; unexpected
+gradients fail the harness. Decorative icons and disabled controls are excluded.
+Targets: normal text >=4.5:1, boundaries/focus >=3:1, using W3C guidance:
+https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html
+
+Scope remains a pilot: arbitrary custom themes, complete-library migration,
+200% text/zoom audit, and full accessibility conformance are still open. Existing
+state and interaction browser suites must pass before release. Live screenshots
+verify adoption separately; no operational action is used for testing.

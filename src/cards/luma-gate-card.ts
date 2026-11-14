@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { runAction } from "../helpers";
 import { localize, localized, localizedMap } from "../localize";
-import { lumaTokens, lumaInteractionStyles } from "../styles";
+import { lumaTokens, lumaInteractionStyles, lumaSurfaceStyles } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
 interface Config {
@@ -36,7 +36,7 @@ export class LumaGateCard extends LitElement implements LovelaceCard {
   private readonly reposition=()=>this.positionPopover();
 
   static styles=[lumaTokens,lumaInteractionStyles,css`
-    :host{display:block}ha-card{--tone:var(--secondary-text-color);display:grid;gap:13px;padding:15px;border:1px solid color-mix(in srgb,var(--tone) 15%,transparent);border-radius:21px;background:linear-gradient(145deg,color-mix(in srgb,var(--tone) 8%,var(--luma-surface)),color-mix(in srgb,var(--tone) 2%,var(--luma-surface)) 65%,var(--luma-surface));box-shadow:0 14px 38px color-mix(in srgb,var(--tone) 7%,transparent)}
+    :host{display:block}ha-card{--tone:var(--secondary-text-color);display:grid;gap:13px;padding:15px}
     .summary{display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:12px;padding:0;border:0;color:inherit;background:transparent;font:inherit;text-align:left}
     .icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;color:var(--tone);background:color-mix(in srgb,var(--tone) 15%,transparent)}
     .icon ha-icon{--mdc-icon-size:24px}.copy{display:block;min-width:0}.title{display:block;font-size:var(--luma-text-md);font-weight:var(--luma-weight-title)}.hint{display:block;margin-top:3px;color:var(--luma-muted);font-size:var(--luma-text-xs)}
@@ -45,7 +45,7 @@ export class LumaGateCard extends LitElement implements LovelaceCard {
     .action{display:inline-flex;flex:1;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:44px;padding:0 14px;border:0;border-radius:999px;color:var(--primary-text-color);background:transparent;font:inherit;font-size:var(--luma-text-sm);font-weight:var(--luma-weight-strong);transition:transform .16s ease,background .16s ease,color .16s ease}
     .action ha-icon{--mdc-icon-size:18px}.action:hover{transform:translateY(-1px);background:color-mix(in srgb,var(--primary-text-color) 6%,transparent)}
     .action.primary{color:var(--tone);background:color-mix(in srgb,var(--tone) 13%,transparent)}.action.confirm{color:var(--warning-color);background:color-mix(in srgb,var(--warning-color) 16%,transparent)}
-    ha-card.compact{display:block;padding:0;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.compact:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tone) 28%,transparent);box-shadow:0 17px 40px color-mix(in srgb,var(--tone) 14%,transparent)}
+    ha-card.compact{display:block;padding:0;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
     .compact .summary{width:100%;grid-template-columns:46px minmax(0,1fr) auto;padding:16px;box-sizing:border-box;cursor:pointer}.compact .hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.compact .status{margin-left:3px}
     .scrim{position:fixed;inset:0;z-index:998;background:transparent;border:0;padding:0;cursor:default}.popover{position:fixed;z-index:999;display:grid;gap:13px;width:min(360px,calc(100vw - 24px));padding:15px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--tone) 22%,transparent);border-radius:22px;background:color-mix(in srgb,var(--luma-surface) 94%,transparent);box-shadow:0 24px 70px rgba(0,0,0,.22),0 4px 16px color-mix(in srgb,var(--tone) 10%,transparent);backdrop-filter:blur(22px) saturate(1.25);animation:appear .18s cubic-bezier(.2,.8,.2,1);transform-origin:top center}
     .popover-head{display:grid;grid-template-columns:38px minmax(0,1fr) 44px;align-items:center;gap:10px}.popover-head .icon{width:38px;height:38px;border-radius:13px}.popover-head .icon ha-icon{--mdc-icon-size:20px}.popover-title{font-size:var(--luma-text-md);font-weight:var(--luma-weight-title)}.popover-state{margin-top:2px;color:var(--tone);font-size:var(--luma-text-xs);font-weight:680}.close{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;color:var(--luma-muted);background:color-mix(in srgb,var(--primary-text-color) 5%,transparent);cursor:pointer}.close ha-icon{--mdc-icon-size:18px}
@@ -55,7 +55,7 @@ export class LumaGateCard extends LitElement implements LovelaceCard {
     @media(max-width:420px){ha-card{padding:13px}.summary{grid-template-columns:42px minmax(0,1fr) auto;gap:10px}.icon{width:42px;height:42px;border-radius:14px}.actions{gap:5px}.action{padding:0 10px;font-size:12px}.action ha-icon{--mdc-icon-size:17px}}
     @media(max-width:420px){.compact .summary{grid-template-columns:38px minmax(0,1fr);grid-template-areas:"gate-icon gate-copy" "gate-icon gate-status";gap:3px 10px;padding:13px}.compact .icon{grid-area:gate-icon;align-self:center;width:38px;height:38px;border-radius:13px}.compact .copy{grid-area:gate-copy}.compact .title{white-space:normal;line-height:1.15}.compact .hint{margin-top:2px}.compact .status{grid-area:gate-status;justify-self:start;margin:2px 0 0;padding:4px 0;font-size:11px}.popover{padding:13px}.popover .actions{display:grid;grid-template-columns:minmax(0,1fr) auto}.popover .action{padding:0 12px}}
     @media(prefers-reduced-motion:reduce){ha-card,.action,.popover{animation:none;transition:none}}
-  `];
+  `,lumaSurfaceStyles];
 
   setConfig(c:Config){if(!c?.entity)throw Error("entity required");this.config=c}
   getCardSize(){return 2}
@@ -105,7 +105,7 @@ export class LumaGateCard extends LitElement implements LovelaceCard {
     const c=this.config,e=this.hass.states[c.state_entity||c.entity],s=e?.state||"unavailable";
     const cover=(c.kind||"cover")==="cover";
     const open=["open","opening","on"].includes(s),moving=["opening","closing"].includes(s);
-    const tone=(!e||["unknown","unavailable"].includes(s))?"var(--secondary-text-color)":moving?"var(--primary-color)":open?"var(--warning-color)":"var(--success-color)";
+    const tone=(!e||["unknown","unavailable"].includes(s))?"var(--secondary-text-color)":moving?"var(--luma-state-active)":open?"var(--luma-state-warning)":"var(--luma-state-neutral)";
     const icon=cover?(open?"mdi:gate-open":"mdi:gate"):(open?"mdi:garage-open":"mdi:garage");
     const primary=moving
       ? {id:"stop",label:localize(this.hass,"stop"),icon:"mdi:stop",domain:"cover",service:"stop_cover"}

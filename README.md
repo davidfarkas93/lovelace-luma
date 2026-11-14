@@ -1475,3 +1475,24 @@ honors the frontend's 12/24-hour preference and preserves an explicit `time_loca
 Room commands are disabled when their entity is unavailable/restored; More Info
 remains available. Home Hero never displays stale weather attributes as current,
 and labels missing alarm data explicitly rather than showing a success color.
+
+### Surface and semantic color pilot
+
+Metric, Room, Gate and Comfort share `lumaSurfaceStyles`: neutral card surfaces,
+one card radius/elevation, stronger supporting text, distinct control boundaries
+and inset high-contrast focus. Room identity colors stay on the room icon;
+configured `accent_color`, `color` and `active_color` remain supported as accents.
+Text uses the theme's primary/secondary contrast hierarchy instead of arbitrary
+accent colors. Other cards have not yet migrated to this surface contract.
+
+- Active operation uses the informational role; an on light is not a warning.
+- Stationary open blinds, closed gates and comfortable conditions are normal
+  states. Open gates retain an attention cue; moving gates use the active role.
+- Comfort warnings/errors keep labeled tinted badges and icons. PM2.5 remains
+  visible without a continuously animated particle background.
+- Unknown/unavailable states remain distinct in text and do not become success.
+
+See **Design system / Surfaces and meaning / State gallery** in Storybook.
+`check-surfaces-ui.mjs` measures composited solid backgrounds, text, control borders
+and focus in the reference light/dark themes at 390/768/1280px. It is a focused
+regression check, not certification of arbitrary HA themes or the whole library.
