@@ -1017,7 +1017,9 @@ same icon cell, title weight, radius and tonal controls as Room cards:
   from a keyboard-accessible header button.
 - Measurements: temperature, humidity and optional PM2.5, each opening its source
   entity's More Info. Optional labels identify aggregate or room-specific sources.
-  Deviations explain *why* the status changed. Outdoor temperature and active
+  Deviations are marked at the affected value with a subtle tint and up/down
+  indicator; its tooltip and accessible label name the cause. There is no separate
+  warning row. Missing measurements remain labelled in their own slot. Outdoor temperature and active
   heating appear beneath as context, not as inputs to indoor comfort.
 - Optional `climate`: active AC state, target and supported quick modes. This row
   disappears when the device is off; configure the header's details sheet with a

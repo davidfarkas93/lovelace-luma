@@ -18,7 +18,7 @@ try{
    assert.deepEqual(await card.locator('.card,.metric,.header,.actions').evaluateAll(ns=>ns.filter(n=>n.scrollWidth>n.clientWidth+1).map(n=>n.className)),[],'no overflow');
    if(story==='integrated'){assert.equal(await card.locator('.climate').count(),0);assert.match(await card.locator('ha-card').getAttribute('style'),/success/);}
    if(story==='cooling'){assert.match(await card.locator('.climate-state').textContent(),/Épp hűt.*24 °C/);assert.equal(await card.locator('.operation').count(),1,'no duplicate AC activity chip');}
-   if(story==='warning'){assert.match(await card.locator('.reason').textContent(),/PM2.5/);assert.match(await card.locator('ha-card').getAttribute('style'),/warning/);}
+   if(story==='warning'){assert.equal(await card.locator('.reason').count(),0);assert.equal(await card.locator('.metric[data-severity=warning]').count(),1);assert.match(await card.locator('.metric[data-severity=warning]').getAttribute('aria-label'),/Emelkedett PM2.5/);assert.equal(await card.locator('.metric[data-severity=warning] .trend').textContent(),'↑');assert.match(await card.locator('ha-card').getAttribute('style'),/warning/);}
    if(story==='missing'){assert.match(await card.locator('.badge').textContent(),/Hiányos/);assert.equal(await card.locator('.climate [aria-pressed]').count(),0);}
    for(const size of await card.locator('button').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().height)))assert.ok(size>=44,'44px action');
    await page.screenshot({path:`${out}/${story}-${width}-${mode}.png`,fullPage:true});

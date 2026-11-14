@@ -48,3 +48,9 @@ assert.equal(comfortAssessment({...values,temperature:28,humidity:null}).status,
 assert.equal(comfortAssessment({...values,temperature:25,humidity:65,pm25:12}).status,'comfortable');
 assert.equal(comfortAssessment({...values,pm25:13},{pm25_elevated:15}).status,'comfortable');
 console.log('Comfort assessment: thresholds, causes, real zero, incomplete data and severity precedence passed.');
+
+const mixed=comfortAssessment({...values,temperature:28,humidity:34,pm25:7});
+assert.equal(mixed.metrics.temperature.severity,'error');assert.equal(mixed.metrics.temperature.direction,'high');
+assert.equal(mixed.metrics.humidity.severity,'warning');assert.equal(mixed.metrics.humidity.direction,'low');
+assert.equal(mixed.metrics.pm25.severity,'normal');
+assert.equal(comfortAssessment({...values,temperature:null}).metrics.temperature.severity,'missing');

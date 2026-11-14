@@ -209,3 +209,11 @@ contrast samples passed. The migrated view was re-read to verify one integrated
 Comfort card and the standalone Climate card only inside the details sheet.
 The live screenshot API cannot open URL fragments; sheet interaction is verified
 locally with mocked data and commands. No real HVAC action was used for testing.
+
+## Compact Comfort — 0.62.1
+
+Reduce numeric emphasis (23/21px to 16px, medium weight), section gaps (16/14px
+to 8px), and context-chip padding. Keep 44px targets and the Room header pattern.
+Replace the standalone cause row with per-reading severity tint and a directional
+marker, with an explicit tooltip/accessibility label. Other normal measurements
+keep their normal styling even when a different measurement is severe.
