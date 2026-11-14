@@ -68,21 +68,22 @@ export const lumaInteractionStyles = css`
 /** Opt-in surface/contrast contract; migrate and validate cards before opting in. */
 export const lumaSurfaceStyles = css`
   :host {
+    --luma-state-success: var(--success-color);
     --luma-state-active: var(--info-color, var(--primary-color));
     --luma-state-warning: var(--warning-color);
     --luma-state-error: var(--error-color);
     --luma-state-neutral: var(--secondary-text-color);
-    --luma-muted: color-mix(in srgb, var(--primary-text-color) 78%, var(--luma-surface));
-    --luma-border: color-mix(in srgb, var(--primary-text-color) 14%, var(--luma-surface));
-    --luma-control-border: color-mix(in srgb, var(--primary-text-color) 55%, var(--luma-surface));
-    --luma-control-surface: color-mix(in srgb, var(--primary-text-color) 4%, var(--luma-surface));
-    --luma-hover-surface: color-mix(in srgb, var(--primary-text-color) 7%, var(--luma-surface));
-    --luma-shadow: 0 3px 12px rgb(0 0 0 / 6%);
+    --luma-muted: color-mix(in srgb, var(--primary-text-color) 68%, var(--luma-surface));
+    --luma-border: color-mix(in srgb, var(--primary-text-color) 8%, transparent);
+    --luma-control-border: color-mix(in srgb, var(--primary-text-color) 10%, transparent);
+    --luma-control-surface: color-mix(in srgb, var(--primary-text-color) 5%, transparent);
+    --luma-hover-surface: color-mix(in srgb, var(--primary-text-color) 9%, transparent);
+    --luma-shadow: 0 6px 20px rgb(0 0 0 / 5%), inset 0 1px color-mix(in srgb, var(--primary-text-color) 3%, transparent);
   }
   ha-card {
     border: 1px solid var(--luma-border);
     border-radius: var(--luma-radius-card);
-    background: var(--luma-surface);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--tone, var(--primary-color)) 7%, var(--luma-surface)), var(--luma-surface) 80%);
     box-shadow: var(--luma-shadow);
   }
   .card.interactive:hover, .card:hover, .card:has(.top.interactive:hover), ha-card.compact:hover {
@@ -103,23 +104,25 @@ export const lumaSurfaceStyles = css`
   .secondary.secondary-action, .pill-control {
     color: var(--primary-text-color);
     background: var(--luma-control-surface);
-    border: 1px solid var(--luma-control-border);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-weight: var(--luma-weight-medium);
   }
   .secondary.secondary-action:hover, .pill-control:hover {
     background: var(--luma-hover-surface);
-    border-color: var(--luma-control-border);
+    border-color: transparent;
   }
-  .pill { font-size: var(--luma-text-sm); line-height: 1.35; }
+  .pill { font-size: 11px; line-height: 1.35; font-weight: var(--luma-weight-medium); gap: 5px; }
   .pill-status { color: var(--luma-muted); }
   .pill > ha-icon:first-child { color: var(--pill-color); }
   .pill-control[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--pill-color) 12%, var(--luma-surface));
+    background: color-mix(in srgb, var(--pill-color) 16%, transparent);
   }
   /* Readable text carries meaning; theme accents are supplemental, never the text color. */
   .badge, .operation, .status { color: var(--primary-text-color); }
   .status .dot { background: var(--tone); }
   .operation ha-icon { color: var(--activity-color); }
-  .badge { background: color-mix(in srgb, var(--tone) 12%, var(--luma-surface)); }
+  .badge { font-weight: 600; background: color-mix(in srgb, var(--tone) 13%, transparent); }
   .operation { background: color-mix(in srgb, var(--activity-color) 10%, var(--luma-surface)); }
   .popover {
     background: var(--luma-surface);
@@ -130,7 +133,9 @@ export const lumaSurfaceStyles = css`
   .action, .action.primary, .popover .primary, .action.confirm, .popover .primary.confirm {
     color: var(--primary-text-color);
     background: var(--luma-control-surface);
-    border: 1px solid var(--luma-control-border);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-weight: var(--luma-weight-medium);
   }
   .action:hover, .popover .primary:hover { background: var(--luma-hover-surface); transform: none; }
   .action.confirm, .popover .primary.confirm {
@@ -140,4 +145,14 @@ export const lumaSurfaceStyles = css`
     background: color-mix(in srgb, var(--luma-state-warning) 23%, var(--luma-surface));
   }
   .error { color: var(--primary-text-color); border-left: 3px solid var(--luma-state-error); padding-left: 8px; }
+  .name, .title { font-weight: 650; }
+  .label { font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+  .env, .metrics, .hint, .details { font-size: 11px; line-height: 1.5; }
+  .pill[aria-pressed] .action-cue { display: none; }
+  .pill[aria-pressed]::after { content: ""; width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: var(--luma-muted); opacity: .5; }
+  .pill[aria-pressed="true"]::after { background: var(--pill-color); opacity: 1; }
+  .arrow, .primary-action > .action-cue { opacity: .65; }
+  .card:has(.top.interactive:hover), ha-card.compact:hover {
+    border-color: color-mix(in srgb, var(--accent, var(--tone, var(--primary-color))) 30%, transparent);
+  }
 `;

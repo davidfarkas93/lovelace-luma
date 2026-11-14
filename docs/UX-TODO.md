@@ -175,3 +175,15 @@ verify adoption separately; no operational action is used for testing.
 responsive captures showed the new surfaces. The larger Gate hint was ellipsized
 in half-width mobile cards; it now wraps. The correction is a new patch release,
 not a replaced tag. A two-column narrow Gate fixture covers this real layout.
+
+## User feedback after 0.61.4 — refinement preview
+
+The neutral/outlined pilot was judged too visually heavy and lost Luma's character.
+Do not treat UX-05/06/08 as accepted merely because numeric contrast targets passed.
+A preview-only alternative draws on Radix tonal scales, Material surface roles and
+Atlassian elevation. See docs/SURFACE-REFINEMENT-PREVIEW.md and Storybook Design
+review / Surface refinement. Strong focus, native actions and data correctness are
+retained; always-visible high-contrast borders are not a universal requirement.
+The user accepted the concrete comparison. 0.61.5 adopts the refined shared surfaces,
+room gradients, subdued control fills, lighter typography and closed-gate success
+tint. Gradient-aware text/focus checks and responsive mock interaction checks pass.

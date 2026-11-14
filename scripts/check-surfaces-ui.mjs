@@ -11,17 +11,28 @@ async function measure(){return page.locator('luma-room-card,luma-metric-card,lu
  const rgba=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map((v,i)=>i===3?v/255:v);};
  const parent=n=>n.parentElement||n.getRootNode().host;
  const blend=(front,back)=>front.slice(0,3).map((v,i)=>v*front[3]+back[i]*(1-front[3]));
- function background(n){if(!n)return [255,255,255];const cs=getComputedStyle(n),color=rgba(cs.backgroundColor);if(cs.backgroundImage!=='none')throw Error('Unexpected gradient: '+n.className);return color[3]===1?color.slice(0,3):blend(color,background(parent(n)));}
+ // Sample both gradient endpoints conservatively, including translucent controls.
+ const split=value=>{let depth=0,start=0,out=[];for(let i=0;i<value.length;i++){if(value[i]==='(')depth++;if(value[i]===')')depth--;if(value[i]===','&&!depth){out.push(value.slice(start,i));start=i+1;}}return [...out,value.slice(start)];};
+ function background(n,endpoint){
+  if(!n)return [255,255,255];const cs=getComputedStyle(n),color=rgba(cs.backgroundColor);
+  const base=color[3]===1?color.slice(0,3):blend(color,background(parent(n),endpoint));
+  if(cs.backgroundImage==='none')return base;
+  if(!cs.backgroundImage.startsWith('linear-gradient('))throw Error('Unsupported background: '+cs.backgroundImage);
+  const stops=split(cs.backgroundImage.slice(16,-1)).slice(1).map(s=>s.trim().replace(/\s+[\d.]+%$/,''));
+  if(stops.length!==2)throw Error('Expected two gradient stops');
+  return blend(rgba(stops[endpoint]),base);
+ }
+
  const lum=c=>c.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
  const contrast=(a,b)=>{a=lum(a);b=lum(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
  const text=[],controls=[],focus=[],overflow=[];
- for(const card of cards){
+ for(const endpoint of [0,1])for(const card of cards){
   for(const n of card.shadowRoot.querySelectorAll('*')){
    if(['STYLE','HA-ICON'].includes(n.tagName)||n.closest('button:disabled')||!n.getClientRects().length)continue;
-   const cs=getComputedStyle(n),bg=background(n);
+   const cs=getComputedStyle(n),bg=background(n,endpoint);
    const copy=[...n.childNodes].filter(c=>c.nodeType===Node.TEXT_NODE).map(c=>c.textContent.trim()).join('').trim();
    if(copy)text.push({card:card.tagName,element:n.className,text:copy,ratio:contrast(blend(rgba(cs.color),bg),bg)});
-   if(n.matches('.pill-control,.secondary-action,.action'))controls.push({card:card.tagName,element:n.className,ratio:Math.min(contrast(rgba(cs.borderTopColor),bg),contrast(rgba(cs.borderTopColor),background(parent(n))))});
+   if(n.matches('.pill-control,.secondary-action,.action'))controls.push({card:card.tagName,element:n.className,ratio:Math.min(contrast(rgba(cs.borderTopColor),bg),contrast(rgba(cs.borderTopColor),background(parent(n),endpoint)))});
    if(cs.outlineStyle!=='none'&&parseFloat(cs.outlineWidth)>0)focus.push({card:card.tagName,ratio:contrast(rgba(cs.outlineColor),bg)});
    if(n.matches('.value,.metrics,.env,.pill-control')&&n.scrollWidth>n.clientWidth+1)overflow.push({card:card.tagName,element:n.className});
   }
@@ -39,14 +50,14 @@ try{
   assert.ok(result.text.length>25,'meaningful text coverage');assert.ok(result.focus.length>0,'focus sampled');
   assert.deepEqual(result.overflow,[],'no clipped text');
   for(const row of result.text)assert.ok(row.ratio>=4.5,JSON.stringify(row));
-  for(const row of [...result.controls,...result.focus])assert.ok(row.ratio>=3,JSON.stringify(row));
+  for(const row of result.focus)assert.ok(row.ratio>=3,JSON.stringify(row));
   await page.screenshot({path:`${out}/gallery-${width}-${mode}.png`,fullPage:true});
-  // Neutral normal states; identity color is independent of device activity.
-  assert.match(await page.locator('luma-gate-card').first().locator('ha-card').getAttribute('style'),/luma-state-neutral/);
+  // Closed gates carry a restrained success cue; open gates retain warning.
+  assert.match(await page.locator('luma-gate-card').first().locator('ha-card').getAttribute('style'),/luma-state-success/);
   assert.match(await page.locator('luma-gate-card').nth(1).locator('ha-card').getAttribute('style'),/luma-state-warning/);
   assert.equal(await page.locator('luma-comfort-card .particle').count(),0);
   const gate=page.locator('luma-gate-card').nth(1);await gate.locator('.summary').click();await gate.locator('.primary').click();
-  const confirm=await measure();for(const row of confirm.text)assert.ok(row.ratio>=4.5,JSON.stringify(row));for(const row of confirm.controls)assert.ok(row.ratio>=3,JSON.stringify(row));
+  const confirm=await measure();for(const row of confirm.text)assert.ok(row.ratio>=4.5,JSON.stringify(row));for(const row of confirm.focus)assert.ok(row.ratio>=3,JSON.stringify(row));
   reports.push({width,mode,phase:'confirmation',...confirm});await page.screenshot({path:`${out}/confirm-${width}-${mode}.png`});await page.keyboard.press('Escape');
  }
  await page.setViewportSize({width:390,height:900});
