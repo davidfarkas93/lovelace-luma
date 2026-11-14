@@ -2,8 +2,10 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { ref } from "lit/directives/ref.js";
 import { mediaAppName } from "../helpers";
+import { mediaPlaceholder } from "../media-placeholder";
 import { localized, localize } from "../localize";
 import { navigateRoute, routeIsActive, type NavigationRoute } from "../navigation";
+import { entityAvailable } from "../presentation";
 import { lumaTokens } from "../styles";
 import "../components/luma-bottom-sheet";
 import "./luma-popup-card";
@@ -22,6 +24,7 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
   @state()private selectedMedia=0;
   @state()private path=window.location.pathname;
   @state()private menuOpen=false;
+  @state()private mediaPickerOpen=false;
   private ownsMenuEntry=false;
   private locationChanged=()=>{
     this.path=window.location.pathname;
@@ -65,6 +68,17 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
       .art{width:28px;height:28px;border-radius:8px}.art ha-icon{--mdc-icon-size:18px}
       .title{font-size:12px;line-height:16px}.meta{font-size:10px;line-height:13px}
       .controls{gap:0}.control,.pager{box-sizing:border-box;width:44px;min-width:44px;height:44px;padding:0;justify-content:center;background:transparent}
+    }
+    .media-bubble{display:none}
+    .media-choices{display:grid;gap:8px}.media-choice{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px;border:0;border-radius:12px;color:var(--primary-text-color);background:color-mix(in srgb,var(--primary-text-color) 4%,transparent);text-align:left;font:inherit;cursor:pointer}.media-choice:hover{background:color-mix(in srgb,var(--primary-text-color) 8%,transparent)}.choice-copy{display:grid;gap:4px;flex:1;min-width:0}.choice-name{font-size:14px;font-weight:650}.choice-title{font-size:12px;color:var(--luma-muted);overflow-wrap:anywhere}.media-choice ha-icon{--mdc-icon-size:22px;color:var(--primary-color)}
+    @media(max-width:767px){
+      .primary{bottom:calc(6px + env(safe-area-inset-bottom))}
+      .primary-space,.host:not(.with-media){min-height:calc(96px + env(safe-area-inset-bottom))}
+      .primary-space.with-media,.host.with-media{min-height:calc(148px + env(safe-area-inset-bottom))}
+      .media-dock,.media-dock.grouped-media{display:none}
+      .media-bubble{position:fixed;z-index:101;display:grid;place-items:center;right:max(12px,calc((100vw - 480px)/2));bottom:calc(90px + env(safe-area-inset-bottom));width:48px;height:48px;padding:5px;border:1px solid var(--luma-border);border-radius:16px;background:var(--luma-surface);color:var(--luma-muted);box-shadow:var(--luma-shadow);cursor:pointer}
+      .media-bubble.playing{color:var(--primary-color);background:color-mix(in srgb,var(--primary-color) 10%,var(--luma-surface));border-color:color-mix(in srgb,var(--primary-color) 22%,transparent)}
+      .media-bubble img{width:100%;height:100%;object-fit:cover;border-radius:11px}.media-bubble ha-icon{--mdc-icon-size:24px}.media-count{position:absolute;top:-5px;right:-4px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border:2px solid var(--luma-surface);border-radius:99px;background:var(--primary-color);color:var(--text-primary-color,#fff);font-size:10px;font-weight:650}.media-indicator{position:absolute;right:5px;bottom:5px;width:7px;height:7px;border:1px solid var(--luma-surface);border-radius:50%;background:var(--primary-color)}
     }
   `];
   setConfig(c:Config){
@@ -111,9 +125,9 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
     </luma-bottom-sheet>`;
   }
   getCardSize(){return 1}
-  protected updated(changed:Map<PropertyKey,unknown>){if(changed.has("config")&&!this.config?.menu)void this.mount();if(this.child&&this.hass)this.child.hass=this.hass}
+  protected updated(changed:Map<PropertyKey,unknown>){if(this.mediaPickerOpen&&this.activeMedia().length<2)this.mediaPickerOpen=false;if(changed.has("config")&&!this.config?.menu)void this.mount();if(this.child&&this.hass)this.child.hass=this.hass}
   private async mount(){if(!this.config||this.config.menu||!this.renderRoot.querySelector(".host"))return;const helpers=await window.loadCardHelpers?.();if(!helpers)return;const cfg={type:"custom:navbar-card",mobile:{show_labels:true},desktop:{show_labels:true,position:"left",min_width:768},routes:this.config.routes,styles:".navbar-card{z-index:100!important;background:color-mix(in srgb,var(--card-background-color) 88%,transparent)!important;backdrop-filter:blur(24px) saturate(150%);border:1px solid color-mix(in srgb,var(--primary-text-color) 9%,transparent);border-radius:20px;box-shadow:0 16px 45px rgba(0,0,0,.10);margin:12px 0 16px;overflow:hidden}"};this.child=helpers.createCardElement(cfg) as HTMLElement&LovelaceCard;if(this.hass)this.child.hass=this.hass;const host=this.renderRoot.querySelector(".host")!;host.replaceChildren(this.child)}
-  private activeMedia(){if(!this.hass)return[];const active=["on","idle","playing","paused","buffering"];return(this.config?.media_players||[]).filter(item=>active.includes(this.hass!.states[item.activity_entity||item.entity]?.state))}
+  private activeMedia(){if(!this.hass)return[];const active=["on","idle","playing","paused","buffering"];return(this.config?.media_players||[]).filter(item=>entityAvailable(this.hass!.states[item.activity_entity||item.entity])&&active.includes(this.hass!.states[item.activity_entity||item.entity]?.state))}
   private open(hash:string){if(window.location.hash===hash)window.dispatchEvent(new HashChangeEvent("hashchange"));else window.location.hash=hash}
   private openMedia(item:MediaItem){if(this.suppressOpen){this.suppressOpen=false;return}const hash=typeof item.popup==="string"?item.popup:item.popup.hash;this.open(hash.startsWith("#")?hash:"#"+hash)}
   private mediaKeydown(event:KeyboardEvent,item:MediaItem){if(event.target!==event.currentTarget||!["Enter"," "].includes(event.key))return;event.preventDefault();this.openMedia(item)}
@@ -159,6 +173,8 @@ export class LumaNavbarCard extends LitElement implements LovelaceCard{
     const title=String(attrs.media_title||mediaAppName(entity,this.config.app_names)||entity?.attributes.friendly_name||"Média");
     const hasPlayback=this.hasPlayback(entity);
     const state=hasPlayback?(entity?.state==="paused"?localized(this.hass,"Paused","Szüneteltetve"):localized(this.hass,"Playing","Lejátszás")):localized(this.hass,"On","Bekapcsolva");
-    return html`${item?html`<div class=${`media-dock ${this.config.menu?"grouped-media":""} ${artwork?"has-art":""}`} role="button" tabindex="0" aria-label=${`${item.name}: ${title}. ${localized(this.hass,"Open remote","Távirányító megnyitása")}`} @pointerdown=${this.dragBegin} @pointerup=${(event:PointerEvent)=>this.dragEnd(event,active.length)} @pointercancel=${this.dragCancel} @keydown=${(event:KeyboardEvent)=>this.mediaKeydown(event,item)} @click=${()=>this.openMedia(item)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art">${artwork?html`<img src=${artwork} alt="">`:html`<ha-icon icon="mdi:television-play"></ha-icon>`}</div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<button class="pager" title="Aktív lejátszó váltása" aria-label="Aktív lejátszó váltása, ${selected+1}/${active.length}" @click=${(event:Event)=>this.selectMedia(event,(selected+1)%active.length)}>${active.map((_,index)=>html`<span class=${`dot ${index===selected?"active":""}`}></span>`)}</button>`:nothing}${hasPlayback?html`<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button>`:nothing}</div></div>`:nothing}${this.renderNavigation(Boolean(item))}${this.renderMediaPopups()}`
+    return html`${item?html`<button class=${`media-bubble ${entity?.state==='playing'?'playing':''}`} aria-haspopup="dialog" aria-label=${active.length>1?localized(this.hass,`${active.length} active players. Choose player`,`${active.length} aktív lejátszó. Lejátszó választása`):`${item.name}: ${title}. ${localized(this.hass,'Open remote','Távirányító megnyitása')}`} title=${`${item.name}: ${title}`} @click=${()=>active.length>1?this.mediaPickerOpen=true:this.openMedia(item)}><img src=${artwork||mediaPlaceholder} alt="">${active.length>1?html`<span class="media-count" aria-hidden="true">${active.length}</span>`:entity?.state==='playing'?html`<span class="media-indicator" aria-hidden="true"></span>`:nothing}</button>`:nothing}
+    <luma-bottom-sheet .open=${this.mediaPickerOpen&&active.length>1} .heading=${localized(this.hass,'Active media','Aktív média')} icon="mdi:play-circle-outline" .maxWidth=${480} .closeLabel=${localize(this.hass,'dismiss')} @sheet-dismiss=${()=>this.mediaPickerOpen=false}><div class="media-choices">${active.map((player,index)=>html`<button class="media-choice" @click=${()=>{this.selectedMedia=index;this.mediaPickerOpen=false;this.openMedia(player)}}><ha-icon icon="mdi:television-play"></ha-icon><span class="choice-copy"><span class="choice-name">${player.name}</span><span class="choice-title">${String(this.hass!.states[player.entity]?.attributes.media_title||mediaAppName(this.hass!.states[player.entity],this.config!.app_names)||localized(this.hass,'Open remote','Távirányító megnyitása'))}</span></span><ha-icon icon="mdi:chevron-right"></ha-icon></button>`)}</div></luma-bottom-sheet>
+    ${item?html`<div class=${`media-dock ${this.config.menu?"grouped-media":""} ${artwork?"has-art":""}`} role="button" tabindex="0" aria-label=${`${item.name}: ${title}. ${localized(this.hass,"Open remote","Távirányító megnyitása")}`} @pointerdown=${this.dragBegin} @pointerup=${(event:PointerEvent)=>this.dragEnd(event,active.length)} @pointercancel=${this.dragCancel} @keydown=${(event:KeyboardEvent)=>this.mediaKeydown(event,item)} @click=${()=>this.openMedia(item)}>${artwork?html`<img class="backdrop" src=${artwork} alt="" aria-hidden="true">`:nothing}<div class="art"><img src=${artwork||mediaPlaceholder} alt=""></div><div class="title">${title}</div><div class="meta">${item.name} · ${state}</div><div class="controls">${active.length>1?html`<button class="pager" title="Aktív lejátszó váltása" aria-label="Aktív lejátszó váltása, ${selected+1}/${active.length}" @click=${(event:Event)=>this.selectMedia(event,(selected+1)%active.length)}>${active.map((_,index)=>html`<span class=${`dot ${index===selected?"active":""}`}></span>`)}</button>`:nothing}${hasPlayback?html`<button class="control" title="Lejátszás vagy szünet" @click=${(event:Event)=>this.playPause(event,item.entity)}><ha-icon icon=${entity?.state==="playing"?"mdi:pause":"mdi:play"}></ha-icon></button>`:nothing}</div></div>`:nothing}${this.renderNavigation(Boolean(item))}${this.renderMediaPopups()}`
   }
 }

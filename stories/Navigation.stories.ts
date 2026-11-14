@@ -35,3 +35,20 @@ export const SectionNavigation:Story={render:()=>renderCard("custom:luma-route-t
   {url:"/demo/irrigation-zones",label:"Zónák",icon:"mdi:pipe-valve"},
   {url:"/demo/irrigation-settings",label:"Beállítások",icon:"mdi:tune-variant"},
 ]},{},900)};
+
+import {html} from 'lit';
+import {mediaPlaceholder} from '../src/media-placeholder';
+import {createMockHass} from '../storybook/mock-hass';
+import type {LovelaceCard} from '../src/types';
+function floatingPreview(multiple=true,withoutArtwork=false){
+ const artwork=mediaPlaceholder;
+ const nav=document.createElement('luma-navbar-card')as LovelaceCard;
+ const hass=createMockHass({'media_player.tv':{state:'playing',attributes:{media_title:'Esti film',media_duration:1200,...(withoutArtwork?{}:{entity_picture:artwork})}},'remote.tv':{state:'on'},'media_player.bedroom':{state:multiple?'on':'off',attributes:{friendly_name:'Hálószoba TV'}},'remote.bedroom':{state:'on'},'sensor.temp':{state:22.1},'light.room':{state:'on'},'cover.room':{state:'closed'}});hass.editMode=false;
+ nav.setConfig({type:'custom:luma-navbar-card',...groupedConfig,media_players:[{entity:'media_player.tv',name:'Nappali',popup:{hash:'tv-remote',name:'Nappali TV',cards:[{type:'custom:luma-remote-card',remote_entity:'remote.tv',media_entity:'media_player.tv',name:'Nappali TV'}]}},{entity:'media_player.bedroom',name:'Hálószoba',popup:{hash:'bedroom-remote',name:'Hálószoba TV',cards:[{type:'custom:luma-remote-card',remote_entity:'remote.bedroom',media_entity:'media_player.bedroom',name:'Hálószoba TV'}]}}]});nav.hass=hass;
+ const rooms=document.createElement('luma-layout-card')as LovelaceCard;rooms.setConfig({type:'custom:luma-layout-card',columns:2,tablet_columns:2,mobile_columns:2,cards:['Nappali','Hálószoba','Dolgozó','Gyerekszoba'].map(name=>({type:'custom:luma-room-card',name,icon:'mdi:sofa-outline',temperature_entity:'sensor.temp',light_entity:'light.room',cover_entity:'cover.room',path:'#room'}))});rooms.hass=hass;
+ return html`<main style="max-width:720px;margin:0 auto;padding:24px 16px;color:var(--primary-text-color)"><h2 style="font-size:20px;margin:0 0 8px">Otthon</h2><p style="font-size:12px;color:var(--secondary-text-color);margin:0 0 20px">Mobilon a jobb alsó médiagombot koppintsd meg. Az előnézet csak mintaeszközöket vezérel.</p>${rooms}${nav}</main>`;
+}
+export const FloatingMedia:Story={render:()=>floatingPreview()};
+export const FloatingSinglePlayer:Story={render:()=>floatingPreview(false)};
+
+export const FloatingWithoutArtwork:Story={render:()=>floatingPreview(false,true)};
