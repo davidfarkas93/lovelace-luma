@@ -1,3 +1,4 @@
+import '../components/luma-climate-control';
 import { LitElement, css, html, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { runAction } from "../helpers";
@@ -13,7 +14,7 @@ interface Mode {
 interface Config {
   type: string;
   entity: string;
-  variant?: "default" | "thermostat";
+  variant?: "default" | "thermostat" | "compact";
   name?: string;
   icon?: string;
   modes?: Mode[];
@@ -216,10 +217,10 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
     return this.config?.variant === "thermostat" ? 2 : 1;
   }
   protected shouldUpdate(changed: PropertyValues<this>) {
-    if (!changed.has("hass")) return true;
+    if ([...changed.keys()].some(key=>key!=="hass")) return true;
     const old = changed.get("hass") as HomeAssistant | undefined;
     return (
-      !old ||
+      !old || old.callService!==this.hass?.callService || old.locale!==this.hass?.locale || old.config!==this.hass?.config ||
       old.states[this.config!.entity] !== this.hass?.states[this.config!.entity]
     );
   }
@@ -239,6 +240,7 @@ export class LumaClimateCard extends LitElement implements LovelaceCard {
   }
   render() {
     if (!this.hass || !this.config) return nothing;
+    if (this.config.variant === "compact") return html`<luma-climate-control .hass=${this.hass} .config=${this.config} .compact=${true} .alwaysVisible=${true}></luma-climate-control>`;
     if (this.config.variant === "thermostat") return this.renderThermostat();
     const e = this.hass.states[this.config.entity],
       mode = e?.state || "unknown",

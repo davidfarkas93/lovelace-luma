@@ -126,7 +126,7 @@ const cards = [
     type:"luma-climate-card",name:"Luma Climate",description:"Climate controls and a thermostat summary with current/target temperatures and actual heating activity.",
   },
   {
-    type:"luma-comfort-card",name:"Luma Comfort",description:"Indoor comfort measurements, explained status and optional integrated climate controls.",
+    type:"luma-comfort-card",name:"Luma Comfort",description:"Indoor comfort summary and detail views with room activity and integrated climate controls.",
   },
   {
     type:"luma-room-card",name:"Luma Room",description:"A contextual room card with environment and quick controls.",
@@ -168,7 +168,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.62.3 ",
+  "%c LUMA %c 0.63.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

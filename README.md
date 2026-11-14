@@ -1544,3 +1544,66 @@ Labelled controls use subtle fills rather than permanently high-contrast borders
 The accepted comparison is in **Design review / Surface refinement**; see
 [design rationale](docs/SURFACE-REFINEMENT-PREVIEW.md). It is a focused
 regression check, not certification of arbitrary HA themes or the whole library.
+
+### Comfort detail panel (v0.63.0)
+
+Use `display: details` on `custom:luma-comfort-card` inside the existing
+`custom:luma-popup-card`. Supply the **same measurement entities and thresholds**
+as the summary; this variant explains the same assessment rather than calculating
+a separate score. `temperature_label`, `humidity_label` and `pm25_label` identify
+the measurement sources. The compact, unframed measurement strip keeps the configured comfort ranges visible even for highlighted deviations; arrows mark the direction and accessible labels explain the cause. Contextual readings use compact neutral tiles.
+
+Optional detail configuration:
+
+```yaml
+display: details
+rooms:
+  - name: Living room
+    icon: mdi:sofa
+    temperature_entity: sensor.living_temperature
+    humidity_entity: sensor.living_humidity
+    climate_entity: climate.living_thermostat
+context_entities:
+  - entity: sensor.outside_temperature
+    name: Outside temperature
+    icon: mdi:thermometer
+    decimals: 1
+details_action:
+  action: navigate
+  navigation_path: /dashboard-climate/climate
+```
+
+Room rows open the thermostat's More Info (or the temperature source when no
+thermostat is configured). Actual `hvac_action: heating` determines the heating
+indicator; mode `heat` alone does not. Missing/restored thermostat data does not
+claim inactivity or display a stale target. Room values and `context_entities`
+are contextual, not extra assessment inputs. The optional `climate` controls
+remain visible while off in details, allowing activation from the sheet.
+See **Cards / Comfort / Details** and **Details Missing** for local previews.
+
+
+The climate controls in Comfort details share a reusable control with
+`custom:luma-climate-card` using `variant: compact`. This unframed variant can
+also be placed in a room view or any existing popup, independently of Comfort:
+
+```yaml
+type: custom:luma-climate-card
+variant: compact
+entity: climate.living_room
+name: Living room AC
+modes:
+  - mode: off
+  - mode: cool
+```
+
+It stays visible while off, filters modes against the entity's `hvac_modes`,
+shows actual activity separately from the selected mode, and shares guarded
+commands, pending/error feedback and native settings with Comfort. Existing
+`default` and `thermostat` variants retain their presentation.
+
+Compact climate keeps the first two supported, configured modes directly visible
+(order `off`, `cool` first to prioritize them). Additional modes appear in a
+Luma-styled “More modes” popover. Its trigger highlights an active extra mode;
+the state label still names the actual mode/activity. The menu supports arrow
+keys, Escape and outside dismissal. Selection remains authoritative to HA.
+Keyboard order follows direct modes → more modes → settings.

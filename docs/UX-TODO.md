@@ -228,3 +228,16 @@ surfaces (8px, 6px on narrow cards) and flagged value groups (4px vertical,
 5–6px horizontal). Give PM2.5's longer value/unit/indicator group proportionally
 more room. This Room/Comfort combination is the accepted visual reference for
 further Luma refinement.
+
+
+### Comfort detail sheet — v0.63.0
+
+- [x] Reuse the summary assessment and thresholds; flag the contributing values inline.
+- [x] Group room temperature, humidity and actual thermostat activity in one row.
+- [x] Use the shared dot/text status, quiet surfaces and compact value typography.
+- [x] Keep AC activation available while off; retain guarded service commands.
+- [x] Separate contextual readings from assessment inputs.
+- [x] Preview active/idle/off/missing/restored states across mobile/tablet/desktop.
+- [x] Review the local Storybook detail panel with David.
+- [x] Prepare the approved v0.63.0 release, including the reusable compact climate control and extra-mode menu.
+- [ ] Install the release and replace the live environment popup contents with the details variant; preserve all existing measurement sources and the climate navigation link.
