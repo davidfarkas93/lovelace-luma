@@ -15,6 +15,7 @@ const conditions=new Set(['sunny','clear-night','cloudy','partlycloudy','rainy',
 /** Public weather-only sensor data. No journal reads, AI calls or action services. */
 @customElement('luma-weather-advice')
 export class LumaWeatherAdvice extends LitElement{
+ @property({type:Boolean}) hideUnavailable=false;
  @property({attribute:false}) hass?:HomeAssistant;
  @property() entityId='';
  @property() weatherEntity='';
@@ -28,7 +29,7 @@ export class LumaWeatherAdvice extends LitElement{
   :host{display:block;min-width:0}p{margin:0;line-height:1.6;overflow-wrap:anywhere}
   .weather-advice{margin:8px 0 0;max-width:65ch;font-size:var(--luma-text-sm);font-weight:450;color:var(--primary-text-color)}
   .unavailable,.muted{color:var(--luma-muted)}
-  button{display:inline-flex;align-items:center;gap:2px;margin:0 0 0 8px;min-height:28px;padding:0 2px;border:0;border-radius:4px;background:transparent;color:var(--primary-color);font:inherit;font-weight:600;cursor:pointer;vertical-align:baseline}
+  button{display:inline-flex;align-items:center;gap:2px;margin:0 0 0 8px;min-height:44px;padding:0 2px;border:0;border-radius:4px;background:transparent;color:var(--primary-color);font:inherit;font-weight:600;cursor:pointer;vertical-align:baseline}
   button:hover{text-decoration:underline}button:focus-visible{outline:2px solid var(--primary-color);outline-offset:3px}button ha-icon{--mdc-icon-size:15px}
   .detail-summary{font-size:var(--luma-text-md);margin:0 0 18px}.period{padding:16px 0;border-top:1px solid var(--luma-border)}h3{margin:0 0 7px;font-size:var(--luma-text-md)}.period p{font-size:var(--luma-text-sm)}small{display:block;font-size:var(--luma-text-xs);line-height:1.6;color:var(--luma-muted);margin-top:6px}.forecast-note{margin-top:16px}
  `];
@@ -71,7 +72,7 @@ export class LumaWeatherAdvice extends LitElement{
   return temp+weather+sunshine+rain+wind;
  }
  render(){
-  const entity=this.current();const a=entity?.attributes;const periods=this.periods();
+  const entity=this.current();if(!entity&&this.hideUnavailable)return nothing;const a=entity?.attributes;const periods=this.periods();
   const labels:{[key:string]:[string,string]}={morning:['Morning · 06–12','Délelőtt · 06–12'],afternoon:['Afternoon · 12–18','Délután · 12–18'],evening:['Evening · 18–24','Este · 18–24']};
   return html`<p class=${`weather-advice${entity?'':' unavailable'}`}>${entity?entity.state:this.t('A fresh clothing tip is not available yet.','Még nincs friss öltözködési tipp.')}${entity?html`<button class="weather-details" aria-haspopup="dialog" aria-expanded=${String(this.open)} @click=${(e:Event)=>{e.stopPropagation();this.restoreFocus=true;this.mounted=true;this.open=true;}} @keydown=${(e:Event)=>e.stopPropagation()}>${this.t('Details','Részletek')}<ha-icon icon="mdi:chevron-right"></ha-icon></button>`:nothing}</p>
   <luma-bottom-sheet .open=${this.open} .heading=${this.t('Today’s weather & clothing','Mai időjárás és öltözködés')} .subtitle=${a?new Date(a.day+'T12:00:00Z').toLocaleDateString(this.hass?.locale?.language,{month:'long',day:'numeric',timeZone:this.hass?.config?.time_zone}):''} .icon=${'mdi:weather-partly-cloudy'} .closeLabel=${this.t('Close','Bezárás')} .maxWidth=${700} @click=${(e:Event)=>e.stopPropagation()} @keydown=${(e:Event)=>e.stopPropagation()} @sheet-dismiss=${()=>{this.open=false;}} @sheet-closed=${()=>{const restore=this.restoreFocus;this.restoreFocus=false;this.mounted=false;if(restore&&!this.open)this.renderRoot.querySelector<HTMLButtonElement>('.weather-details')?.focus({preventScroll:true});}}>

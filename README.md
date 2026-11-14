@@ -960,6 +960,12 @@ AI Task without tools; entity mappings and scheduling remain runtime config.
 
 ## Home hero example
 
+The home hero keeps its animated weather backdrop while using compact state controls. Weather has its own keyboard-accessible action; the card background is not a navigation target. Notification status appears once, and critical alerts move ahead of routine controls. The alarm uses the shared bottom sheet and requires a second tap to confirm a mode change; failures remain visible for retry.
+
+`wind_threshold` is measured in **km/h** and defaults to `20`; weather wind units are converted before testing the threshold. The wind reading and wind decoration appear only at or above that threshold. Explicit configured thresholds remain authoritative. Missing weather does not render a fictional sun or moon; missing optional clothing advice is hidden on the summary.
+
+Use optional `active_label` for the noun phrase following the count (for example, `aktív világítás` when the configured active list counts lighting). The fallback is localized “active devices”. Activity banners retain their existing collapse threshold (default: three). Waste reminders more than one day away use a neutral tone.
+
 ```yaml
 type: custom:luma-home-hero-card
 weather_entity: weather.home

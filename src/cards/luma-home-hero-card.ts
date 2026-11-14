@@ -13,7 +13,7 @@ import {
 } from "../appliance";
 import { localize, localized, localizedMap } from "../localize";
 import {entityAvailable,finiteMeasurement,formatNumber,missingLabel,presentedState} from "../presentation";
-import { lumaTokens } from "../styles";
+import { lumaTokens, lumaSurfaceStyles, lumaInteractionStyles } from "../styles";
 import { glob, incidentSourceIds, matchingIncidentIds } from "../incidents";
 import { attentionAckValue, attentionSummaries, attentionOverview } from "../attention";
 import "./luma-attention-card";
@@ -67,6 +67,7 @@ interface LumaHomeHeroConfig {
   }>;
   wind_threshold?: number;
   active_action?: LumaAction;
+  active_label?: string;
   active_exclude?: string[];
   active?: LumaActiveConfig;
   incidents?: LumaIncidentRule[];
@@ -135,7 +136,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   @state() private alarmPopoverOpen = false;
   @state() private alarmPending?: "away" | "night" | "home" | "disarm";
   private alarmTimer?: number;
-  private readonly repositionAlarm = () => this.positionAlarmPopover();
+  @state() private alarmBusy=false;
+  @state() private alarmError="";
 
   static styles = [
     lumaTokens,
@@ -260,171 +262,6 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         overflow: visible;
         color: var(--active-color);
         background: color-mix(in srgb, var(--active-color) 12%, transparent);
-      }
-      .active-badge {
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        display: grid;
-        place-items: center;
-        min-width: 14px;
-        height: 14px;
-        padding: 0 4px;
-        border-radius: 999px;
-        color: #1e1e24;
-        background: var(--warning-color);
-        font-size: 9px;
-        font-weight: 800;
-        line-height: 14px;
-      }
-      .alarm-scrim {
-        position: fixed;
-        inset: 0;
-        z-index: 998;
-        padding: 0;
-        border: 0;
-        background: transparent;
-        cursor: default;
-      }
-      .alarm-popover {
-        position: fixed;
-        z-index: 999;
-        display: grid;
-        gap: 13px;
-        width: min(370px, calc(100vw - 24px));
-        padding: 15px;
-        box-sizing: border-box;
-        border: 1px solid color-mix(in srgb, var(--alarm-tone) 20%, transparent);
-        border-radius: 22px;
-        background: color-mix(in srgb, var(--luma-surface) 94%, transparent);
-        box-shadow:
-          0 24px 70px rgba(0, 0, 0, 0.22),
-          0 4px 16px color-mix(in srgb, var(--alarm-tone) 10%, transparent);
-        backdrop-filter: blur(22px) saturate(1.25);
-        animation: alarm-appear 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
-        transform-origin: top center;
-      }
-      .alarm-popover-head {
-        display: grid;
-        grid-template-columns: 38px minmax(0, 1fr) 34px;
-        align-items: center;
-        gap: 10px;
-      }
-      .alarm-popover-icon {
-        display: grid;
-        place-items: center;
-        width: 38px;
-        height: 38px;
-        border-radius: 13px;
-        color: var(--alarm-tone);
-        background: color-mix(in srgb, var(--alarm-tone) 15%, transparent);
-      }
-      .alarm-popover-icon ha-icon {
-        --mdc-icon-size: 20px;
-      }
-      .alarm-popover-title {
-        font-size: var(--luma-text-md);
-        font-weight: var(--luma-weight-title);
-      }
-      .alarm-popover-state {
-        margin-top: 2px;
-        color: var(--alarm-tone);
-        font-size: var(--luma-text-xs);
-        font-weight: 680;
-      }
-      .alarm-close {
-        display: grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        color: var(--luma-muted);
-        background: color-mix(
-          in srgb,
-          var(--primary-text-color) 5%,
-          transparent
-        );
-      }
-      .alarm-close ha-icon {
-        --mdc-icon-size: 18px;
-      }
-      .alarm-actions {
-        display: grid;
-        grid-template-columns: repeat(var(--alarm-count), minmax(0, 1fr));
-        gap: 5px;
-        padding: 5px;
-        border-radius: 999px;
-        background: color-mix(
-          in srgb,
-          var(--primary-text-color) 4.5%,
-          transparent
-        );
-      }
-      .alarm-mode {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        min-width: 0;
-        min-height: 42px;
-        padding: 0 10px;
-        border: 0;
-        border-radius: 999px;
-        color: var(--mode-tone);
-        background: transparent;
-        font: inherit;
-        font-size: 10px;
-        font-weight: 700;
-      }
-      .alarm-mode:hover:not(:disabled) {
-        background: color-mix(in srgb, var(--mode-tone) 10%, transparent);
-      }
-      .alarm-mode.confirm {
-        color: var(--warning-color);
-        background: color-mix(in srgb, var(--warning-color) 16%, transparent);
-      }
-      .alarm-mode.active {
-        background: color-mix(in srgb, var(--mode-tone) 14%, transparent);
-      }
-      .alarm-mode:disabled {
-        opacity: 0.45;
-      }
-      .alarm-mode.active:disabled {
-        opacity: 1;
-      }
-      .alarm-mode ha-icon {
-        --mdc-icon-size: 17px;
-      }
-      .alarm-mode span {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .alarm-details {
-        border: 0;
-        background: transparent;
-        color: var(--luma-muted);
-        font: inherit;
-        font-size: 11px;
-        font-weight: 650;
-      }
-      .alarm-close,
-      .alarm-mode,
-      .alarm-details {
-        cursor: pointer;
-      }
-      @keyframes alarm-appear {
-        from {
-          opacity: 0;
-          transform: translateY(-5px) scale(0.97);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
       }
       .panel {
         display: grid;
@@ -643,64 +480,34 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         width: 42px;
         height: 42px;
       }
-      .wind {
+      .wind-lines {
         position: absolute;
-        right: 43%;
-        bottom: -8px;
-        width: 105px;
-        height: 145px;
-        transform: translateZ(0);
-        opacity: 0.29;
-      }
-      .mast {
-        position: absolute;
-        left: 51px;
-        top: 53px;
-        width: 3px;
-        height: 94px;
-        border-radius: 3px;
-        background: currentColor;
-        transform: translateZ(0);
-      }
-      .rotor {
-        position: absolute;
-        left: 13px;
+        right: calc(20% + 105px);
         top: 8px;
-        width: 80px;
-        height: 80px;
-        transform-origin: 50% 50%;
-        animation: spin var(--wind-duration, 8s) linear infinite;
-        will-change: transform;
+        width: 112px;
+        height: 76px;
+        overflow: visible;
+        fill: none;
+        stroke: var(--primary-text-color);
+        stroke-width: 3;
+        stroke-linecap: round;
+        opacity: 0.2;
       }
-      .blade {
-        position: absolute;
-        left: 37px;
-        top: 0;
-        width: 7px;
-        height: 38px;
-        border-radius: 99px 99px 8px 8px;
-        background: currentColor;
-        transform-origin: 50% 40px;
+      .wind-lines path {
+        stroke-dasharray: 100;
+        stroke-dashoffset: 0;
+        animation: wind-curl 7s ease-in-out infinite;
       }
-      .blade:nth-child(2) {
-        transform: rotate(120deg);
+      .wind-lines path:nth-child(2) { animation-delay: -2.3s; }
+      .wind-lines path:nth-child(3) { animation-delay: -4.6s; }
+      @keyframes wind-curl {
+        0% { stroke-dashoffset: 100; opacity: 0; transform: translateX(-5px); }
+        25%, 55% { stroke-dashoffset: 0; opacity: 1; transform: translateX(0); }
+        85%, 100% { stroke-dashoffset: -100; opacity: 0; transform: translateX(5px); }
       }
-      .blade:nth-child(3) {
-        transform: rotate(240deg);
-      }
-      .hub {
-        position: absolute;
-        left: 34px;
-        top: 34px;
-        width: 13px;
-        height: 13px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg) translateZ(0);
-        }
+      @container(max-width:720px) {
+        .sun, .cloud, .moon { right: -25px; opacity: 0.4; }
+        .wind-lines { right: 85px; top: 6px; width: 94px; height: 64px; }
       }
       @keyframes breathe {
         50% {
@@ -759,18 +566,6 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           padding: 7px 11px;
           font-size: 11px;
         }
-        .sun,
-        .cloud,
-        .moon {
-          right: -25px;
-          opacity: 0.4;
-        }
-        .wind {
-          right: -6px;
-          bottom: auto;
-          top: -18px;
-          opacity: 0.17;
-        }
         .banner {
           grid-template-columns: 20px minmax(0, auto) minmax(0, 1fr) auto;
           column-gap: 6px;
@@ -790,23 +585,25 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
           grid-column: 2;
           justify-content: flex-start;
         }
-        .alarm-popover {
-          padding: 13px;
-        }
-        .alarm-actions {
-          border-radius: 17px;
-          grid-template-columns: 1fr;
-        }
-        .alarm-mode {
-          justify-content: flex-start;
-          padding: 0 13px;
-        }
       }
       @media (prefers-reduced-motion: reduce) {
-        .alarm-popover {
+        .sky .sun, .sky .cloud, .sky .wind-lines path {
           animation: none;
         }
       }
+    `,lumaSurfaceStyles,lumaInteractionStyles,css`
+      :host{container-type:inline-size;min-width:0}
+      .hero{padding:18px;border-color:var(--luma-border);background:linear-gradient(135deg,color-mix(in srgb,var(--luma-accent) 9%,var(--luma-surface)),color-mix(in srgb,var(--luma-accent) 2%,var(--luma-surface)) 80%);box-shadow:var(--luma-shadow)}
+      .top{grid-template-columns:44px minmax(0,1fr);grid-template-areas:"icon title" "icon subtitle" "advice advice" "status status";gap:0 12px}
+      .weather-icon{width:44px;height:44px;border-radius:14px}.weather-icon ha-icon{--mdc-icon-size:24px}h2{font-size:20px;font-weight:650;line-height:1.25}
+      .weather-link{display:flex;align-items:center;gap:5px;justify-self:start;min-height:44px;margin:0;padding:4px 0;border:0;border-radius:8px;background:transparent;text-align:left;font-size:12px;line-height:1.4;color:var(--luma-muted);cursor:pointer}.weather-link ha-icon{--mdc-icon-size:15px;flex-shrink:0}.weather-link:hover{color:var(--primary-text-color)}
+      .status{justify-content:flex-start;gap:6px 12px;margin-top:8px}.alarm,.attention,.active{justify-content:flex-start;min-height:44px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--primary-text-color) 4%,transparent);color:var(--primary-text-color);font-size:12px;font-weight:560;line-height:1.4;text-align:left;white-space:normal}
+      .active ha-icon{color:var(--luma-muted)}.alarm ha-icon{color:var(--alarm-color)}.attention ha-icon{color:var(--attention-color)}.alarm:hover,.attention:hover,.active:hover{transform:none;filter:none;background:var(--luma-hover-surface)}
+      .needs-attention .attention{order:-1;background:color-mix(in srgb,var(--attention-color) 9%,transparent)}
+      .banner-group,.banners{margin-top:10px}.banner,.banner-summary{background:color-mix(in srgb,var(--item-color,var(--primary-text-color)) 5%,transparent);border-color:var(--luma-border)}.banner:hover{transform:none}.banner-action,.issue-actions button{min-height:44px;font-size:11px;letter-spacing:0;font-weight:560;border-radius:10px}.banner-label,.banner-state{font-weight:560}.banner-summary-text{font-weight:600}
+      .alarm-actions{display:grid;grid-template-columns:repeat(var(--alarm-count),minmax(0,1fr));padding:0;background:transparent;border-radius:0;gap:8px}.alarm-mode{display:flex;align-items:center;gap:6px;min-width:0;border:0;min-height:48px;padding:8px;justify-content:center;border-radius:12px;background:var(--luma-control-surface);color:var(--primary-text-color);font-size:12px;white-space:normal}.alarm-mode ha-icon{--mdc-icon-size:17px;flex-shrink:0}.alarm-mode:not(:disabled):hover{background:var(--luma-hover-surface)}.alarm-mode span{min-width:0;white-space:normal;overflow-wrap:anywhere}.alarm-mode.selected{background:color-mix(in srgb,var(--primary-color) 10%,transparent)}.alarm-mode.confirm{background:color-mix(in srgb,var(--warning-color) 15%,transparent);color:var(--primary-text-color)}.alarm-details{min-height:44px;margin-top:12px;border:0;background:transparent;color:var(--luma-muted);font:inherit;font-size:12px;cursor:pointer}.alarm-error{font-size:12px;color:var(--error-color)}
+      @container(min-width:720px){.top{grid-template-columns:44px minmax(0,1fr) minmax(240px,auto);grid-template-areas:"icon title status" "icon subtitle status" "advice advice advice"}.status{justify-content:flex-end;margin-top:0;max-width:460px}}
+      @container(max-width:420px){.hero{padding:14px}h2{font-size:18px}.status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.attention{grid-column:1/-1}.alarm,.attention,.active{padding:8px;font-size:11px}.banner{grid-template-columns:18px minmax(0,1fr) auto}.banner-label{grid-column:2}.banner-state{grid-column:2;grid-row:2}.banner-action{grid-column:3;grid-row:1/3}.banner>ha-icon{grid-row:1/3}}
     `,
   ];
 
@@ -816,7 +613,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     this.config = {
       banners: [],
       waste_days: 2,
-      wind_threshold: 8,
+      wind_threshold: 20,
       alarm_popover: true,
       ...config,
       incidents: config.incidents || [],
@@ -828,14 +625,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
 
   protected updated(): void {
     this.attentionSubscription.update(this.hass,this.config?.attention_policy);
-    // Incident actions live inside the otherwise clickable weather hero.
-    // Stop their click from reaching the hero after the child action runs.
-    this.renderRoot
-      .querySelector(".panel")
-      ?.addEventListener("click", this.stopIncidentClick);
   }
 
-  private stopIncidentClick = (event: Event): void => event.stopPropagation();
   private attentionSubscription = new AttentionSubscription(()=>this.requestUpdate());
   private get acknowledgementsEntity() { return this.config?.acknowledgements_entity || attentionPolicy(this.config?.attention_policy)?.acknowledgements_entity; }
   connectedCallback() { super.connectedCallback(); this.attentionSubscription.connect(); }
@@ -843,73 +634,25 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.attentionSubscription.disconnect();
-    this.detachAlarmListeners();
+    clearTimeout(this.alarmTimer);
   }
 
   private toggleAlarmPopover() {
-    this.alarmPopoverOpen = !this.alarmPopoverOpen;
-    this.alarmPending = undefined;
-    if (this.alarmPopoverOpen) {
-      window.addEventListener("resize", this.repositionAlarm);
-      window.addEventListener("scroll", this.repositionAlarm, true);
-      void this.updateComplete.then(() => this.positionAlarmPopover());
-    } else this.detachAlarmListeners();
+    this.alarmPopoverOpen=!this.alarmPopoverOpen;
+    this.alarmPending=undefined;this.alarmError="";clearTimeout(this.alarmTimer);
   }
-  private detachAlarmListeners() {
-    window.removeEventListener("resize", this.repositionAlarm);
-    window.removeEventListener("scroll", this.repositionAlarm, true);
-  }
-  private positionAlarmPopover() {
-    if (!this.alarmPopoverOpen) return;
-    const anchor = this.renderRoot.querySelector<HTMLElement>(".alarm"),
-      popover = this.renderRoot.querySelector<HTMLElement>(".alarm-popover");
-    if (!anchor || !popover) return;
-    const rect = anchor.getBoundingClientRect(),
-      gap = 8,
-      pad = 12,
-      width = Math.min(370, window.innerWidth - pad * 2),
-      left = Math.min(
-        Math.max(rect.left, pad),
-        window.innerWidth - width - pad,
-      ),
-      below = rect.bottom + gap,
-      top =
-        below + popover.offsetHeight <= window.innerHeight - pad
-          ? below
-          : Math.max(pad, rect.top - popover.offsetHeight - gap);
-    Object.assign(popover.style, {
-      left: `${left}px`,
-      top: `${top}px`,
-      width: `${width}px`,
-    });
-  }
-  private activateAlarm(
-    mode: "away" | "night" | "home" | "disarm",
-    disabled: boolean,
-  ) {
-    if (!this.hass || !this.config?.alarm_entity || disabled) return;
-    if (this.alarmPending !== mode) {
-      this.alarmPending = mode;
-      clearTimeout(this.alarmTimer);
-      this.alarmTimer = window.setTimeout(
-        () => (this.alarmPending = undefined),
-        3400,
-      );
-      return;
-    }
-    this.alarmPending = undefined;
-    this.alarmPopoverOpen = false;
-    this.detachAlarmListeners();
-    void this.hass.callService(
-      "alarm_control_panel",
-      mode === "disarm" ? "alarm_disarm" : `alarm_arm_${mode}`,
-      undefined,
-      { entity_id: this.config.alarm_entity },
-    );
+  private closeAlarm(){this.alarmPopoverOpen=false;this.alarmPending=undefined;clearTimeout(this.alarmTimer);}
+  private async activateAlarm(mode:"away"|"night"|"home"|"disarm",disabled:boolean){
+    if(!this.hass||!this.config?.alarm_entity||disabled||this.alarmBusy||!entityAvailable(this.hass.states[this.config.alarm_entity]))return;
+    if(this.alarmPending!==mode){this.alarmPending=mode;clearTimeout(this.alarmTimer);this.alarmTimer=window.setTimeout(()=>this.alarmPending=undefined,3400);return;}
+    clearTimeout(this.alarmTimer);this.alarmPending=undefined;this.alarmBusy=true;this.alarmError="";
+    try{await this.hass.callService("alarm_control_panel",mode==="disarm"?"alarm_disarm":`alarm_arm_${mode}`,undefined,{entity_id:this.config.alarm_entity});this.closeAlarm();}
+    catch{this.alarmError=localized(this.hass,"The command failed. Please try again.","A parancs sikertelen. Próbáld újra.");}
+    finally{this.alarmBusy=false;}
   }
 
   protected shouldUpdate(changed: PropertyValues<this>): boolean {
-    if (!changed.has("hass")) return true;
+    if ([...changed.keys()].some(key=>key!=="hass")) return true;
     const old = changed.get("hass") as HomeAssistant | undefined;
     if (!old || !this.hass || old.locale !== this.hass.locale) return true;
     if (this.config?.attention_policy || old.entities !== this.hass.entities) return true;
@@ -1208,33 +951,25 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private renderWeatherFx(state: string, wind: number) {
+    if(state==="unknown"||state==="unavailable")return nothing;
     const h = new Date().getHours();
-    const sky = [
-      "cloudy",
-      "partlycloudy",
-      "fog",
-      "rainy",
-      "pouring",
-      "lightning-rainy",
-    ].includes(state)
+    const cloudy = [
+      "cloudy", "partlycloudy", "fog", "rainy", "pouring",
+      "lightning-rainy", "snowy", "snowy-rainy", "windy-variant",
+    ].includes(state);
+    const windy = wind >= (this.config?.wind_threshold ?? 20);
+    const sky = cloudy
       ? html`<div class="cloud"></div>`
       : state === "clear-night" || h < 6 || h >= 20
         ? html`<div class="moon"></div>`
         : html`<div class="sun"></div>`;
-    const turbine =
-      wind >= (this.config?.wind_threshold || 8)
-        ? html`<div
-            class="wind"
-            style=${`--wind-duration:${Math.max(2.8, 14 - wind * 0.45)}s`}
-          >
-            <div class="mast"></div>
-            <div class="rotor">
-              <i class="blade"></i><i class="blade"></i><i class="blade"></i
-              ><i class="hub"></i>
-            </div>
-          </div>`
-        : nothing;
-    return html`<div class="sky">${sky}${turbine}</div>`;
+    return html`<div class=${windy ? "sky wind" : "sky"} aria-hidden="true">
+      ${sky}${windy ? html`<svg class="wind-lines" viewBox="0 0 112 76" focusable="false">
+        <path pathLength="100" d="M12 24 H64 C82 24 82 6 70 6 C62 6 60 12 63 16" />
+        <path pathLength="100" d="M4 38 H88 C107 38 107 17 94 17 C85 17 83 24 87 28" />
+        <path pathLength="100" d="M20 52 H68 C86 52 86 70 74 70 C66 70 64 64 67 60" />
+      </svg>` : nothing}
+    </div>`;
   }
 
   private renderBanners(items: LumaBannerConfig[]) {
@@ -1268,6 +1003,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       class="banner interactive"
       role="button"
       tabindex="0"
+      @keydown=${(event:KeyboardEvent)=>{if(event.target===event.currentTarget&&["Enter"," "].includes(event.key)){event.preventDefault();event.stopPropagation();void runAction(this,this.hass!,item.tap_action,item.entity);}}}
       style=${`--item-color:${color}`}
       @click=${(e: Event) => {
         e.stopPropagation();
@@ -1297,7 +1033,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
   }
 
   private clothingAdvice(){
-    return this.config?.weather_advice_entity?html`<luma-weather-advice .hass=${this.hass} .entityId=${this.config.weather_advice_entity} .weatherEntity=${this.config.weather_entity}></luma-weather-advice>`:nothing;
+    return this.config?.weather_advice_entity?html`<luma-weather-advice .hideUnavailable=${true} .hass=${this.hass} .entityId=${this.config.weather_advice_entity} .weatherEntity=${this.config.weather_entity}></luma-weather-advice>`:nothing;
   }
 
   render() {
@@ -1308,6 +1044,8 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       a = weatherAvailable ? weather.attributes : {},
       temperature = finiteMeasurement(a.temperature),
       wind = finiteMeasurement(a.wind_speed);
+    const windFactor:Record<string,number>={"km/h":1,"m/s":3.6,"mph":1.609344,"kn":1.852,"knots":1.852,"ft/s":1.09728};
+    const windKmh=wind===null?null:wind*(windFactor[String(a.wind_speed_unit||"km/h")]??NaN);
     const attentionRows = this.config.attention_policy ? policyRows(this.config.attention_policy,this.hass) : [];
     const overview = this.config.attention_policy ? attentionOverview(attentionRows,this.hass) : undefined;
     const snoozed = new Set(attentionRows.filter(x=>x.snoozedUntil).map(x=>x.key)).size;
@@ -1326,19 +1064,15 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       temperature !== null
         ? `${formatNumber(this.hass,temperature)} ${a.temperature_unit || "°C"}`
         : "",
-      wind !== null ? `${localized(this.hass,"wind","szél")} ${formatNumber(this.hass,wind)} ${a.wind_speed_unit || "km/h"}` : "",
-      overview ? `${overview.text}${missing?localized(this.hass,` • ${missing} data sources unavailable`,` • ${missing} adatforrás nem elérhető`):""}` : issues.length
-        ? localized(this.hass,`${issues.length} warnings`,`${issues.length} figyelmeztetés`)
-        : missing ? localized(this.hass,`${missing} data sources unavailable`,`${missing} adatforrás nem elérhető`) : localized(this.hass,"no active alerts","nincs aktív jelzés"),
+      wind !== null && windKmh !== null && windKmh >= (this.config.wind_threshold ?? 20) ? `${localized(this.hass,"wind","szél")} ${formatNumber(this.hass,wind)} ${a.wind_speed_unit || "km/h"}` : "",
+
     ]
       .filter(Boolean)
       .join(" • ");
     const alarm = this.config.alarm_entity
         ? this.hass.states[this.config.alarm_entity]
         : undefined,
-      armed =
-        entityAvailable(alarm) && alarm.state !== "disarmed",
-      alarmColor = !entityAvailable(alarm) ? "var(--secondary-text-color)" : armed ? "var(--warning-color)" : "var(--success-color)";
+      alarmColor = !entityAvailable(alarm) ? "var(--secondary-text-color)" : alarm.state === "triggered" ? "var(--error-color)" : ["arming","pending"].includes(alarm.state) ? "var(--warning-color)" : "var(--secondary-text-color)";
     const banners = [...(this.config.banners || [])];
     const irrigation = this.irrigationSummary();
     const irrigationRemainingEntity = this.config.irrigation_remaining_entity
@@ -1387,7 +1121,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         state_label: this.wasteSummary() || undefined,
         name: localize(this.hass, "open_item"),
         icon: "mdi:trash-can-outline",
-        color: "var(--warning-color)",
+        color: Number(this.hass.states[this.config.waste_entity]?.state)<=1?"var(--warning-color)":"var(--secondary-text-color)",
         below: (this.config.waste_days || 2) + 0.01,
         tap_action: this.config.waste_path
           ? { action: "navigate", navigation_path: this.config.waste_path }
@@ -1446,8 +1180,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       {mode:"night",name:localized(this.hass,"Night","Éjszaka"),icon:"mdi:shield-moon"},
       {mode:"disarm",name:localized(this.hass,"Disarm","Kikapcsolás"),icon:"mdi:shield-off-outline"},
     ],
-      alarmUnavailable =
-        !alarm || ["unknown", "unavailable"].includes(alarm.state),
+      alarmUnavailable = !entityAvailable(alarm),
       alarmStateMap: Record<string, string> = {
         away: "armed_away",
         night: "armed_night",
@@ -1461,16 +1194,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         disarm: "mdi:shield-off-outline",
       };
     return html`<ha-card
-        class=${`hero ${this.config.tap_action ? "interactive" : ""}`}
-        style=${`--luma-accent:${accent}`}
-        @click=${() =>
-          runAction(
-            this,
-            this.hass!,
-            this.config?.tap_action || { action: "more-info" },
-            this.config?.weather_entity,
-          )}
-        >${this.renderWeatherFx(state, wind ?? 0)}
+        class="hero"
+        style=${`--luma-accent:${accent};--tone:${accent}`}
+        >${this.renderWeatherFx(state, windKmh ?? 0)}
         <div class="content">
           <div class="top">
             <div class="weather-icon">
@@ -1479,24 +1205,24 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
               ></ha-icon>
             </div>
             <h2>${this.greeting()}</h2>
-            <div class="subtitle">${subtitle}</div>
+            <button class="subtitle weather-link" aria-label=${localized(this.hass,`Weather: ${subtitle}`,`Időjárás: ${subtitle}`)} @click=${()=>runAction(this,this.hass!,this.config?.tap_action||{action:"more-info"},this.config?.weather_entity)}>${subtitle}<ha-icon icon="mdi:chevron-right" aria-hidden="true"></ha-icon></button>
             ${this.clothingAdvice()}
-            <div class="status">
+            <div class=${`status ${critical||missing||issues.length?"needs-attention":""}`}>
               <button
                 class="active interactive"
-                style="--active-color:var(--primary-color)"
+                style="--active-color:var(--secondary-text-color)"
+                ?disabled=${!this.config.active_action||this.config.active_action.action==="none"}
                 @click=${(e: Event) => {
                   e.stopPropagation();
                   void runAction(this, this.hass!, this.config?.active_action);
                 }}
               >
                 <ha-icon icon="mdi:lightning-bolt-outline"></ha-icon
-                ><span>${localized(this.hass,"Active","Aktív")}</span>${active > 0
-                  ? html`<span class="active-badge">${active}</span>`
-                  : nothing}</button
+                ><span>${active} ${this.config.active_label||localized(this.hass,"active devices","aktív eszköz")}</span></button
               >${this.config.alarm_entity
                 ? html`<button
                     class="alarm interactive"
+                    aria-label=${`${localized(this.hass,"Alarm","Riasztó")}: ${presentedState(this.hass,alarm)}`}
                     aria-haspopup=${this.config.alarm_popover
                       ? "dialog"
                       : "false"}
@@ -1521,6 +1247,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                   </button>`
                 : nothing}<button
                 class="attention interactive"
+                aria-expanded=${this.detailsOpen}
                 style=${`--attention-color:${attentionColor}`}
                 @click=${(e: Event) => {
                   e.stopPropagation();
@@ -1535,7 +1262,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
                       : missing ? "mdi:cloud-question-outline" : "mdi:check-circle-outline"}
                 ></ha-icon
                 ><span
-                  >${overview ? `${overview.text}${missing?localized(this.hass,` • ${missing} data sources unavailable`,` • ${missing} adatforrás nem elérhető`):""}` : issues.length
+                  >${critical ? `${issues.find(issue=>issue.tone==="error")!.message}${issues.length>1?` · +${issues.length-1}`:""}` : overview ? `${overview.text}${missing?localized(this.hass,` • ${missing} data sources unavailable`,` • ${missing} adatforrás nem elérhető`):""}` : issues.length
                     ? localized(this.hass,`${issues.length} notices`,`${issues.length} jelzés`)
                     : missing ? localized(this.hass,`${missing} data gaps`,`${missing} adatkimaradás`) : localized(this.hass,"No active alerts","Nincs aktív jelzés")}</span
                 >
@@ -1592,85 +1319,17 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
               </div>`
             : nothing}${this.renderBanners(banners)}
         </div></ha-card
-      >${this.config.attention_policy ? html`<luma-attention-card .hass=${this.hass} .open=${this.detailsOpen} @attention-close=${()=>this.detailsOpen=false} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card && card.dataset.policy!==this.config?.attention_policy){card.setConfig({type:"custom:luma-attention-card",policy:this.config!.attention_policy,mode:"diagnostics",panel:true,title:localized(this.hass,"Notifications","Jelzések")});card.dataset.policy=this.config!.attention_policy;}})}></luma-attention-card>` : nothing}${this.alarmPopoverOpen && alarm
-        ? html`<button
-              class="alarm-scrim"
-              aria-label=${localize(this.hass, "dismiss")}
-              @click=${() => this.toggleAlarmPopover()}
-            ></button>
-            <section
-              class="alarm-popover"
-              style=${`--alarm-tone:${alarmColor}`}
-              role="dialog"
-              aria-label=${localized(this.hass,"Alarm controls","Riasztó vezérlés")}
-            >
-              <div class="alarm-popover-head">
-                <span class="alarm-popover-icon"
-                  ><ha-icon icon="mdi:shield-home-outline"></ha-icon
-                ></span>
-                <div>
-                  <div class="alarm-popover-title">${localized(this.hass,"Alarm","Riasztó")}</div>
-                  <div class="alarm-popover-state">
-                    ${presentedState(this.hass, alarm)}
-                  </div>
-                </div>
-                <button
-                  class="alarm-close"
-                  aria-label=${localize(this.hass, "dismiss")}
-                  @click=${() => this.toggleAlarmPopover()}
-                >
-                  <ha-icon icon="mdi:close"></ha-icon>
-                </button>
-              </div>
-              <div
-                class="alarm-actions"
-                style=${`--alarm-count:${alarmModes.length}`}
-              >
-                ${alarmModes.map((mode) => {
-                  const active = alarm.state === alarmStateMap[mode.mode],
-                    transitioning = ["arming", "pending"].includes(alarm.state),
-                    disabled =
-                      active ||
-                      alarmUnavailable ||
-                      ((alarm.state === "triggered" || transitioning) &&
-                        mode.mode !== "disarm"),
-                    confirming = this.alarmPending === mode.mode,
-                    tone =
-                      mode.mode === "disarm"
-                        ? "var(--error-color)"
-                        : mode.mode === "night"
-                          ? "var(--info-color,var(--primary-color))"
-                          : "var(--success-color)";
-                  return html`<button
-                    class=${`alarm-mode ${active ? "active" : ""} ${confirming ? "confirm" : ""}`}
-                    style=${`--mode-tone:${tone}`}
-                    ?disabled=${disabled}
-                    @click=${() => this.activateAlarm(mode.mode, disabled)}
-                  >
-                    <ha-icon
-                      icon=${confirming
-                        ? "mdi:check"
-                        : mode.icon || alarmModeIcons[mode.mode]}
-                    ></ha-icon
-                    ><span>${confirming ? localize(this.hass, "confirm") : mode.name}</span>
-                  </button>`;
-                })}
-              </div>
-              <button
-                class="alarm-details"
-                @click=${() => {
-                  this.toggleAlarmPopover();
-                  void runAction(
-                    this,
-                    this.hass!,
-                    this.config?.alarm_action || { action: "more-info" },
-                    this.config?.alarm_entity,
-                  );
-                }}
-              >
-                ${localize(this.hass, "settings")}
-              </button>
-            </section>`
-        : nothing}`;
+      >${this.config.attention_policy ? html`<luma-attention-card .hass=${this.hass} .open=${this.detailsOpen} @attention-close=${()=>this.detailsOpen=false} ${ref(node=>{const card=node as HTMLElement & LovelaceCard;if(card && card.dataset.policy!==this.config?.attention_policy){card.setConfig({type:"custom:luma-attention-card",policy:this.config!.attention_policy,mode:"diagnostics",panel:true,title:localized(this.hass,"Notifications","Jelzések")});card.dataset.policy=this.config!.attention_policy;}})}></luma-attention-card>` : nothing}
+      <luma-bottom-sheet .open=${this.alarmPopoverOpen&&!!alarm} .heading=${localized(this.hass,"Alarm","Riasztó")} .subtitle=${alarm?presentedState(this.hass,alarm):""} icon="mdi:shield-home-outline" .maxWidth=${480} .closeLabel=${localize(this.hass,"dismiss")} @sheet-dismiss=${()=>this.closeAlarm()}>
+        <div class="alarm-actions" style=${`--alarm-count:${alarmModes.length}`}>
+        ${alarmModes.map(mode=>{
+          const active=alarm?.state===alarmStateMap[mode.mode];
+          const disabled=this.alarmBusy||active||alarmUnavailable||((alarm?.state==="triggered"||["arming","pending"].includes(alarm?.state||""))&&mode.mode!=="disarm");
+          const confirming=this.alarmPending===mode.mode;
+          return html`<button class=${`alarm-mode ${active?"selected":""} ${confirming?"confirm":""}`} ?disabled=${disabled} aria-pressed=${active} @click=${()=>this.activateAlarm(mode.mode,disabled)}><ha-icon icon=${confirming?"mdi:check":mode.icon||alarmModeIcons[mode.mode]}></ha-icon><span>${confirming?localize(this.hass,"confirm"):mode.name}</span></button>`;
+        })}</div>
+        ${this.alarmError?html`<p class="alarm-error" role="alert">${this.alarmError}</p>`:nothing}
+        <button class="alarm-details" @click=${()=>{this.closeAlarm();void runAction(this,this.hass!,this.config?.alarm_action||{action:"more-info"},this.config?.alarm_entity)}}>${localize(this.hass,"settings")}</button>
+      </luma-bottom-sheet>`;
   }
 }
