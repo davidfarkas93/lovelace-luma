@@ -897,6 +897,8 @@ media players and climate devices are left untouched.
 
 ## Room example
 
+Room cards fill their grid row height. Below 240px card width, built-in light and cover controls become full-width icon-and-state rows; their complete labels remain available to assistive technology and as tooltips. Custom quick-action names stay visible. Environment readings move below the room heading to avoid squeezing the title.
+
 ```yaml
 type: custom:luma-room-card
 name: Living room
