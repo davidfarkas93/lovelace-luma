@@ -222,3 +222,9 @@ keep their normal styling even when a different measurement is severe.
 primitive. Deviating measurements use one baseline-aligned value/unit/indicator
 group with consistent gaps and a restrained tint, replacing the cramped numeric
 chip. Numeric alignment and padding stay stable between normal and flagged states.
+
+0.62.3 accepted refinement: comfortable inner spacing for measurement hover
+surfaces (8px, 6px on narrow cards) and flagged value groups (4px vertical,
+5–6px horizontal). Give PM2.5's longer value/unit/indicator group proportionally
+more room. This Room/Comfort combination is the accepted visual reference for
+further Luma refinement.

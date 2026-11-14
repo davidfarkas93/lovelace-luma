@@ -30,10 +30,10 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     .icon{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:14px;color:var(--tone);background:color-mix(in srgb,var(--tone) 14%,transparent)}
     .icon ha-icon{--mdc-icon-size:23px}.name{font-size:14px;flex:1;min-width:0;overflow-wrap:anywhere}
     .details-cue{--mdc-icon-size:17px;flex-shrink:0;color:var(--luma-muted);opacity:.65}button.header:hover .details-cue{opacity:1}button.header{min-height:44px}
-    .metrics{display:grid;grid-template-columns:repeat(var(--metrics-count),minmax(0,1fr));gap:8px;margin:0;color:var(--primary-text-color)}
-    .metric{min-width:0;text-align:left;background:transparent;border:0;border-radius:10px;padding:2px 4px;min-height:44px;color:inherit;display:flex;flex-direction:column;gap:2px;justify-content:flex-start}
+    .metrics{display:grid;grid-template-columns:var(--metric-columns);gap:8px;margin:0;color:var(--primary-text-color)}
+    .metric{min-width:0;text-align:left;background:transparent;border:0;border-radius:10px;padding:8px;min-height:44px;color:inherit;display:flex;flex-direction:column;gap:2px;justify-content:flex-start}
     .metric:hover{background:var(--luma-hover-surface)}.metric-label{font-size:10px;color:var(--luma-muted);line-height:1.35;overflow-wrap:anywhere}
-    .metric-value{display:inline-flex;align-items:baseline;flex-wrap:nowrap;gap:4px;align-self:flex-start;max-width:100%;border-radius:7px;padding:2px 4px;margin-top:auto;font-size:16px;font-weight:560;line-height:1.2;letter-spacing:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .metric-value{display:inline-flex;align-items:baseline;flex-wrap:nowrap;gap:4px;align-self:flex-start;max-width:100%;border-radius:7px;padding:4px 6px;margin-top:auto;font-size:16px;font-weight:560;line-height:1.2;letter-spacing:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
     .unit{font-size:11px;font-weight:500;letter-spacing:0;color:var(--luma-muted)}.missing{font-size:12px;font-weight:500;letter-spacing:0;color:var(--luma-muted)}
     .metric-value.flagged{background:color-mix(in srgb,var(--metric-tone) 9%,transparent)}
     .metric-value.flagged .unit{color:inherit}
@@ -50,7 +50,7 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     .actions{display:flex;gap:6px;flex-wrap:wrap}.action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;min-width:44px;padding:8px 12px;font-size:11px;line-height:1.3}
     .action ha-icon{--mdc-icon-size:16px}.action[aria-pressed=true]{background:color-mix(in srgb,var(--mode-tone) 16%,transparent)}
     .action[aria-pressed=true] ha-icon{color:var(--mode-tone)}.settings{margin-left:auto}.error{font-size:12px;line-height:1.4}
-    @container(max-width:360px){.card{padding:12px;gap:8px}.header{gap:8px}.icon{width:44px;height:44px}.name{font-size:14px}.status{font-size:11px}.metric-value{font-size:16px;gap:3px;padding:2px 3px}.metrics{gap:6px}.metric{padding:0 2px}.unit{font-size:10px}.trend{font-size:11px;margin-left:0}}
+    @container(max-width:360px){.card{padding:12px;gap:8px}.header{gap:8px}.icon{width:44px;height:44px}.name{font-size:14px}.status{font-size:11px}.metric-value{font-size:16px;gap:3px;padding:4px 5px}.metrics{gap:6px}.metric{padding:6px}.unit{font-size:10px}.trend{font-size:11px;margin-left:0}}
     @container(max-width:270px){.header{flex-wrap:wrap}.status{order:3}.metrics{grid-template-columns:1fr}.metric{min-height:44px}.climate-header{flex-wrap:wrap}.climate-state{margin-left:0}.settings{margin-left:0}}
   `];
   setConfig(c:Config){
@@ -111,7 +111,7 @@ export class LumaComfortCard extends LitElement implements LovelaceCard {
     const header=html`<span class="icon"><ha-icon icon=${c.icon||'mdi:home-thermometer-outline'}></ha-icon></span><span class="name">${c.name||localized(this.hass,'Comfort','Komfort')}</span><span class="status"><span class="dot" aria-hidden="true"></span>${label}</span>${navigable?html`<ha-icon class="details-cue" icon="mdi:chevron-right"></ha-icon>`:nothing}`;
     return html`<ha-card class="card" style=${`--tone:${tone}`}>
       ${navigable?html`<button class="header" aria-label=${`${c.name||localized(this.hass,'Comfort','Komfort')} · ${label} · ${localized(this.hass,'Details and controls','Részletek és vezérlés')}`} @click=${()=>runAction(this,this.hass!,c.tap_action)}>${header}</button>`:html`<div class="header">${header}</div>`}
-      <div class="metrics" style=${`--metrics-count:${c.pm25_entity?3:2}`}>
+      <div class="metrics" style=${`--metric-columns:${c.pm25_entity?'minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr)':'repeat(2,minmax(0,1fr))'}`}>
         ${this.metric(c.temperature_entity,c.temperature_label||localized(this.hass,'Indoor','Bent'),1,'°C',result.metrics.temperature)}
         ${this.metric(c.humidity_entity,c.humidity_label||localized(this.hass,'Humidity','Páratartalom'),0,'%',result.metrics.humidity)}
         ${c.pm25_entity?this.metric(c.pm25_entity,c.pm25_label||'PM2.5',0,'µg/m³',result.metrics.pm25):nothing}
