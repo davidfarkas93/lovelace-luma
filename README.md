@@ -1437,3 +1437,20 @@ limits are visible in the same read-only sheet. No charge-start or settings acti
 is added. Expired, wrong-day or insufficient advice cannot appear current; the hero
 falls back to the retrospective focus. Existing reports without planning retain their
 presentation. The profile owns the data sources and advisory thresholds.
+
+### Explicit controls and keyboard interaction
+
+Metric cards expose their configured main and secondary actions as separate native
+buttons, with visible action cues and keyboard focus. An omitted action (or
+`action: none`) remains informational. Long values wrap; at a card width of 200px
+or less the icon moves above the text so operational states remain readable.
+
+Room cards open their configured destination from the room header. Quick controls
+are separate bordered buttons with at least 44px height; items configured with
+`tap_action: {action: none}` are plain status labels. Their clicks do not activate
+the room header. Navigation/details show a chevron; commands show an action cue.
+
+Gate popovers focus their close button on opening; Escape or dismissal returns
+focus to the summary. Gate commands require a second tap in both full and popover
+modes. Sending disables repeat commands, failures allow retry, and unavailable
+states use a neutral tone instead of a success color. Tests use mocked services.

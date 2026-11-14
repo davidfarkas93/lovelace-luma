@@ -22,3 +22,11 @@ export const EqualHeightRow:Story={render:()=>renderCard("custom:luma-layout-car
     {type:"custom:luma-metric-card",entity:"sensor.power",name:"Output power",subtitle:"Power delivered to equipment",icon:"mdi:flash",decimals:0},
   ],
 },{"sensor.battery":{state:100,attributes:{unit_of_measurement:"%"}},"sensor.runtime":{state:63.8,attributes:{unit_of_measurement:"min"}},"sensor.load":{state:14,attributes:{unit_of_measurement:"%"}},"sensor.power":{state:115,attributes:{unit_of_measurement:"W"}}},1100)};
+
+// Half-width mobile cards must preserve the complete operational state.
+export const NarrowLongStates:Story={render:()=>renderCard("custom:luma-layout-card",{
+  columns:2,tablet_columns:2,mobile_columns:2,cards:[
+    {type:"custom:luma-metric-card",entity:"sensor.irrigation",name:"Öntözés",icon:"mdi:sprinkler",subtitle:"Automatikus öntözés szüneteltetve"},
+    {type:"custom:luma-metric-card",entity:"sensor.connection",name:"Connection",icon:"mdi:connection",subtitle:"Waiting for the device to reconnect"},
+  ],
+},{"sensor.irrigation":{state:"Téli üzemmód"},"sensor.connection":{state:"Unavailable"}},390)};

@@ -53,3 +53,14 @@ export const lumaTokens = css`
     }
   }
 `;
+
+// Opt-in interaction contract for cards migrated to explicit native controls.
+// Inset focus remains visible inside ha-card's clipped rounded surface.
+export const lumaInteractionStyles = css`
+  button { font: inherit; color: inherit; }
+  button:not(:disabled) { cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -3px; }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+  button:not(:disabled):active { filter: brightness(.94); }
+  .action-cue { --mdc-icon-size: 16px; color: var(--luma-muted); flex-shrink: 0; }
+`;
