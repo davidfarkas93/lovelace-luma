@@ -23,3 +23,7 @@ export const NarrowGates:Story={render:()=>renderCard('custom:luma-layout-card',
  {type:'custom:luma-gate-card',entity:'cover.gate',name:'Nagykapu',display:'popover'},
  ],
 },{'cover.gate':{state:'closed'}},390)};
+
+export const GarageSensor:Story={render:()=>renderCard('custom:luma-gate-card',{
+ entity:'switch.garage',state_entity:'binary_sensor.garage',kind:'switch',name:'Garázs',display:'popover',
+},{'switch.garage':{state:'on'},'binary_sensor.garage':{state:'off',attributes:{device_class:'garage_door'}}},390)};

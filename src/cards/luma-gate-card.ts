@@ -105,7 +105,7 @@ export class LumaGateCard extends LitElement implements LovelaceCard {
     const c=this.config,e=this.hass.states[c.state_entity||c.entity],s=e?.state||"unavailable";
     const cover=(c.kind||"cover")==="cover";
     const open=["open","opening","on"].includes(s),moving=["opening","closing"].includes(s);
-    const tone=(!e||["unknown","unavailable"].includes(s))?"var(--secondary-text-color)":moving?"var(--luma-state-active)":open?"var(--luma-state-warning)":s==="closed"?"var(--luma-state-success)":"var(--luma-state-neutral)";
+    const tone=(!e||["unknown","unavailable"].includes(s))?"var(--secondary-text-color)":moving?"var(--luma-state-active)":open?"var(--luma-state-warning)":["closed","off"].includes(s)?"var(--luma-state-success)":"var(--luma-state-neutral)";
     const icon=cover?(open?"mdi:gate-open":"mdi:gate"):(open?"mdi:garage-open":"mdi:garage");
     const primary=moving
       ? {id:"stop",label:localize(this.hass,"stop"),icon:"mdi:stop",domain:"cover",service:"stop_cover"}

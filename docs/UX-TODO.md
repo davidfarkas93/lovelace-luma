@@ -187,3 +187,8 @@ retained; always-visible high-contrast borders are not a universal requirement.
 The user accepted the concrete comparison. 0.61.5 adopts the refined shared surfaces,
 room gradients, subdued control fills, lighter typography and closed-gate success
 tint. Gradient-aware text/focus checks and responsive mock interaction checks pass.
+
+0.61.6 correction: garage contacts report `off`, while cover entities report
+`closed`. Both now use the same closed/success tone; the configured state_entity
+remains authoritative over the actuator relay. A browser regression covers off,
+on, unknown, unavailable and unexpected contact states.
