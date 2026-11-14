@@ -169,3 +169,9 @@ Scope remains a pilot: arbitrary custom themes, complete-library migration,
 200% text/zoom audit, and full accessibility conformance are still open. Existing
 state and interaction browser suites must pass before release. Live screenshots
 verify adoption separately; no operational action is used for testing.
+
+
+0.61.4 live-verification follow-up: 0.61.3 installed successfully and all three
+responsive captures showed the new surfaces. The larger Gate hint was ellipsized
+in half-width mobile cards; it now wraps. The correction is a new patch release,
+not a replaced tag. A two-column narrow Gate fixture covers this real layout.

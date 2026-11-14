@@ -16,3 +16,10 @@ export const StateGallery:Story={render:()=>renderCard('custom:luma-layout-card'
   {type:'custom:luma-comfort-card',name:'Komfort — hiányos adat',temperature_entity:'sensor.missing',humidity_entity:'sensor.humidity'},
  ],
 },{'sensor.temperature':{state:22.4,attributes:{unit_of_measurement:'°C'}},'sensor.humidity':{state:43},'light.room':{state:'on'},'cover.room':{state:'open'},'sensor.power':{state:1.4,attributes:{unit_of_measurement:'kW'}},'sensor.energy':{state:12.3,attributes:{unit_of_measurement:'kWh'}},'cover.closed':{state:'closed'},'cover.open':{state:'open'},'sensor.pm_warning':{state:18},'sensor.pm_error':{state:40}},1100)};
+
+export const NarrowGates:Story={render:()=>renderCard('custom:luma-layout-card',{
+ columns:2,tablet_columns:2,mobile_columns:2,cards:[
+ {type:'custom:luma-gate-card',entity:'cover.gate',name:'Garázs',display:'popover'},
+ {type:'custom:luma-gate-card',entity:'cover.gate',name:'Nagykapu',display:'popover'},
+ ],
+},{'cover.gate':{state:'closed'}},390)};

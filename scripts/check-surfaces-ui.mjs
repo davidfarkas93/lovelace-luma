@@ -49,6 +49,13 @@ try{
   const confirm=await measure();for(const row of confirm.text)assert.ok(row.ratio>=4.5,JSON.stringify(row));for(const row of confirm.controls)assert.ok(row.ratio>=3,JSON.stringify(row));
   reports.push({width,mode,phase:'confirmation',...confirm});await page.screenshot({path:`${out}/confirm-${width}-${mode}.png`});await page.keyboard.press('Escape');
  }
+ await page.setViewportSize({width:390,height:900});
+ await page.goto(`${base}/iframe.html?id=design-system-surfaces-and-meaning--narrow-gates&viewMode=story&globals=locale:hu`);
+ await page.locator('luma-gate-card').last().waitFor();
+ for(const hint of await page.locator('luma-gate-card .hint').evaluateAll(ns=>ns.map(n=>({text:n.textContent,fit:n.scrollWidth<=n.clientWidth+1,wrap:getComputedStyle(n).whiteSpace})))){
+  assert.equal(hint.wrap,'normal');assert.ok(hint.fit);assert.match(hint.text,/Koppints/);
+ }
+ await page.screenshot({path:`${out}/narrow-gates.png`});
  assert.deepEqual(errors,[]);writeFileSync(`${out}/contrast.json`,JSON.stringify(reports,null,2));
- console.log(JSON.stringify({textMinimum:Math.min(...reports.flatMap(r=>r.text.map(v=>v.ratio))),controlMinimum:Math.min(...reports.flatMap(r=>r.controls.map(v=>v.ratio))),focusMinimum:Math.min(...reports.flatMap(r=>r.focus.map(v=>v.ratio))),textSamples:reports.reduce((n,r)=>n+r.text.length,0),screenshots:12,output:out}));
+ console.log(JSON.stringify({textMinimum:Math.min(...reports.flatMap(r=>r.text.map(v=>v.ratio))),controlMinimum:Math.min(...reports.flatMap(r=>r.controls.map(v=>v.ratio))),focusMinimum:Math.min(...reports.flatMap(r=>r.focus.map(v=>v.ratio))),textSamples:reports.reduce((n,r)=>n+r.text.length,0),screenshots:13,output:out}));
 }finally{await browser.close();}
