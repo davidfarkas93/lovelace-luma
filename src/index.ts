@@ -120,7 +120,7 @@ const cards = [
     type:"luma-active-card",name:"Luma Active",description:"A dynamic active-entity list driven by reusable runtime rules.",
   },
   {
-    type:"luma-tab-card",name:"Luma Tabs",description:"A polished responsive tab container for native and custom Lovelace cards.",
+    type:"luma-tab-card",name:"Luma Tabs",description:"A compact tab container with keyboard navigation for native and custom Lovelace cards.",
   },
   {
     type:"luma-climate-card",name:"Luma Climate",description:"Climate controls and a thermostat summary with current/target temperatures and actual heating activity.",
@@ -168,7 +168,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.64.2 ",
+  "%c LUMA %c 0.64.3 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

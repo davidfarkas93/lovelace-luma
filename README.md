@@ -1642,3 +1642,9 @@ See **Design review / Garden and camera** for proposed, active, missing-data,
 empty-camera and main-page context stories. The illustrative camera image is a
 local mock, not an actual surveillance image. `scripts/check-garden-ui.mjs`
 checks responsive layout, state semantics and navigation using mocked data.
+
+### Tab container
+
+`custom:luma-tab-card` wraps native or custom cards in a shared surface with compact tabs and content-driven height. Each entry in `tabs` takes `name`, optional `icon`, and a single `card` configuration; use a stack or layout card inside `card` for multiple children. `initial_tab` is a zero-based index (default `0`).
+
+Arrow keys, Home and End select tabs. Tab enters the labelled content panel. Switching tabs retains the child card instance and its local state. The wrapper supplies shared margins and transparent child-card background variables; child-specific appearance remains the responsibility of the embedded card's configuration.
