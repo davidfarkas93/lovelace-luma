@@ -17,7 +17,7 @@ try{
    const text=await card.textContent();
    const visible=await card.evaluate(n=>n.shadowRoot.textContent);
    if(story==='metric')assert.match(visible,/22,4 °C/);
-   if(story==='comfort'){assert.match(await card.locator('.badge').textContent(),/Hiányos adatok/);assert.match(await card.locator('.metrics').textContent(),/PM2.5: nincs adat/);}
+   if(story==='comfort'){assert.match(await card.locator('.badge').textContent(),/Hiányos adatok/);assert.match(await card.locator('.metrics').textContent(),/PM2.5.*Nincs adat/s);}
    if(story==='room'){assert.match(await card.locator('.env').textContent(),/22,4 °C/);assert.equal(await card.locator('.pill-control').first().isDisabled(),true);}
    if(story==='hero'){assert.match(await card.locator('.subtitle').textContent(),/9,2 °C.*szél 0 km\/h/);assert.match(await card.locator('.alarm').textContent(),/Nem elérhető/);assert.match(await card.locator('.alarm').getAttribute('style'),/secondary-text-color/);}
    await page.screenshot({path:`${output}/${story}-${width}-${mode}.png`});
@@ -36,7 +36,7 @@ try{
  await card.evaluate(n=>n.setConfig({...n.config,format:undefined,absolute:true,positive_suffix:'import',state_map:{'3600':'Saját felirat'}}));assert.equal(await card.locator('.value').textContent(),'Saját felirat');assert.equal(await card.locator('.secondary').textContent(),'Humidity: 43 %');
  card=await open('comfort','luma-comfort-card');
  await state(card,'sensor.temperature','unavailable');await state(card,'sensor.humidity','unknown');assert.equal(await card.locator('.badge').textContent(),'Hiányos adatok');
- await state(card,'sensor.temperature','32');assert.equal(await card.locator('.badge').textContent(),'Figyelmet kér');assert.match(await card.locator('.metrics').textContent(),/nincs adat/);
+ await state(card,'sensor.temperature','32');assert.equal(await card.locator('.badge').textContent(),'Figyelmet kér');assert.match(await card.locator('.metrics').textContent(),/Nincs adat/);
  await state(card,'sensor.temperature','22.4');await state(card,'sensor.humidity','43');await state(card,'sensor.pm','0');assert.equal(await card.locator('.badge').textContent(),'Kellemes');
  await state(card,'sensor.temperature','22.4',{restored:true});assert.equal(await card.locator('.badge').textContent(),'Hiányos adatok');
  card=await open('room','luma-room-card');await state(card,'light.room','on',{restored:true});assert.equal(await card.locator('.pill-control').first().isDisabled(),true);assert.match(await card.locator('.pill-control').first().textContent(),/Friss adatra vár/);

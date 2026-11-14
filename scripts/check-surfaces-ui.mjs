@@ -31,7 +31,7 @@ async function measure(){return page.locator('luma-room-card,luma-metric-card,lu
    if(['STYLE','HA-ICON'].includes(n.tagName)||n.closest('button:disabled')||!n.getClientRects().length)continue;
    const cs=getComputedStyle(n),bg=background(n,endpoint);
    const copy=[...n.childNodes].filter(c=>c.nodeType===Node.TEXT_NODE).map(c=>c.textContent.trim()).join('').trim();
-   if(copy)text.push({card:card.tagName,element:n.className,text:copy,ratio:contrast(blend(rgba(cs.color),bg),bg)});
+   if(copy)text.push({card:card.tagName,element:n.className,text:copy,foreground:cs.color,background:bg,ratio:contrast(blend(rgba(cs.color),bg),bg)});
    if(n.matches('.pill-control,.secondary-action,.action'))controls.push({card:card.tagName,element:n.className,ratio:Math.min(contrast(rgba(cs.borderTopColor),bg),contrast(rgba(cs.borderTopColor),background(parent(n),endpoint)))});
    if(cs.outlineStyle!=='none'&&parseFloat(cs.outlineWidth)>0)focus.push({card:card.tagName,ratio:contrast(rgba(cs.outlineColor),bg)});
    if(n.matches('.value,.metrics,.env,.pill-control')&&n.scrollWidth>n.clientWidth+1)overflow.push({card:card.tagName,element:n.className});
@@ -59,6 +59,15 @@ try{
   const gate=page.locator('luma-gate-card').nth(1);await gate.locator('.summary').click();await gate.locator('.primary').click();
   const confirm=await measure();for(const row of confirm.text)assert.ok(row.ratio>=4.5,JSON.stringify(row));for(const row of confirm.focus)assert.ok(row.ratio>=3,JSON.stringify(row));
   reports.push({width,mode,phase:'confirmation',...confirm});await page.screenshot({path:`${out}/confirm-${width}-${mode}.png`});await page.keyboard.press('Escape');
+  await page.goto(`${base}/iframe.html?id=cards-comfort--cooling&viewMode=story&globals=locale:hu`);
+  await page.locator('luma-comfort-card').waitFor();
+  if(mode==='dark')await page.evaluate(()=>{for(const[k,v]of Object.entries({'--primary-text-color':'#eee','--secondary-text-color':'#9b9ba5','--primary-background-color':'#15161d','--ha-card-background':'#25252b','--card-background-color':'#25252b'}))document.documentElement.style.setProperty(k,v);});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.locator('luma-comfort-card .header').focus();
+  const comfort=await measure();reports.push({width,mode,phase:'integrated-climate',...comfort});
+  assert.deepEqual(comfort.overflow,[]);assert.ok(comfort.focus.length>0);
+  for(const row of comfort.text)assert.ok(row.ratio>=4.5,JSON.stringify({width,mode,...row}));
+  for(const row of comfort.focus)assert.ok(row.ratio>=3,JSON.stringify(row));
  }
  await page.setViewportSize({width:390,height:900});
  await page.goto(`${base}/iframe.html?id=design-system-surfaces-and-meaning--narrow-gates&viewMode=story&globals=locale:hu`);

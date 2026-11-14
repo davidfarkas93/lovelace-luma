@@ -34,3 +34,17 @@ for (const [action, label] of Object.entries({ heating: 'AC heating', cooling: '
   assert.equal(run(null, ac('auto', { hvac_action: action })), label);
 }
 console.log('Comfort: actual thermostat action, AC action/fallback, idle and unavailable checks passed.');
+
+const {comfortAssessment}=exports;
+const values={temperature:22,humidity:45,pm25:7,pm25Configured:true};
+assert.equal(comfortAssessment(values).status,'comfortable');
+assert.equal(comfortAssessment({...values,pm25:0}).status,'comfortable');
+for(const key of ['temperature','humidity','pm25'])assert.equal(comfortAssessment({...values,[key]:null}).status,'incomplete');
+assert.equal(comfortAssessment({...values,pm25:null,pm25Configured:false}).status,'comfortable');
+for(const [key,value,reason]of [['temperature',17,'cold'],['temperature',26,'hot'],['humidity',34,'dry'],['humidity',66,'humid'],['pm25',13,'particles']]){
+ const r=comfortAssessment({...values,[key]:value});assert.equal(r.status,'warning');assert.equal(r.reasons[0],reason);
+}
+assert.equal(comfortAssessment({...values,temperature:28,humidity:null}).status,'error');
+assert.equal(comfortAssessment({...values,temperature:25,humidity:65,pm25:12}).status,'comfortable');
+assert.equal(comfortAssessment({...values,pm25:13},{pm25_elevated:15}).status,'comfortable');
+console.log('Comfort assessment: thresholds, causes, real zero, incomplete data and severity precedence passed.');

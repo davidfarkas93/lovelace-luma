@@ -189,7 +189,7 @@ the OCPP value alone does not identify who sent the command.
 | `custom:luma-storage-card` | Disk/volume usage, capacity, temperature and SMART health in one card |
 | `custom:luma-room-card` | Room summary with environment and quick actions |
 | `custom:luma-action-card` | Compact scene, service, or navigation action |
-| `custom:luma-comfort-card` | Indoor comfort and air-quality summary |
+| `custom:luma-comfort-card` | Indoor measurements, explained comfort and optional active climate controls |
 | `custom:luma-climate-card` | Compact climate controller |
 | `custom:luma-tab-card` | Responsive tab container for any Lovelace cards |
 | `custom:luma-active-card` | Runtime-filtered list of active entities |
@@ -1008,33 +1008,73 @@ the legacy `call-service` action spelling.
 [MIT](LICENSE)
 
 
-## Comfort activity
+## Comfort and climate
 
-`custom:luma-comfort-card` accepts optional `heating_entity` and
-`air_conditioner_entity` alongside the required `temperature_entity` and
-`humidity_entity`. Comfort thresholds still use temperature, humidity and optional
-PM2.5: the warning label is **Uncomfortable** (Hungarian: **Nem komfortos**).
-Heating and AC activity appear as separate supporting chips and do not change the
-comfort rating.
+`custom:luma-comfort-card` organizes indoor comfort into three levels, using the
+same icon cell, title weight, radius and tonal controls as Room cards:
+
+- Header: named summary and comfort status; an optional `tap_action` opens details
+  from a keyboard-accessible header button.
+- Measurements: temperature, humidity and optional PM2.5, each opening its source
+  entity's More Info. Optional labels identify aggregate or room-specific sources.
+  Deviations explain *why* the status changed. Outdoor temperature and active
+  heating appear beneath as context, not as inputs to indoor comfort.
+- Optional `climate`: active AC state, target and supported quick modes. This row
+  disappears when the device is off; configure the header's details sheet with a
+  Climate card for starting it. Unknown/unavailable/restored AC shows a compact
+  data-status row and Settings, without command buttons or stale targets.
+
+Comfortable measurements use a subtle green tint. Configured missing indoor
+measurements prevent a comfortable verdict; known warnings/errors still win and
+name partial data. Outdoor or HVAC availability does not change the indoor rating.
+The existing temperature/humidity/PM2.5 thresholds and their source units are
+unchanged. This is a configurable dashboard summary, not a health assessment.
 
 ```yaml
 type: custom:luma-comfort-card
 temperature_entity: sensor.indoor_temperature
+temperature_label: Indoor average
 humidity_entity: sensor.indoor_humidity
+humidity_label: Average humidity
+pm25_entity: sensor.living_room_pm25
+pm25_label: PM2.5 · Living room
+outdoor_temperature_entity: sensor.outdoor_temperature
 heating_entity: sensor.heating_activity
-air_conditioner_entity: climate.air_conditioner
+tap_action:
+  action: navigate
+  navigation_path: '#environment'
+climate:
+  entity: climate.air_conditioner
+  name: Living room AC
+  modes:
+    - mode: off
+    - mode: cool
 ```
 
-`heating_entity` may be a sensor reporting `heat`/`heating`, a binary sensor
-reporting `on`, or a climate entity whose `hvac_action` is `heating`. A climate
-entity's `heat` mode alone never counts as heating. The aggregate sensor must
-itself derive activity from actual thermostat actions.
+`temperature_entity` and `humidity_entity` are required. `climate` is opt-in; its
+`entity` must belong to the climate domain. `modes` defaults to off/cool and accepts
+`mode`, optional `name`, and optional `icon`. Only modes advertised by the entity's
+`hvac_modes` are offered. Native 44px buttons call `climate.set_hvac_mode` on that
+entity, block duplicate requests while sending, show failures and permit retry.
+Selection follows the reported HA state, not an optimistic assumption. Settings
+opens the native climate More Info for target temperature, fan and other options.
+The header action and sensor actions never trigger a climate service.
 
-For AC, `hvac_action` takes precedence: heating, cooling, drying, fan and defrosting
-have distinct labels; idle/off produce no chip. If the integration omits
-`hvac_action`, a recognized enabled HVAC mode shows only **AC on**, without
-claiming compressor activity. Missing, unknown, unavailable and restored activity
-sources produce no chip.
+`heating_entity` accepts a sensor reporting heat/heating, a binary sensor reporting
+on, or a climate entity whose `hvac_action` is heating. A climate entity's heat mode
+alone never counts as heating. The aggregate sensor must itself derive activity
+from actual thermostat actions.
+
+The existing optional `air_conditioner_entity` remains a read-only activity source
+when `climate` is absent. `hvac_action` distinguishes heating/cooling/drying/fan/
+defrosting; idle/off emits no chip. An enabled mode without action data only says
+AC on. With integrated controls, AC status is shown once in the control row: a
+mode is never presented as proof of compressor activity. Missing/restored activity
+sources never appear active.
+
+See **Cards / Comfort** for normal, warning, cooling, missing-data and Room
+comparison stories. `scripts/check-comfort-ui.mjs` verifies layout and mocked
+commands; `scripts/check-comfort.mjs` covers assessment and activity semantics.
 
 
 ## Thermostat summary
@@ -1486,7 +1526,8 @@ Text uses the theme's primary/secondary contrast hierarchy instead of arbitrary
 accent colors. Other cards have not yet migrated to this surface contract.
 
 - Active operation uses the informational role; an on light is not a warning.
-- Stationary open blinds and comfortable conditions use a quiet normal role.
+- Stationary open blinds use a quiet normal role; comfortable indoor measurements
+  receive a restrained success tint.
   Explicitly closed gates have a restrained success tint; open gates retain an
   attention cue and moving gates use the active role.
 - Comfort warnings/errors keep labeled tinted badges and icons. PM2.5 remains

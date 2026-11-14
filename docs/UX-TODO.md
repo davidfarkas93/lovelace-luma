@@ -192,3 +192,13 @@ tint. Gradient-aware text/focus checks and responsive mock interaction checks pa
 `closed`. Both now use the same closed/success tone; the configured state_entity
 remains authoritative over the actuator relay. A browser regression covers off,
 on, unknown, unavailable and unexpected contact states.
+
+## Comfort consolidation — 0.62.0
+
+- [x] Align Room/Comfort icon cells, headings, radii, surfaces and tonal controls.
+- [x] Separate overall status, source-labelled measurements, causes and activity.
+- [x] Give fully known comfortable conditions a subtle success tint; retain neutral missing data.
+- [x] Add optional climate controls, shown only while enabled (or a data-status row when unavailable).
+- [x] Keep initial AC activation in the details sheet; header opens details, individual readings open their source.
+- [x] Preserve thresholds, state semantics, supported HVAC modes and mocked service verification.
+- [ ] Install 0.62.0 and move the main view's standalone Climate card into its existing environment sheet; verify live widths.

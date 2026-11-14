@@ -33,3 +33,25 @@ export function comfortActivity(hass: HomeAssistant, config: ActivityConfig): Ac
   }
   return result;
 }
+
+export const comfortDefaults = {
+  comfortable_temperature_min:18, comfortable_temperature_max:25,
+  warning_temperature_min:16, warning_temperature_max:27,
+  comfortable_humidity_min:35, comfortable_humidity_max:65,
+  warning_humidity_min:30, warning_humidity_max:70,
+  pm25_elevated:12, pm25_high:35,
+};
+export type ComfortThresholds = Partial<typeof comfortDefaults>;
+export function comfortAssessment(values:{temperature:number|null;humidity:number|null;pm25:number|null;pm25Configured:boolean}, config:ComfortThresholds={}) {
+  const c={...comfortDefaults,...config}, t=values.temperature,h=values.humidity,p=values.pm25;
+  const reasons: Array<'cold'|'hot'|'dry'|'humid'|'particles'>=[];
+  if(t!==null&&t<c.comfortable_temperature_min)reasons.push('cold');
+  if(t!==null&&t>c.comfortable_temperature_max)reasons.push('hot');
+  if(h!==null&&h<c.comfortable_humidity_min)reasons.push('dry');
+  if(h!==null&&h>c.comfortable_humidity_max)reasons.push('humid');
+  if(p!==null&&p>c.pm25_elevated)reasons.push('particles');
+  const high=(t!==null&&(t<c.warning_temperature_min||t>c.warning_temperature_max))
+    ||(h!==null&&(h<c.warning_humidity_min||h>c.warning_humidity_max))||(p!==null&&p>c.pm25_high);
+  const incomplete=t===null||h===null||(values.pm25Configured&&p===null);
+  return {reasons,incomplete,status:high?'error':reasons.length?'warning':incomplete?'incomplete':'comfortable'} as const;
+}
