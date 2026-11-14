@@ -251,4 +251,4 @@ further Luma refinement.
 - [x] Refine camera event hierarchy and distinguish recording from live-view controls.
 - [x] Clear stale snapshots and distinguish unavailable activity from an empty timeline.
 - [x] Review the combined local Storybook preview with David.
-- [ ] Publish/install and migrate only the intended main-view configuration after approval.
+- [x] Published and installed v0.64.0; migrated the main garden section and removed duplicate outside-temperature summaries. Verified the saved configuration and live mobile/tablet/desktop screenshots. Comfort detail measurements and camera routes remain intact.
