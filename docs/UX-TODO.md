@@ -201,4 +201,11 @@ on, unknown, unavailable and unexpected contact states.
 - [x] Add optional climate controls, shown only while enabled (or a data-status row when unavailable).
 - [x] Keep initial AC activation in the details sheet; header opens details, individual readings open their source.
 - [x] Preserve thresholds, state semantics, supported HVAC modes and mocked service verification.
-- [ ] Install 0.62.0 and move the main view's standalone Climate card into its existing environment sheet; verify live widths.
+- [x] Installed 0.62.0 and moved the main view's standalone Climate card into its existing environment sheet; verified live mobile/tablet/desktop captures.
+
+Validation: required checks/builds and all three release workflows passed; 30 new
+responsive Comfort/Room captures, 24 state-presentation captures and 1,560 text
+contrast samples passed. The migrated view was re-read to verify one integrated
+Comfort card and the standalone Climate card only inside the details sheet.
+The live screenshot API cannot open URL fragments; sheet interaction is verified
+locally with mocked data and commands. No real HVAC action was used for testing.
