@@ -17,13 +17,13 @@ try{
    const text=await card.textContent();
    const visible=await card.evaluate(n=>n.shadowRoot.textContent);
    if(story==='metric')assert.match(visible,/22,4 °C/);
-   if(story==='comfort'){assert.match(await card.locator('.badge').textContent(),/Hiányos adatok/);assert.match(await card.locator('.metrics').textContent(),/PM2.5.*Nincs adat/s);}
+   if(story==='comfort'){assert.match(await card.locator('.status').textContent(),/Hiányos adatok/);assert.match(await card.locator('.metrics').textContent(),/PM2.5.*Nincs adat/s);}
    if(story==='room'){assert.match(await card.locator('.env').textContent(),/22,4 °C/);assert.equal(await card.locator('.pill-control').first().isDisabled(),true);}
    if(story==='hero'){assert.match(await card.locator('.subtitle').textContent(),/9,2 °C.*szél 0 km\/h/);assert.match(await card.locator('.alarm').textContent(),/Nem elérhető/);assert.match(await card.locator('.alarm').getAttribute('style'),/secondary-text-color/);}
    await page.screenshot({path:`${output}/${story}-${width}-${mode}.png`});
    await locale(card,'en');
    if(story==='metric')assert.match(await card.locator('.value').textContent(),/22\.4/);
-   if(story==='comfort')assert.equal(await card.locator('.badge').textContent(),'Incomplete data');
+   if(story==='comfort')assert.equal(await card.locator('.status').textContent(),'Incomplete data');
    if(story==='room')assert.match(await card.locator('.env').textContent(),/22\.4 °C/);
    if(story==='hero')assert.match(await card.locator('.subtitle').textContent(),/9\.2 °C.*wind 0/);
   }
@@ -35,10 +35,10 @@ try{
  await state(card,'sensor.value','3600');await card.evaluate(n=>n.setConfig({...n.config,format:'duration'}));assert.equal(await card.locator('.value').textContent(),'1 ó 0 p');assert.equal(await card.locator('.secondary').textContent(),'Humidity: 43 %');
  await card.evaluate(n=>n.setConfig({...n.config,format:undefined,absolute:true,positive_suffix:'import',state_map:{'3600':'Saját felirat'}}));assert.equal(await card.locator('.value').textContent(),'Saját felirat');assert.equal(await card.locator('.secondary').textContent(),'Humidity: 43 %');
  card=await open('comfort','luma-comfort-card');
- await state(card,'sensor.temperature','unavailable');await state(card,'sensor.humidity','unknown');assert.equal(await card.locator('.badge').textContent(),'Hiányos adatok');
- await state(card,'sensor.temperature','32');assert.equal(await card.locator('.badge').textContent(),'Figyelmet kér');assert.match(await card.locator('.metrics').textContent(),/Nincs adat/);
- await state(card,'sensor.temperature','22.4');await state(card,'sensor.humidity','43');await state(card,'sensor.pm','0');assert.equal(await card.locator('.badge').textContent(),'Kellemes');
- await state(card,'sensor.temperature','22.4',{restored:true});assert.equal(await card.locator('.badge').textContent(),'Hiányos adatok');
+ await state(card,'sensor.temperature','unavailable');await state(card,'sensor.humidity','unknown');assert.equal(await card.locator('.status').textContent(),'Hiányos adatok');
+ await state(card,'sensor.temperature','32');assert.equal(await card.locator('.status').textContent(),'Figyelmet kér');assert.match(await card.locator('.metrics').textContent(),/Nincs adat/);
+ await state(card,'sensor.temperature','22.4');await state(card,'sensor.humidity','43');await state(card,'sensor.pm','0');assert.equal(await card.locator('.status').textContent(),'Kellemes');
+ await state(card,'sensor.temperature','22.4',{restored:true});assert.equal(await card.locator('.status').textContent(),'Hiányos adatok');
  card=await open('room','luma-room-card');await state(card,'light.room','on',{restored:true});assert.equal(await card.locator('.pill-control').first().isDisabled(),true);assert.match(await card.locator('.pill-control').first().textContent(),/Friss adatra vár/);
  card=await open('hero','luma-home-hero-card');await state(card,'weather.home','unavailable',{temperature:33,wind_speed:20});assert.doesNotMatch(await card.locator('.subtitle').textContent(),/33|20 km/);
  await card.evaluate(n=>{const states={...n.hass.states};delete states['alarm_control_panel.home'];n.hass={...n.hass,states};});assert.match(await card.locator('.alarm').textContent(),/Nem elérhető/);

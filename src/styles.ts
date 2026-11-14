@@ -156,3 +156,9 @@ export const lumaSurfaceStyles = css`
     border-color: color-mix(in srgb, var(--accent, var(--tone, var(--primary-color))) 30%, transparent);
   }
 `;
+
+/** Shared inline state indicator for summary cards. */
+export const lumaStatusStyles = css`
+  .status {display:inline-flex;align-items:center;gap:6px;padding:4px 0;color:var(--primary-text-color);font-size:var(--luma-text-sm);font-weight:750;white-space:nowrap;}
+  .status .dot {width:6px;height:6px;flex-shrink:0;border-radius:50%;background:var(--tone);}
+`;

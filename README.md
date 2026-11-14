@@ -1013,7 +1013,8 @@ the legacy `call-service` action spelling.
 `custom:luma-comfort-card` organizes indoor comfort into three levels, using the
 same icon cell, title weight, radius and tonal controls as Room cards:
 
-- Header: named summary and comfort status; an optional `tap_action` opens details
+- Header: named summary and the same dot-and-text status treatment as Gate cards;
+  an optional `tap_action` opens details
   from a keyboard-accessible header button.
 - Measurements: temperature, humidity and optional PM2.5, each opening its source
   entity's More Info. Optional labels identify aggregate or room-specific sources.

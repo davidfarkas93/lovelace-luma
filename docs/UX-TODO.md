@@ -217,3 +217,8 @@ to 8px), and context-chip padding. Keep 44px targets and the Room header pattern
 Replace the standalone cause row with per-reading severity tint and a directional
 marker, with an explicit tooltip/accessibility label. Other normal measurements
 keep their normal styling even when a different measurement is severe.
+
+0.62.2 polish: Gate and Comfort now use the same shared dot-and-text status
+primitive. Deviating measurements use one baseline-aligned value/unit/indicator
+group with consistent gaps and a restrained tint, replacing the cramped numeric
+chip. Numeric alignment and padding stay stable between normal and flagged states.
