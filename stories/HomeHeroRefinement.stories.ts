@@ -12,7 +12,7 @@ function preview(kind='quiet'){
  'sensor.advice':{state:kind==='advice'?'Öltözz rétegesen: meleg felső és kabát is jól jöhet.':'unavailable',attributes:{status:'ready',weather_entity:'weather.home',day,generated_at:now-30,valid_until:now+3600}},
  'light.living':{state:'on'},'light.kitchen':{state:'on'},'sensor.waste':{state:2},'sensor.general':{state:'collection',attributes:{daysTo:2}},'input_boolean.waste_ready':{state:kind==='waste'?'off':'on'},
  'binary_sensor.leak':{state:warning?'on':'off'},
- 'sensor.washer':{state:busy?'washing':'off'},'sensor.dryer':{state:busy?'drying':'off'},'lawn_mower.garden':{state:busy?'mowing':'docked'},'sensor.charger':{state:busy?'charging':'idle'},
+ 'sensor.washer':{state:busy?'washing':'off'},'sensor.dryer':{state:busy?'drying':'off'},'lawn_mower.garden':{state:busy||kind==='mowing'?'mowing':'docked'},'sensor.charger':{state:busy?'charging':'idle'},
  };
  const card=document.createElement('luma-home-hero-card')as LovelaceCard;card.style.width='min(1100px,calc(100vw - 32px))';
  card.setConfig({type:'custom:luma-home-hero-card',name:'Dávid',weather_entity:'weather.home',weather_advice_entity:'sensor.advice',wind_threshold:20,alarm_entity:'alarm_control_panel.home',alarm_popover:true,alarm_action:{action:'more-info'},alarm_modes:[{mode:'away',name:'Távol'},{mode:'night',name:'Éjszaka'},{mode:'disarm',name:'Kikapcsolás'}],tap_action:{action:'navigate',navigation_path:'#weather'},active_label:'aktív világítás',active:{include:[{domain:'light',state:'on'}]},active_action:{action:'navigate',navigation_path:'#lights'},waste_entity:'sensor.waste',waste_items:[{entity:'sensor.general',name:'Kommunális'}],waste_ack_entity:'input_boolean.waste_ready',waste_path:'#waste',incidents:[{entity:'binary_sensor.leak',state:'on',message:'1 Unraid lemez SMART problémát jelez · +1',tone:'error',path:'#leak'}],appliances:[{entity:'sensor.washer',name:'Mosógép',icon:'mdi:washing-machine',path:'#laundry',state_map:{washing:'Mosás'}},{entity:'sensor.dryer',name:'Szárító',icon:'mdi:tumble-dryer',path:'#laundry',state_map:{drying:'Szárítás'}}],banners:[{entity:'lawn_mower.garden',label:'Fűnyíró',state:'mowing',state_map:{mowing:'Füvet nyír'},tap_action:{action:'navigate',navigation_path:'#garden'}},{entity:'sensor.charger',label:'Autótöltő',state:'charging',state_map:{charging:'Töltés'},tap_action:{action:'navigate',navigation_path:'#charging'}}]});
@@ -27,3 +27,5 @@ export const Missing:Story={render:()=>preview('missing')};
 export const Waste:Story={render:()=>preview('waste')};
 
 export const WindyClear:Story={render:()=>preview('windy-clear')};
+
+export const Mowing:Story={render:()=>preview('mowing')};

@@ -601,9 +601,11 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       .active ha-icon{color:var(--luma-muted)}.alarm ha-icon{color:var(--alarm-color)}.attention ha-icon{color:var(--attention-color)}.alarm:hover,.attention:hover,.active:hover{transform:none;filter:none;background:var(--luma-hover-surface)}
       .needs-attention .attention{order:-1;background:color-mix(in srgb,var(--attention-color) 9%,transparent)}
       .banner-group,.banners{margin-top:10px}.banner{padding:3px 11px;row-gap:2px}.banner-summary{padding:6px 12px}.banner,.banner-summary{background:color-mix(in srgb,var(--item-color,var(--primary-text-color)) 5%,transparent);border-color:var(--luma-border)}.banner:hover{transform:none}.banner-action,.issue-actions button{min-height:44px;font-size:11px;letter-spacing:0;font-weight:560;border-radius:10px}.banner-label,.banner-state{font-weight:560}.banner-summary-text{font-weight:600}
+      .banner.navigation{min-height:44px}.banner-arrow{color:var(--luma-muted);--mdc-icon-size:16px}
+      @container(max-width:420px){.banner.navigation{grid-template-columns:18px auto minmax(0,1fr) 16px;gap:6px}.banner.navigation .banner-label{grid-column:2;grid-row:1;max-width:110px}.banner.navigation .banner-state{grid-column:3;grid-row:1}.banner.navigation>ha-icon{grid-row:1}.banner.navigation .banner-arrow{grid-column:4}}
       .alarm-actions{display:grid;grid-template-columns:repeat(var(--alarm-count),minmax(0,1fr));padding:0;background:transparent;border-radius:0;gap:8px}.alarm-mode{display:flex;align-items:center;gap:6px;min-width:0;border:0;min-height:48px;padding:8px;justify-content:center;border-radius:12px;background:var(--luma-control-surface);color:var(--primary-text-color);font-size:12px;white-space:normal}.alarm-mode ha-icon{--mdc-icon-size:17px;flex-shrink:0}.alarm-mode:not(:disabled):hover{background:var(--luma-hover-surface)}.alarm-mode span{min-width:0;white-space:normal;overflow-wrap:anywhere}.alarm-mode.selected{background:color-mix(in srgb,var(--primary-color) 10%,transparent)}.alarm-mode.confirm{background:color-mix(in srgb,var(--warning-color) 15%,transparent);color:var(--primary-text-color)}.alarm-details{min-height:44px;margin-top:12px;border:0;background:transparent;color:var(--luma-muted);font:inherit;font-size:12px;cursor:pointer}.alarm-error{font-size:12px;color:var(--error-color)}
       @container(min-width:720px){.top{grid-template-columns:44px minmax(180px,1fr) minmax(0,2fr);grid-template-areas:"icon title status" "icon subtitle status" "advice advice advice"}.status{justify-content:flex-end;flex-wrap:nowrap;margin-top:0;max-width:none}.status .active,.status .alarm{flex-shrink:0}.status .attention{min-width:0}.status .attention span{overflow-wrap:anywhere}.status ha-icon{flex-shrink:0}}
-      @container(max-width:420px){.hero{padding:14px}h2{font-size:18px}.status{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.attention{grid-column:1/-1}.alarm,.attention,.active{padding:6px 7px;font-size:11px}.banner{grid-template-columns:18px minmax(0,1fr) auto}.banner-label{grid-column:2}.banner-state{grid-column:2;grid-row:2}.banner-action{grid-column:3;grid-row:1/3}.banner>ha-icon{grid-row:1/3}}
+      @container(max-width:420px){.hero{padding:14px}h2{font-size:18px}.status{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px}.status button{flex:0 1 auto;max-width:100%}.alarm,.attention,.active{padding:6px 7px;font-size:11px}.banner{grid-template-columns:18px minmax(0,1fr) auto}.banner-label{grid-column:2}.banner-state{grid-column:2;grid-row:2}.banner-action{grid-column:3;grid-row:1/3}.banner>ha-icon{grid-row:1/3}}
     `,
   ];
 
@@ -999,8 +1001,9 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
     if (!this.hass || !itemIsVisible(this.hass, item)) return nothing;
     const entity = this.hass.states[item.entity],
       color = item.color || "var(--luma-accent)";
+    const navigationOnly = !item.secondary_action && (!item.tap_action || ["navigate", "more-info", "url"].includes(item.tap_action.action));
     return html`<div
-      class="banner interactive"
+      class=${`banner interactive ${navigationOnly ? "navigation" : ""}`}
       role="button"
       tabindex="0"
       @keydown=${(event:KeyboardEvent)=>{if(event.target===event.currentTarget&&["Enter"," "].includes(event.key)){event.preventDefault();event.stopPropagation();void runAction(this,this.hass!,item.tap_action,item.entity);}}}
@@ -1015,7 +1018,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
       ><span class="banner-state"
         >${item.state_label ||
         entityState(this.hass, entity, item.state_map)}</span
-      ><button
+      >${navigationOnly ? html`<ha-icon class="banner-arrow" icon="mdi:chevron-right" aria-hidden="true"></ha-icon>` : html`<button
         class="banner-action"
         @click=${(e: Event) => {
           e.stopPropagation();
@@ -1028,7 +1031,7 @@ export class LumaHomeHeroCard extends LitElement implements LovelaceCard {
         }}
       >
         ${item.secondary_label || item.name || localize(this.hass, "open_item")}
-      </button>
+      </button>`}
     </div>`;
   }
 
