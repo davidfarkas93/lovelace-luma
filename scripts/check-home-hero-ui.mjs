@@ -13,6 +13,8 @@ try{
  assert.ok(await card.locator('.status button,.weather-link').evaluateAll(ns=>ns.every(n=>n.getBoundingClientRect().height>=44)),'44px controls');
  assert.doesNotMatch(await card.locator('.weather-link').textContent(),/jelzés|adatforrás/,'weather does not repeat attention');
  assert.equal(await card.locator('.wind').count(),story.startsWith('windy')?1:0);
+ if(width===1280&&story==='warning')assert.ok(await card.locator('.status button').evaluateAll(ns=>Math.max(...ns.map(n=>n.getBoundingClientRect().top))-Math.min(...ns.map(n=>n.getBoundingClientRect().top))<2),'desktop chips stay in one row with a long warning');
+ if(story==='waste')assert.ok(await card.locator('.banner').evaluate(n=>n.getBoundingClientRect().height)<=56,'compact banner retains 44px control');
  if(story==='quiet')assert.equal(await card.locator('luma-weather-advice .weather-advice').count(),0,'missing optional tip hidden');
  if(story==='missing')assert.equal(await card.locator('.sky').count(),0,'no fictional sky when weather missing');
  if(story==='busy'){assert.equal(await card.locator('.banner-group').getAttribute('open'),null);assert.match(await card.locator('.banner-summary').textContent(),/4/);await card.locator('.banner-summary').click();assert.equal(await card.locator('.banner').count(),4);await card.locator('.banner-summary').click();}
