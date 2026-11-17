@@ -67,7 +67,7 @@ assert.equal(await page.evaluate(()=>window.calls.length),0,'Long press opens de
 assert.equal(await page.locator('dialog').evaluate(el=>el.open),true);
 await page.keyboard.press('Escape');
 await panel.evaluate(el=>{el.hass.callService=()=>new Promise(resolve=>{window.releaseService=resolve})});
-await fader.locator('.power').click();assert.equal(await fader.locator('.power').isDisabled(),true);assert.equal(await track.getAttribute('aria-disabled'),'true');
+await fader.locator('.power').click();assert.equal(await fader.locator('.power').isDisabled(),true);assert.equal(await track.getAttribute('aria-disabled'),'false','A pending command does not discard a new drag');
 await page.evaluate(()=>window.releaseService());await page.waitForTimeout(50);assert.equal(await fader.locator('.power').isDisabled(),false);
 await page.goto(url.replace('interactive-demo','interactive-dark'));await panel.locator('.lights').waitFor();
 if(process.env.LUMA_SCREENSHOT_DIR) await page.screenshot({path:`${process.env.LUMA_SCREENSHOT_DIR}/luma-wall-dark.png`});
