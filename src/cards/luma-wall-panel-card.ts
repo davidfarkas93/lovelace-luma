@@ -15,6 +15,7 @@ interface Config {
   type: string; name?: string; lights: LightFaderConfig[]; metrics?: Metric[];
   scenes?: Item[]; shortcuts?: Item[]; cover?: { entity: string; name?: string };
   fullscreen?: boolean; viewport_offset?: number;
+  light_orientation?: "vertical" | "horizontal";
   physical_buttons?: { side?: "left" | "right"; buttons: PhysicalButton[] };
 }
 
@@ -55,6 +56,8 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     .metric ha-icon { color: var(--luma-muted); --mdc-icon-size: 19px; }
     .lights { display: grid; grid-template-columns: repeat(var(--count),minmax(0,1fr)); gap: 12px; min-height: 0; }
     luma-light-fader-card { min-height: 0; }
+    .horizontal-lights .lights { grid-template-columns: repeat(2,minmax(0,1fr)); grid-auto-rows: minmax(160px,1fr); }
+    @media (max-width: 599px) { .panel.hardware.horizontal-lights { min-height: 1460px; } .horizontal-lights .lights { grid-template-columns: minmax(0,1fr) !important; } }
     .scenes { display: grid; grid-template-columns: repeat(var(--scenes),minmax(0,1fr)); gap: 10px; }
     button { min-height: 52px; border: 1px solid var(--luma-border); border-radius: var(--luma-radius-control); background: var(--luma-surface); padding: 10px 14px; font-size: 14px; font-weight: var(--luma-weight-medium); }
     .scene,.shortcut { display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -97,7 +100,7 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     const buttons = config.physical_buttons?.buttons;
     if (config.physical_buttons && (!buttons?.length || buttons.length > 6 || buttons.some(b => !b.entity?.startsWith("event.") || !b.name || !b.event_type) || new Set(buttons.map(b => b.entity)).size !== buttons.length)) throw Error("physical_buttons requires 1–6 unique event entities with name and event_type.");
     this.clearFlashes();
-    this.config = { fullscreen: false, ...config };
+    this.config = { fullscreen: false, ...config, lights: config.lights.map(l => ({ ...l, orientation: config.light_orientation || l.orientation })) };
     this.tracked = [...new Set([...config.lights.map(l => l.entity), ...(config.metrics || []).map(m => m.entity), ...(config.scenes || []).map(s => s.entity || ""), ...(config.shortcuts || []).map(s => s.entity || ""), ...(buttons || []).map(b => b.entity), config.cover?.entity || ""].filter(Boolean))];
   }
   getCardSize() { return 10; }
@@ -151,7 +154,7 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     const c = this.config, cover = c.cover && this.hass.states[c.cover.entity];
     const coverFeatures = Number(cover?.attributes.supported_features || 0);
     const hardware = c.physical_buttons;
-    return html`<div class="panel ${c.fullscreen ? "fullscreen" : ""} ${hardware ? `hardware ${hardware.side || "right"}` : ""}" style=${`--offset:${Math.max(0,c.viewport_offset || 0)}px;--count:${c.lights.length};--scenes:${Math.max(1,c.scenes?.length || 0)};--shortcuts:${Math.max(1,c.shortcuts?.length || 0)};--buttons:${hardware?.buttons.length || 1}`}>
+    return html`<div class="panel ${c.fullscreen ? "fullscreen" : ""} ${c.light_orientation === "horizontal" ? "horizontal-lights" : ""} ${hardware ? `hardware ${hardware.side || "right"}` : ""}" style=${`--offset:${Math.max(0,c.viewport_offset || 0)}px;--count:${c.lights.length};--scenes:${Math.max(1,c.scenes?.length || 0)};--shortcuts:${Math.max(1,c.shortcuts?.length || 0)};--buttons:${hardware?.buttons.length || 1}`}>
       <header><h1>${c.name || localized(this.hass, "Room", "Szoba")}</h1><div class="metrics">${(c.metrics || []).map(m => html`<button class="metric" title=${m.name || entityName(this.hass?.states[m.entity],m.entity)} @click=${() => this.info(m.entity)}><ha-icon icon=${m.icon || "mdi:information-outline"}></ha-icon>${entityState(this.hass!,this.hass?.states[m.entity])}</button>`)}</div>${this.error ? html`<span class="error" role="alert">${localized(this.hass, "Action failed", "Nem sikerült")}</span>` : nothing}</header>
       <div class="lights">${repeat(c.lights, l => l.entity, l => html`<luma-light-fader-card .config=${l} .hass=${this.hass}></luma-light-fader-card>`)}</div>
       ${hardware ? html`<aside class="legend" aria-label=${localized(this.hass,"Physical buttons, top to bottom","Fizikai gombok, felülről lefelé")}>${hardware.buttons.map((button,index) => html`<div class="legend-item ${this.pressed.has(button.entity) ? "pressed" : ""}" data-entity=${button.entity}><span class="number">${index + 1}</span><ha-icon icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon><span class="label">${button.name}</span></div>`)}</aside>` : html`<div class="scenes">${this.items(c.scenes || [], "scene")}</div>`}

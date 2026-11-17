@@ -1726,3 +1726,14 @@ physical_buttons:
 Configure the corresponding actions in **Home Assistant automations**, so the buttons work independently of the dashboard. The legend has no tap actions. A fresh matching event flashes its label for 750 ms; this acknowledges receipt of the button event, not scene completion or a persistent active scene. Initial, restored, stale and reconnection snapshots do not flash. It adds no polling or permanent timers. Physical-button layouts fit 1280×752 landscape and 768×1024 portrait; phones use two light columns and vertical scrolling.
 
 **Cards / Wall Panel / Physical Buttons** provides a working mock with simulated hardware buttons below the display. `scripts/check-wall-buttons-browser.mjs` checks event filtering, repeated presses, timeout, stable fader instances, visual-only labels and both rail positions using the browser setup above.
+
+
+### Horizontal wall-display controls
+
+Set `light_orientation: horizontal` on `custom:luma-wall-panel-card` for two columns of wide light controls (one column on phones). The physical-button legend remains on its configured side. Standalone `custom:luma-light-fader-card` accepts `orientation: horizontal`; the default stays vertical for existing configurations.
+
+Horizontal controls use an unrotated native range input: `input` only previews brightness, and `change` sends one command when the drag is released. Pointer/touch cancellation never commits. Native keyboard changes are supported. Pending requests retain the selected value through delayed HA feedback using the same serialized command queue as vertical faders.
+
+This layout addresses Shelly Wall Display firmware intercepting vertical drags: both the custom vertical fader and a rotated native range were cancelled on the tested XL, while an unrotated horizontal native range completed normally. Committing cancellation or sending continuously while moving is deliberately not used as a workaround.
+
+Storybook → **Cards / Wall Panel / Horizontal**. Run `scripts/check-horizontal-fader-browser.mjs` with the same browser environment variables as the other wall-panel checks. It verifies touch/mouse release-only commands, delayed feedback, cancellation, keyboard, unavailable state and responsive layouts with mock lights only.

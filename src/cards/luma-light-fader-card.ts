@@ -6,7 +6,7 @@ import { HoldGesture } from "../hold-gesture";
 import { lumaTokens, lumaInteractionStyles } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string }
+export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal" }
 
 /** A tall touch target, with one service call per completed gesture. */
 @customElement("luma-light-fader-card")
@@ -16,6 +16,9 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
   @state() private busy = false;
   @state() private error = false;
   private draft?: number;
+  private nativeActive = false;
+  private nativeCancelled = false;
+  private nativeEndTimer?: ReturnType<typeof setTimeout>;
   @state() private pending?: { value: number; sequence: number };
   @state() private unconfirmed = false;
   private sequence = 0;
@@ -48,6 +51,19 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     .marker { position: absolute; left: 8px; width: 6px; bottom: clamp(8px,calc(var(--level,0) * 100% - 2px),calc(100% - 12px)); height: 6px; border-radius: 50%; background: var(--tone); pointer-events: none; }
     .value { position: absolute; top: 16px; left: 0; right: 0; text-align: center; font-size: clamp(23px,3vw,38px); font-weight: var(--luma-weight-title); font-variant-numeric: tabular-nums; pointer-events: none; }
     .note { font-size: 11px; color: var(--luma-muted); min-height: 15px; margin: 8px 4px 0; }
+    .card.horizontal { padding: 14px; }
+    .horizontal .top { position: relative; }
+    .horizontal .name { margin: 0 8px; flex: 1; }
+    .horizontal .subtitle { margin: 4px 0 0 52px; min-height: 0; }
+    .horizontal .track { flex: 1; min-height: 56px; max-height: 90px; margin-top: 12px; cursor: ew-resize; }
+    .horizontal .fill { transform: scaleX(var(--level,0)); transform-origin: left; }
+    .horizontal .value { position: static; min-width: 70px; font-size: 28px; text-align: right; }
+    input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; background: transparent; appearance: none; -webkit-appearance: none; touch-action: none; cursor: ew-resize; }
+    input[type="range"]::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+    input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 32px; height: 100%; border: 3px solid var(--tone); border-radius: var(--luma-radius-control); background: color-mix(in srgb,var(--tone) 35%,var(--luma-surface)); }
+    input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
+    input[type="range"]::-moz-range-thumb { width: 26px; height: 90%; border: 3px solid var(--tone); border-radius: var(--luma-radius-control); background: var(--luma-surface); }
+    input[type="range"]:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -3px; }
     .error { color: var(--error-color); }
   `];
 
@@ -90,7 +106,7 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     cancelAnimationFrame(this.frame); this.frame = 0;
   }
   private cancelGesture() {
-    this.endGesture();
+    this.endGesture(); this.nativeActive = false; clearTimeout(this.nativeEndTimer);
     clearTimeout(this.keyTimer); this.keyTimer = undefined; this.draft = undefined;
     this.paint();
   }
@@ -110,7 +126,7 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     }, 400);
   }
   private paint() {
-    const track = this.renderRoot.querySelector<HTMLElement>(".track");
+    const track = this.renderRoot?.querySelector<HTMLElement>(".track");
     if (!track) return;
     const value = this.draft ?? this.pending?.value ?? this.level;
     track.style.setProperty("--level", String(value / 100));
@@ -118,7 +134,9 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     const known = this.draft !== undefined || this.pending !== undefined || this.entity?.state === "off" || typeof this.entity?.attributes.brightness === "number" && Number.isFinite(this.entity.attributes.brightness);
     const label = !this.available ? "—" : !this.dimmable ? (this.entity?.state === "on" ? localized(this.hass,"On","Be") : localized(this.hass,"Off","Ki")) : known ? `${value}%` : "—";
     track.setAttribute("aria-valuetext", label);
-    const output = track.querySelector(".value");
+    const input = track.querySelector<HTMLInputElement>("input");
+    if (input && !this.nativeActive) input.value = String(value);
+    const output = this.renderRoot.querySelector(".value");
     if (output) output.textContent = label;
   }
   private moveTo(y: number) {
@@ -224,6 +242,26 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
       if (this.isConnected) void this.sendNext();
     }
   }
+  private nativeStart() { clearTimeout(this.nativeEndTimer); this.nativeCancelled = false; this.nativeActive = true; }
+  private nativeInput(event: Event) {
+    if (!this.available || !this.dimmable || this.nativeCancelled) return;
+    this.draft = Number((event.currentTarget as HTMLInputElement).value);
+    if (!this.frame) this.frame = requestAnimationFrame(() => { this.frame = 0; this.paint(); });
+  }
+  private nativeChange(event: Event) {
+    if (this.nativeCancelled || !this.available || !this.dimmable) return;
+    this.nativeActive = false;
+    clearTimeout(this.nativeEndTimer);
+    this.commit(Number((event.currentTarget as HTMLInputElement).value));
+  }
+  private nativeCancel() { this.nativeCancelled = true; this.cancelGesture(); }
+  private nativeEnd() {
+    this.nativeActive = false;
+    // Native change runs with release. Clear a draft when dragging back to the
+    // starting value produces no change event; no service is needed in that case.
+    clearTimeout(this.nativeEndTimer);
+    this.nativeEndTimer = setTimeout(() => { if (!this.nativeActive) { this.draft = undefined; this.paint(); } }, 0);
+  }
   private info() { if (this.hass && this.config) void runAction(this, this.hass, { action: "more-info" }, this.config.entity); }
   private async toggle(event: MouseEvent) {
     if (!this.press.allowsClick(event) || this.busy || !this.available || !this.hass || !this.config) return;
@@ -236,14 +274,23 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     if (!this.config || !this.hass) return nothing;
     const name = this.config.name || entityName(this.entity, this.config.entity);
     const disabled = !this.available || !this.dimmable;
-    return html`<div class="card ${this.entity?.state === "on" ? "on" : ""}">
+    const horizontal = this.config.orientation === "horizontal";
+    return html`<div class="card ${this.entity?.state === "on" ? "on" : ""} ${horizontal ? "horizontal" : ""}">
       <div class="top"><button class="power" aria-label=${name} aria-pressed=${this.entity?.state === "on"} ?disabled=${!this.available || this.busy}
         @pointerdown=${(e: PointerEvent) => this.press.start(e, () => this.info())} @click=${this.toggle}><ha-icon icon=${this.config.icon || "mdi:lightbulb-outline"}></ha-icon></button>
+        ${horizontal ? html`<div class="name">${name}</div><span class="value"></span>` : nothing}
         <button class="details" aria-label=${localized(this.hass, "Details", "Részletek")} @click=${this.info}><ha-icon icon="mdi:dots-horizontal"></ha-icon></button></div>
-      <div class="name">${name}</div><div class="subtitle">${this.config.subtitle || ""}</div>
+      ${horizontal ? nothing : html`<div class="name">${name}</div>`}<div class="subtitle">${this.config.subtitle || ""}</div>
+      ${horizontal ? html`<div class="track" aria-disabled=${String(disabled)}><div class="fill"></div>
+        <input type="range" min="0" max="100" step="1" aria-label=${name} aria-orientation="horizontal" ?disabled=${disabled}
+          @pointerdown=${this.nativeStart} @touchstart=${this.nativeStart} @keydown=${this.nativeStart}
+          @input=${this.nativeInput} @change=${this.nativeChange}
+          @pointerup=${this.nativeEnd} @touchend=${this.nativeEnd} @keyup=${this.nativeEnd}
+          @pointercancel=${this.nativeCancel} @touchcancel=${this.nativeCancel}>
+      </div>` : html`
       <div class="track" role="slider" tabindex=${disabled ? -1 : 0} aria-label=${name} aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow=${this.level} aria-disabled=${String(disabled)}
         @pointerdown=${this.start} @touchstart=${this.touchStart} @keydown=${this.key} @blur=${() => { if (this.keyTimer) { clearTimeout(this.keyTimer); this.keyTimer = undefined; void this.commit(this.draft!); } }}>
-        <div class="fill"></div><span class="value"></span><div class="marker"></div></div>
+        <div class="fill"></div><span class="value"></span><div class="marker"></div></div>`}
       <div class="note ${this.error ? "error" : ""}" role="status">${this.error ? localized(this.hass, "Could not send", "Nem sikerült") : !this.available ? localized(this.hass, "Unavailable", "Nem elérhető") : this.busy ? localized(this.hass, "Sending…", "Küldés…") : this.pending ? localized(this.hass, "Waiting for device…", "Visszajelzésre vár…") : this.unconfirmed ? localized(this.hass, "Not confirmed", "Nincs visszaigazolás") : !this.dimmable ? localized(this.hass, "On / off only", "Csak be / ki") : ""}</div>
     </div>`;
   }

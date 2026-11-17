@@ -46,10 +46,10 @@ export const LightFader: Story = { render: () => renderCard("custom:luma-light-f
 export const NonDimmable: Story = { render: () => renderCard("custom:luma-light-fader-card", lights[0], { "light.sofa": { state: "on", attributes: { supported_color_modes: ["onoff"] } } }, 280) };
 
 // Standalone, interactive demo. These IDs and service calls never reach Home Assistant.
-function interactiveDemo(dark = false, hardware = false) {
+function interactiveDemo(dark = false, hardware = false, horizontal = false) {
     const buttons = config.scenes.map((s,i) => ({ entity: `event.button_${i+1}`, name: s.name, icon: s.icon, event_type: "single_push" }));
     const card = document.createElement("luma-wall-panel-card") as LumaWallPanelCard;
-    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true, ...(hardware ? { physical_buttons: { side: "right", buttons } } : {}) } as Parameters<LumaWallPanelCard["setConfig"]>[0]);
+    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true, ...(horizontal ? { light_orientation: "horizontal" } : {}), ...(hardware ? { physical_buttons: { side: "right", buttons } } : {}) } as Parameters<LumaWallPanelCard["setConfig"]>[0]);
     let hass = createMockHass({ ...definitions, ...Object.fromEntries(buttons.map(b => [b.entity, { state: "2026-01-01T00:00:00Z", attributes: { event_type: "single_push" } }])) });
     hass.formatEntityState = e => e.attributes.unit_of_measurement ? `${e.state} ${e.attributes.unit_of_measurement}` : ({ open: "Nyitva", closed: "Zárva", on: "Be", off: "Ki" }[e.state] || e.state);
     hass.callService = async (domain, service, data, target) => {
@@ -107,3 +107,5 @@ export const InteractiveDemo: Story = { parameters: { layout: "fullscreen" }, re
 export const InteractiveDark: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true) };
 
 export const PhysicalButtons: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true, true) };
+
+export const Horizontal: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true, true, true) };
