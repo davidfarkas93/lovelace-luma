@@ -1706,3 +1706,23 @@ The fader caches geometry at gesture start and paints at most once per animation
 Storybook → **Cards / Wall Panel / Interactive Demo** (or **Interactive Dark**) is a working simulation with local state updates. It never calls a live HA instance. Storybook uses simplified icon glyphs; live Home Assistant supplies Material Design Icons. Browser regressions: start `npm run docs`, then run `node scripts/check-wall-panel-browser.mjs` with Playwright available (or set `LUMA_PLAYWRIGHT_MODULE` to its module path). Optional `LUMA_CHROME`, `LUMA_STORYBOOK_URL`, and `LUMA_SCREENSHOT_DIR` select the browser, server, and screenshot output.
 
 `node scripts/check-light-fader-races.mjs` uses the same browser setup to exercise slow continuous touch, touch-only input, lost pointer capture, intermediate HA feedback, queued releases, stale failures and acknowledgement timeouts. All service calls are mocked.
+
+For displays with hardware buttons, `physical_buttons` replaces the touchscreen scene row with a visual legend spanning the panel height:
+
+```yaml
+physical_buttons:
+  side: right # or left
+  buttons: # top to bottom, 1–6 unique event entities
+    - entity: event.wall_display_button_1
+      name: Film
+      icon: mdi:movie-open-outline
+      event_type: single_push
+    - entity: event.wall_display_button_2
+      name: Relax
+      icon: mdi:weather-night
+      event_type: single_push
+```
+
+Configure the corresponding actions in **Home Assistant automations**, so the buttons work independently of the dashboard. The legend has no tap actions. A fresh matching event flashes its label for 750 ms; this acknowledges receipt of the button event, not scene completion or a persistent active scene. Initial, restored, stale and reconnection snapshots do not flash. It adds no polling or permanent timers. Physical-button layouts fit 1280×752 landscape and 768×1024 portrait; phones use two light columns and vertical scrolling.
+
+**Cards / Wall Panel / Physical Buttons** provides a working mock with simulated hardware buttons below the display. `scripts/check-wall-buttons-browser.mjs` checks event filtering, repeated presses, timeout, stable fader instances, visual-only labels and both rail positions using the browser setup above.

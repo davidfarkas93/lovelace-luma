@@ -10,10 +10,12 @@ import "./luma-light-fader-card";
 
 interface Item { entity?: string; name: string; icon?: string; tap_action: LumaAction }
 interface Metric { entity: string; name?: string; icon?: string }
+interface PhysicalButton { entity: string; name: string; icon?: string; event_type: string }
 interface Config {
   type: string; name?: string; lights: LightFaderConfig[]; metrics?: Metric[];
   scenes?: Item[]; shortcuts?: Item[]; cover?: { entity: string; name?: string };
   fullscreen?: boolean; viewport_offset?: number;
+  physical_buttons?: { side?: "left" | "right"; buttons: PhysicalButton[] };
 }
 
 /** Fixed work budget: explicit entities only; no history, polling or discovery. */
@@ -26,11 +28,26 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
   @state() private confirmation = "";
   private confirmTimer?: ReturnType<typeof setTimeout>;
   private tracked: string[] = [];
+  @state() private pressed = new Set<string>();
+  private flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   static styles = [lumaTokens, lumaInteractionStyles, css`
     :host { display: block; min-width: 0; }
     .panel { container-type: inline-size; display: grid; grid-template-rows: auto minmax(220px,1fr) auto auto; gap: 14px; padding: 18px; min-height: 540px; height: 680px; color: var(--primary-text-color); background: var(--primary-background-color); }
     .panel.fullscreen { height: calc(100vh - var(--offset,0px)); height: calc(100dvh - var(--offset,0px)); }
+    .panel.hardware { grid-template-columns: minmax(0,1fr) 112px; grid-template-rows: auto minmax(220px,1fr) auto; grid-template-areas: "header legend" "lights legend" "bottom legend"; }
+    .panel.hardware.left { grid-template-columns: 112px minmax(0,1fr); grid-template-areas: "legend header" "legend lights" "legend bottom"; }
+    .hardware > header { grid-area: header; }
+    .hardware > .lights { grid-area: lights; }
+    .hardware > .bottom { grid-area: bottom; }
+    .legend { grid-area: legend; display: grid; grid-template-rows: repeat(var(--buttons),minmax(0,1fr)); min-width: 0; border-left: 1px solid var(--luma-border); padding-left: 10px; }
+    .left .legend { border-left: 0; border-right: 1px solid var(--luma-border); padding-left: 0; padding-right: 10px; }
+    .legend-item { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 9px; border-radius: var(--luma-radius-control); color: var(--luma-muted); padding: 10px 4px; text-align: center; pointer-events: none; }
+    .legend-item .number { font-size: 10px; opacity: .65; font-variant-numeric: tabular-nums; }
+    .legend-item .label { font-size: 12px; font-weight: var(--luma-weight-medium); overflow-wrap: anywhere; }
+    .legend-item ha-icon { --mdc-icon-size: 24px; }
+    .legend-item.pressed { color: var(--primary-text-color); background: color-mix(in srgb,var(--warning-color) 17%,transparent); }
+    .legend-item.pressed ha-icon { color: var(--warning-color); }
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
     h1 { font-size: clamp(22px,3vw,32px); font-weight: var(--luma-weight-title); margin: 0; letter-spacing: -.035em; }
     .metrics { display: flex; align-items: center; gap: 8px; }
@@ -59,6 +76,14 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     }
     @media (max-width: 599px) {
       .panel { gap: 10px; padding: 10px; min-height: 780px; }
+      .panel.hardware { grid-template-columns: minmax(0,1fr) 72px; min-height: 1080px; }
+      .panel.hardware.left { grid-template-columns: 72px minmax(0,1fr); }
+      .hardware .lights { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .hardware header { flex-wrap: wrap; }
+      .legend { padding-left: 4px; } .left .legend { padding-right: 4px; }
+      .legend-item .label { font-size: 11px; }
+      .hardware .cover { flex-wrap: wrap; justify-content: space-between; }
+      .hardware .cover-info { flex-basis: 100%; }
       header { gap: 4px; } .metrics { gap: 0; } .metric { padding: 4px; font-size: 13px; }
       .lights { gap: 8px; } .scenes { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
       .cover { gap: 5px; } .cover-action { min-width: 44px; }
@@ -69,8 +94,11 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     if (!config?.lights?.length || config.lights.length > 6 || config.lights.some(l => !l.entity?.startsWith("light."))) throw Error("Luma wall panel requires 1–6 light entities.");
     if (new Set(config.lights.map(l => l.entity)).size !== config.lights.length) throw Error("Light entities must be unique.");
     if (config.cover && !config.cover.entity.startsWith("cover.")) throw Error("cover.entity must be a cover.");
+    const buttons = config.physical_buttons?.buttons;
+    if (config.physical_buttons && (!buttons?.length || buttons.length > 6 || buttons.some(b => !b.entity?.startsWith("event.") || !b.name || !b.event_type) || new Set(buttons.map(b => b.entity)).size !== buttons.length)) throw Error("physical_buttons requires 1–6 unique event entities with name and event_type.");
+    this.clearFlashes();
     this.config = { fullscreen: false, ...config };
-    this.tracked = [...new Set([...config.lights.map(l => l.entity), ...(config.metrics || []).map(m => m.entity), ...(config.scenes || []).map(s => s.entity || ""), ...(config.shortcuts || []).map(s => s.entity || ""), config.cover?.entity || ""].filter(Boolean))];
+    this.tracked = [...new Set([...config.lights.map(l => l.entity), ...(config.metrics || []).map(m => m.entity), ...(config.scenes || []).map(s => s.entity || ""), ...(config.shortcuts || []).map(s => s.entity || ""), ...(buttons || []).map(b => b.entity), config.cover?.entity || ""].filter(Boolean))];
   }
   getCardSize() { return 10; }
   protected shouldUpdate(changed: PropertyValues<this>) {
@@ -78,7 +106,26 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     const old = changed.get("hass") as HomeAssistant | undefined;
     return !old || old.locale !== this.hass?.locale || this.tracked.some(id => old.states[id] !== this.hass?.states[id]);
   }
-  disconnectedCallback() { clearTimeout(this.confirmTimer); this.confirmation = ""; super.disconnectedCallback(); }
+  private clearFlashes() {
+    for (const timer of this.flashTimers.values()) clearTimeout(timer);
+    this.flashTimers.clear(); this.pressed = new Set();
+  }
+  protected willUpdate(changed: PropertyValues<this>) {
+    const old = changed.get("hass") as HomeAssistant | undefined;
+    if (!old || !this.hass || old.connection !== this.hass.connection) return;
+    for (const button of this.config?.physical_buttons?.buttons || []) {
+      const before = old.states[button.entity], current = this.hass.states[button.entity];
+      const age = Date.now() - Date.parse(current?.state || "");
+      if (!before || !current || before.state === current.state || current.attributes.restored || current.attributes.event_type !== button.event_type || !Number.isFinite(age) || age < -1000 || age > 5000) continue;
+      clearTimeout(this.flashTimers.get(button.entity));
+      this.pressed = new Set([...this.pressed, button.entity]);
+      this.flashTimers.set(button.entity, setTimeout(() => {
+        this.pressed = new Set([...this.pressed].filter(id => id !== button.entity));
+        this.flashTimers.delete(button.entity);
+      }, 750));
+    }
+  }
+  disconnectedCallback() { clearTimeout(this.confirmTimer); this.clearFlashes(); this.confirmation = ""; super.disconnectedCallback(); }
   private available(id?: string) { return !id || !!this.hass?.states[id] && !["unknown", "unavailable"].includes(this.hass.states[id].state); }
   private async action(key: string, action: LumaAction, entity?: string) {
     if (!this.hass || this.busy || !this.available(entity)) return;
@@ -103,10 +150,11 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     if (!this.config || !this.hass) return nothing;
     const c = this.config, cover = c.cover && this.hass.states[c.cover.entity];
     const coverFeatures = Number(cover?.attributes.supported_features || 0);
-    return html`<div class="panel ${c.fullscreen ? "fullscreen" : ""}" style=${`--offset:${Math.max(0,c.viewport_offset || 0)}px;--count:${c.lights.length};--scenes:${Math.max(1,c.scenes?.length || 0)};--shortcuts:${Math.max(1,c.shortcuts?.length || 0)}`}>
+    const hardware = c.physical_buttons;
+    return html`<div class="panel ${c.fullscreen ? "fullscreen" : ""} ${hardware ? `hardware ${hardware.side || "right"}` : ""}" style=${`--offset:${Math.max(0,c.viewport_offset || 0)}px;--count:${c.lights.length};--scenes:${Math.max(1,c.scenes?.length || 0)};--shortcuts:${Math.max(1,c.shortcuts?.length || 0)};--buttons:${hardware?.buttons.length || 1}`}>
       <header><h1>${c.name || localized(this.hass, "Room", "Szoba")}</h1><div class="metrics">${(c.metrics || []).map(m => html`<button class="metric" title=${m.name || entityName(this.hass?.states[m.entity],m.entity)} @click=${() => this.info(m.entity)}><ha-icon icon=${m.icon || "mdi:information-outline"}></ha-icon>${entityState(this.hass!,this.hass?.states[m.entity])}</button>`)}</div>${this.error ? html`<span class="error" role="alert">${localized(this.hass, "Action failed", "Nem sikerült")}</span>` : nothing}</header>
       <div class="lights">${repeat(c.lights, l => l.entity, l => html`<luma-light-fader-card .config=${l} .hass=${this.hass}></luma-light-fader-card>`)}</div>
-      <div class="scenes">${this.items(c.scenes || [], "scene")}</div>
+      ${hardware ? html`<aside class="legend" aria-label=${localized(this.hass,"Physical buttons, top to bottom","Fizikai gombok, felülről lefelé")}>${hardware.buttons.map((button,index) => html`<div class="legend-item ${this.pressed.has(button.entity) ? "pressed" : ""}" data-entity=${button.entity}><span class="number">${index + 1}</span><ha-icon icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon><span class="label">${button.name}</span></div>`)}</aside>` : html`<div class="scenes">${this.items(c.scenes || [], "scene")}</div>`}
       <div class="bottom">${c.cover ? html`<div class="cover"><button class="cover-info" @click=${() => this.info(c.cover!.entity)}>${c.cover.name || localized(this.hass,"Shutters","Redőnyök")}<small>${entityState(this.hass,cover)}</small></button>
         ${([["open_cover","mdi:arrow-up",1,"Open","Fel"],["stop_cover","mdi:stop",8,"Stop","Állj"],["close_cover","mdi:arrow-down",2,"Close","Le"]] as const).map(([service,icon,flag,en,hu]) => html`<button class="cover-action" aria-label=${localized(this.hass,en,hu)} ?disabled=${!!this.busy || !this.available(c.cover?.entity) || !(coverFeatures & flag)} @click=${() => this.action(service,{action:"perform-action",perform_action:`cover.${service}`,target:{entity_id:c.cover!.entity}},c.cover!.entity)}><ha-icon icon=${icon}></ha-icon></button>`)}</div>` : nothing}
         <div class="shortcuts">${this.items(c.shortcuts || [], "shortcut")}</div></div>

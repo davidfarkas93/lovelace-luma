@@ -46,10 +46,11 @@ export const LightFader: Story = { render: () => renderCard("custom:luma-light-f
 export const NonDimmable: Story = { render: () => renderCard("custom:luma-light-fader-card", lights[0], { "light.sofa": { state: "on", attributes: { supported_color_modes: ["onoff"] } } }, 280) };
 
 // Standalone, interactive demo. These IDs and service calls never reach Home Assistant.
-function interactiveDemo(dark = false) {
+function interactiveDemo(dark = false, hardware = false) {
+    const buttons = config.scenes.map((s,i) => ({ entity: `event.button_${i+1}`, name: s.name, icon: s.icon, event_type: "single_push" }));
     const card = document.createElement("luma-wall-panel-card") as LumaWallPanelCard;
-    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true } as Parameters<LumaWallPanelCard["setConfig"]>[0]);
-    let hass = createMockHass(definitions);
+    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true, ...(hardware ? { physical_buttons: { side: "right", buttons } } : {}) } as Parameters<LumaWallPanelCard["setConfig"]>[0]);
+    let hass = createMockHass({ ...definitions, ...Object.fromEntries(buttons.map(b => [b.entity, { state: "2026-01-01T00:00:00Z", attributes: { event_type: "single_push" } }])) });
     hass.formatEntityState = e => e.attributes.unit_of_measurement ? `${e.state} ${e.attributes.unit_of_measurement}` : ({ open: "Nyitva", closed: "Zárva", on: "Be", off: "Ki" }[e.state] || e.state);
     hass.callService = async (domain, service, data, target) => {
       const id = String(target?.entity_id || data?.entity_id || "");
@@ -80,7 +81,29 @@ function interactiveDemo(dark = false) {
     close.onclick = () => dialog.close(); dialog.append(copy,close);
     card.addEventListener("hass-more-info", event => { copy.textContent = `Demó · ${(event as CustomEvent).detail.entityId}. Az élő dashboardon itt az eszköz részletes vezérlője nyílik meg.`; dialog.showModal(); });
     if (dark) container.style.cssText = "--primary-text-color:#eeeef3;--secondary-text-color:#a6a7b3;--primary-background-color:#15161d;--card-background-color:#202129;--ha-card-background:#202129;--warning-color:#ddb77c;color-scheme:dark";
-    container.append(card,dialog); return container;
+    container.append(card,dialog);
+    if (hardware) {
+      const controls = document.createElement("div");
+      controls.style.cssText = "display:flex;gap:12px;padding:16px;flex-wrap:wrap;background:var(--primary-background-color);font:14px system-ui";
+      controls.append("Demó · fizikai gombok szimulálása:");
+      buttons.forEach((b,i) => {
+        const button = document.createElement("button");
+        button.textContent = `${i+1}. ${b.name}`;
+        button.style.cssText = "padding:10px 16px;cursor:pointer";
+        button.onclick = async () => {
+          hass = { ...hass, states: { ...hass.states, [b.entity]: { ...hass.states[b.entity], state: new Date().toISOString() } } };
+          card.hass = hass;
+          const action = config.scenes[i].tap_action;
+          const [domain,service] = action.perform_action.split(".");
+          await hass.callService(domain,service,"data" in action ? action.data : {},action.target);
+        };
+        controls.append(button);
+      });
+      container.append(controls);
+    }
+    return container;
 }
 export const InteractiveDemo: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo() };
 export const InteractiveDark: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true) };
+
+export const PhysicalButtons: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true, true) };
