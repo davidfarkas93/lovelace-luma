@@ -148,7 +148,7 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     }) as EventListener);
     this.listen("pointerup", ((e: PointerEvent) => {
       if (this.gesture?.kind !== "pointer" || e.pointerId !== this.gesture.id) return;
-      e.preventDefault(); e.stopPropagation(); this.finishAt(e.clientY);
+      e.preventDefault(); e.stopPropagation(); this.finishGesture();
     }) as EventListener);
     this.listen("pointercancel", ((e: PointerEvent) => {
       if (this.gesture?.kind === "pointer" && e.pointerId === this.gesture.id) this.cancelGesture();
@@ -175,12 +175,13 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
       if (this.gesture?.kind !== "touch") return;
       e.preventDefault(); e.stopPropagation();
       const t = Array.from(e.changedTouches).find(t => t.identifier === this.gesture?.id);
-      if (t) this.finishAt(t.clientY);
+      if (t) this.finishGesture();
     }) as EventListener);
     this.listen("touchcancel", (() => this.cancelGesture()) as EventListener);
   }
-  private finishAt(y: number) {
-    this.moveTo(y);
+  private finishGesture() {
+    // Commit the last sampled position. Embedded browsers may replay the initial
+    // contact coordinates in pointerup/touchend; those must not undo the drag.
     const value = this.draft;
     this.endGesture();
     if (value !== undefined) this.commit(value);

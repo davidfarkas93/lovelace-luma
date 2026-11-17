@@ -38,6 +38,26 @@ await open();await track.evaluate(el=>{
 });await page.waitForTimeout(40);assert.equal(await page.evaluate(()=>window.calls.length),1);assert.equal(await value(),'80%');
 await track.evaluate(el=>{const r=el.getBoundingClientRect(),t=new Touch({identifier:8,target:el,clientX:r.x+20,clientY:r.y+20});el.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[t]}));el.dispatchEvent(new TouchEvent('touchcancel',{bubbles:true,cancelable:true,touches:[],changedTouches:[t]}))});
 assert.equal(await page.evaluate(()=>window.calls.length),1);
+// Embedded WebViews can report the original contact coordinate on release.
+// The displayed last move is the user's selection, not the end-event coordinate.
+for (const releaseKind of ['pointer', 'touch']) {
+ await open();
+ await track.evaluate((el,kind)=>{
+  const r=el.getBoundingClientRect(),y=f=>r.y+r.height*f;
+  if(kind==='pointer') {
+   const emit=(type,f)=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,composed:true,cancelable:true,pointerId:19,pointerType:'touch',isPrimary:true,button:0,clientX:r.x+20,clientY:y(f)}));
+   emit('pointerdown',.6);emit('pointermove',.2);emit('pointerup',.6);
+  } else {
+   const t=f=>new Touch({identifier:19,target:el,clientX:r.x+20,clientY:y(f)});
+   const emit=(type,touches,changedTouches=touches)=>el.dispatchEvent(new TouchEvent(type,{bubbles:true,composed:true,cancelable:true,touches,changedTouches}));
+   emit('touchstart',[t(.6)]);emit('touchmove',[t(.2)]);emit('touchend',[],[t(.6)]);
+  }
+ },releaseKind);
+ await page.waitForTimeout(40);
+ assert.equal(await page.evaluate(()=>window.calls.length),1);
+ assert.equal(await page.evaluate(()=>window.calls[0][2].brightness_pct),80,`${releaseKind}: release must preserve the last move`);
+ assert.equal(await value(),'80%');
+}
 // Serialize releases; an older failed request cannot reset the latest requested value.
 await open();await panel.evaluate(el=>{window.rejectFirst=null;el.hass.callService=(...args)=>{window.calls.push(args);return window.calls.length===1?new Promise((_,reject)=>window.rejectFirst=reject):Promise.resolve()}});
 await drag(80);await drag(30);assert.equal(await value(),'30%');assert.equal(await page.evaluate(()=>window.calls.length),1);
