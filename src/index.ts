@@ -1,6 +1,8 @@
 import "./cards/luma-hero-card";
 import "./cards/luma-home-hero-card";
 import "./cards/luma-control-card";
+import "./cards/luma-light-fader-card";
+import "./cards/luma-wall-panel-card";
 import "./cards/luma-control-group-card";
 import "./cards/luma-metric-card";
 import "./cards/luma-room-card";
@@ -59,6 +61,8 @@ import "./cards/luma-ev-overview-card";
 import "./cards/luma-ev-solar-readiness-card";
 
 const cards = [
+  { type:"luma-light-fader-card", name:"Luma Light Fader", description:"Vertical touch brightness control with local drag feedback and one service call on release." },
+  { type:"luma-wall-panel-card", name:"Luma Wall Panel", description:"Viewport-filling wall display with vertical light faders, scenes, shutter controls and shortcuts. Explicit-entity updates, no polling." },
   { type:"luma-daily-report-card", name:"Luma Daily Report", description:"Focused previous-day interpretation with a minimal hero presentation and full metadata, evidence and chronology in the shared detail sheet." },
   { type:"luma-household-context-card", name:"Luma Household Context", description:"Review and approve durable household knowledge, conditional exceptions and rule change history." },
   { type:"luma-attention-card", name:"Luma Attention", description:"Shared policy incidents, automatically discovered updates and source coverage with explicit snoozed, pending and unavailable states." },
@@ -168,7 +172,7 @@ for (const card of cards) {
 }
 
 console.info(
-  "%c LUMA %c 0.65.3 ",
+  "%c LUMA %c 0.66.0 ",
   "color: white; background: #6d78c5; font-weight: 700; border-radius: 4px 0 0 4px; padding: 2px 5px;",
   "color: #6d78c5; background: #eef0ff; border-radius: 0 4px 4px 0; padding: 2px 5px;",
 );

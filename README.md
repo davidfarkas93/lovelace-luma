@@ -1658,3 +1658,49 @@ checks responsive layout, state semantics and navigation using mocked data.
 Arrow keys, Home and End select tabs. Tab enters the labelled content panel. Switching tabs retains the child card instance and its local state. The wrapper supplies shared margins and transparent child-card background variables; child-specific appearance remains the responsibility of the embedded card's configuration.
 
 On phones (below 768px), active media is represented by a 48px floating artwork/icon button above the navigation. One active player opens its configured remote directly; multiple players show a count and open a player chooser in the shared sheet. No playback command is sent when opening either surface. Off, unavailable and restored activity sources are excluded. Tablet and desktop retain the media dock. Grouped mobile navigation sits 6px above the device safe-area inset.
+## Wall displays and vertical light faders
+
+`custom:luma-wall-panel-card` is a compact, explicit-entity control surface for wall displays. Use a **panel view** and `fullscreen: true` for a kiosk: it fills the available viewport, with no polling, history queries, device discovery, backdrop blur or continuous animations. The existing Kiosk Mode resource controls the HA header/sidebar separately.
+
+```yaml
+type: custom:luma-wall-panel-card
+name: Living room
+fullscreen: true
+lights:
+  - entity: light.sofa
+    name: Sofa
+  - entity: light.spots
+    name: Spots
+metrics:
+  - entity: sensor.room_temperature
+    icon: mdi:thermometer
+cover:
+  entity: cover.room
+  name: Shutters
+scenes:
+  - entity: scene.relax
+    name: Relax
+    icon: mdi:weather-night
+    tap_action:
+      action: perform-action
+      perform_action: scene.turn_on
+      target:
+        entity_id: scene.relax
+shortcuts:
+  - entity: media_player.tv
+    name: TV
+    icon: mdi:television
+    tap_action:
+      action: more-info
+```
+
+- `lights`: 1–6 unique light entities, each with optional `name`, `subtitle`, and `icon`. Groups are explicit; label their scope when they overlap individual lights.
+- `metrics`, `scenes`, `shortcuts`, and `cover` are optional. Action items accept standard Luma `tap_action`, including inline confirmation. The cover buttons honor its supported features.
+- `fullscreen` defaults to `false` (680 px embedded demo). `viewport_offset` subtracts a nonnegative number of pixels when hosting under a visible header. Below the panel's minimum height it scrolls instead of clipping controls.
+- Above 850 px of available width, lights share a single row; narrower panels use three columns. The reference six-light panel fits 1280×800 and 1024×600 landscape, 768×1024 portrait, and 390×844 mobile.
+
+`custom:luma-light-fader-card` can also be used independently with `entity`, `name`, `subtitle`, and `icon`. Give its container a height; its standalone minimum is 220 px. Drag upward to brighten and downward to dim. Zero sends `light.turn_off`; other values send `light.turn_on` with `brightness_pct`. The power button toggles, and its long press or the detail button opens HA More Info. On/off-only lights keep their power button but disable brightness. Missing/unknown/unavailable states never become a numeric zero.
+
+The fader caches geometry at pointer-down and paints at most once per animation frame. It sends **one command on release**, none during dragging, and none on pointer cancellation. Arrow/Page/Home/End keys are supported; repeated keys coalesce into one command after 250 ms. Escape cancels a pending keyboard change. Service errors restore the reported state with a visible error. Each fader watches its own entity; the panel watches only its configured entities. Unrelated HA traffic does not rerender either component.
+
+Storybook → **Cards / Wall Panel / Interactive Demo** (or **Interactive Dark**) is a working simulation with local state updates. It never calls a live HA instance. Storybook uses simplified icon glyphs; live Home Assistant supplies Material Design Icons. Browser regressions: start `npm run docs`, then run `node scripts/check-wall-panel-browser.mjs` with Playwright available (or set `LUMA_PLAYWRIGHT_MODULE` to its module path). Optional `LUMA_CHROME`, `LUMA_STORYBOOK_URL`, and `LUMA_SCREENSHOT_DIR` select the browser, server, and screenshot output.

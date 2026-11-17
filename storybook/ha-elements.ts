@@ -10,6 +10,21 @@ const iconGlyphs: Record<string, string> = {
   "mdi:arrow-down": "↓",
   "mdi:stop": "■",
   "mdi:check": "✓",
+  "mdi:dots-horizontal": "⋯",
+  "mdi:lightbulb-outline": "☼",
+  "mdi:ceiling-light-outline": "☼",
+  "mdi:ceiling-light-multiple-outline": "☼",
+  "mdi:track-light": "⌁",
+  "mdi:led-strip-variant": "━",
+  "mdi:lightbulb-group-outline": "☼",
+  "mdi:lightbulb-multiple-off-outline": "⏻",
+  "mdi:movie-open-outline": "▷",
+  "mdi:weather-night": "☾",
+  "mdi:brightness-7": "☀",
+  "mdi:thermometer": "♨",
+  "mdi:water-percent": "%",
+  "mdi:television": "▣",
+  "mdi:air-purifier": "≋",
 };
 
 class HaCard extends HTMLElement {
