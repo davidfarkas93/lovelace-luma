@@ -7,6 +7,8 @@ import { lumaTokens, lumaInteractionStyles } from "../styles";
 import type { HomeAssistant, LumaAction, LovelaceCard } from "../types";
 import { type LightFaderConfig } from "./luma-light-fader-card";
 import "./luma-light-fader-card";
+import "../components/luma-wall-controls";
+import type { WallControlEntity } from "../components/luma-wall-controls";
 
 interface Item { entity?: string; name: string; icon?: string; tap_action: LumaAction }
 interface Metric { entity: string; name?: string; icon?: string }
@@ -15,6 +17,8 @@ interface Config {
   type: string; name?: string; lights: LightFaderConfig[]; metrics?: Metric[];
   scenes?: Item[]; shortcuts?: Item[]; cover?: { entity: string; name?: string };
   fullscreen?: boolean; viewport_offset?: number;
+  touch_controls?: boolean; cover_entities?: WallControlEntity[];
+  detail_groups?: {entities:WallControlEntity[]}[];
   light_orientation?: "vertical" | "horizontal";
   physical_buttons?: { side?: "left" | "right"; buttons: PhysicalButton[] };
 }
@@ -24,6 +28,7 @@ interface Config {
 export class LumaWallPanelCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config?: Config;
+  @state() private detail?: {entity:string; items:WallControlEntity[]};
   @state() private busy = "";
   @state() private error = false;
   @state() private confirmation = "";
@@ -100,14 +105,14 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     const buttons = config.physical_buttons?.buttons;
     if (config.physical_buttons && (!buttons?.length || buttons.length > 6 || buttons.some(b => !b.entity?.startsWith("event.") || !b.name || !b.event_type) || new Set(buttons.map(b => b.entity)).size !== buttons.length)) throw Error("physical_buttons requires 1–6 unique event entities with name and event_type.");
     this.clearFlashes();
-    this.config = { fullscreen: false, ...config, lights: config.lights.map(l => ({ ...l, orientation: config.light_orientation || l.orientation })) };
+    this.config = { fullscreen: false, ...config, lights: config.lights.map(l => ({ ...l, orientation: config.light_orientation || l.orientation, touch_controls: config.touch_controls ?? l.touch_controls, details: config.touch_controls ? "event" : l.details })) };
     this.tracked = [...new Set([...config.lights.map(l => l.entity), ...(config.metrics || []).map(m => m.entity), ...(config.scenes || []).map(s => s.entity || ""), ...(config.shortcuts || []).map(s => s.entity || ""), ...(buttons || []).map(b => b.entity), config.cover?.entity || ""].filter(Boolean))];
   }
   getCardSize() { return 10; }
   protected shouldUpdate(changed: PropertyValues<this>) {
     if (!changed.has("hass") || changed.size > 1) return true;
     const old = changed.get("hass") as HomeAssistant | undefined;
-    return !old || old.locale !== this.hass?.locale || this.tracked.some(id => old.states[id] !== this.hass?.states[id]);
+    return !!this.detail || !old || old.locale !== this.hass?.locale || this.tracked.some(id => old.states[id] !== this.hass?.states[id]);
   }
   private clearFlashes() {
     for (const timer of this.flashTimers.values()) clearTimeout(timer);
@@ -132,6 +137,7 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
   private available(id?: string) { return !id || !!this.hass?.states[id] && !["unknown", "unavailable"].includes(this.hass.states[id].state); }
   private async action(key: string, action: LumaAction, entity?: string) {
     if (!this.hass || this.busy || !this.available(entity)) return;
+    if(action.action === "more-info" && this.config?.touch_controls && entity && /^(light|cover|media_player|fan|humidifier|sensor)\./.test(entity||"")){this.info(entity);return;}
     if ("confirmation" in action && action.confirmation && this.confirmation !== key) {
       this.confirmation = key; clearTimeout(this.confirmTimer);
       this.confirmTimer = setTimeout(() => this.confirmation = "", 3500); return;
@@ -141,7 +147,12 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     catch { this.error = true; }
     finally { this.busy = ""; }
   }
-  private info(entity: string) { if (this.hass) void runAction(this, this.hass, { action: "more-info" }, entity); }
+  private info(entity: string) {
+    if(this.config?.touch_controls && entity && /^(light|cover|media_player|fan|humidifier|sensor)\./.test(entity)) {
+      const group=this.config.detail_groups?.find(g=>g.entities.some(i=>i.entity===entity));
+      this.detail={entity,items:group?.entities || (entity.startsWith("light.")?this.config.lights:entity.startsWith("sensor.")?(this.config.metrics||[{entity}]):entity.startsWith("cover.")?[...(this.config.cover?[this.config.cover]:[]),...(this.config.cover_entities||[])]:[{entity}])};return;
+    }
+    if (this.hass) void runAction(this, this.hass, { action: "more-info" }, entity); }
   private items(items: Item[], kind: string) {
     return items.map((item, index) => {
       const key = `${kind}-${index}`;
@@ -156,11 +167,11 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     const hardware = c.physical_buttons;
     return html`<div class="panel ${c.fullscreen ? "fullscreen" : ""} ${c.light_orientation === "horizontal" ? "horizontal-lights" : ""} ${hardware ? `hardware ${hardware.side || "right"}` : ""}" style=${`--offset:${Math.max(0,c.viewport_offset || 0)}px;--count:${c.lights.length};--scenes:${Math.max(1,c.scenes?.length || 0)};--shortcuts:${Math.max(1,c.shortcuts?.length || 0)};--buttons:${hardware?.buttons.length || 1}`}>
       <header><h1>${c.name || localized(this.hass, "Room", "Szoba")}</h1><div class="metrics">${(c.metrics || []).map(m => html`<button class="metric" title=${m.name || entityName(this.hass?.states[m.entity],m.entity)} @click=${() => this.info(m.entity)}><ha-icon icon=${m.icon || "mdi:information-outline"}></ha-icon>${entityState(this.hass!,this.hass?.states[m.entity])}</button>`)}</div>${this.error ? html`<span class="error" role="alert">${localized(this.hass, "Action failed", "Nem sikerült")}</span>` : nothing}</header>
-      <div class="lights">${repeat(c.lights, l => l.entity, l => html`<luma-light-fader-card .config=${l} .hass=${this.hass}></luma-light-fader-card>`)}</div>
+      <div class="lights" @luma-control-details=${(e:CustomEvent)=>this.info(e.detail.entity)}>${repeat(c.lights, l => l.entity, l => html`<luma-light-fader-card .config=${l} .hass=${this.hass}></luma-light-fader-card>`)}</div>
       ${hardware ? html`<aside class="legend" aria-label=${localized(this.hass,"Physical buttons, top to bottom","Fizikai gombok, felülről lefelé")}>${hardware.buttons.map((button,index) => html`<div class="legend-item ${this.pressed.has(button.entity) ? "pressed" : ""}" data-entity=${button.entity}><span class="number">${index + 1}</span><ha-icon icon=${button.icon || "mdi:gesture-tap-button"}></ha-icon><span class="label">${button.name}</span></div>`)}</aside>` : html`<div class="scenes">${this.items(c.scenes || [], "scene")}</div>`}
       <div class="bottom">${c.cover ? html`<div class="cover"><button class="cover-info" @click=${() => this.info(c.cover!.entity)}>${c.cover.name || localized(this.hass,"Shutters","Redőnyök")}<small>${entityState(this.hass,cover)}</small></button>
         ${([["open_cover","mdi:arrow-up",1,"Open","Fel"],["stop_cover","mdi:stop",8,"Stop","Állj"],["close_cover","mdi:arrow-down",2,"Close","Le"]] as const).map(([service,icon,flag,en,hu]) => html`<button class="cover-action" aria-label=${localized(this.hass,en,hu)} ?disabled=${!!this.busy || !this.available(c.cover?.entity) || !(coverFeatures & flag)} @click=${() => this.action(service,{action:"perform-action",perform_action:`cover.${service}`,target:{entity_id:c.cover!.entity}},c.cover!.entity)}><ha-icon icon=${icon}></ha-icon></button>`)}</div>` : nothing}
         <div class="shortcuts">${this.items(c.shortcuts || [], "shortcut")}</div></div>
-    </div>`;
+    </div>${this.detail?html`<luma-wall-controls .hass=${this.hass} .entity=${this.detail.entity} .items=${this.detail.items} @controls-close=${()=>{this.detail=undefined}}></luma-wall-controls>`:nothing}`;
   }
 }

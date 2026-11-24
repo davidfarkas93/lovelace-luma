@@ -6,6 +6,7 @@ import { lumaTokens } from '../styles';
 @customElement('luma-bottom-sheet')
 export class LumaBottomSheet extends LitElement {
   @property({type:Boolean}) open=false;
+  @property({type:Boolean,reflect:true}) fullscreen=false;
   @property() heading='';
   @property() subtitle='';
   @property() icon='mdi:lightning-bolt-outline';
@@ -205,6 +206,13 @@ export class LumaBottomSheet extends LitElement {
           transition-duration: 0.01ms;
         }
       }
+    :host([fullscreen]) .layer { padding:0; align-items:stretch; }
+    :host([fullscreen]) .sheet { width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none;background:var(--primary-background-color);transform:none;opacity:1;transition:none; }
+    :host([fullscreen]) .scrim { transition:none; }
+    :host([fullscreen]) .handle-zone { display:none; }
+    :host([fullscreen]) header { padding:calc(12px + env(safe-area-inset-top,0px)) 20px 12px;grid-template-columns:42px minmax(0,1fr) 64px; }
+    :host([fullscreen]) .close { width:64px;height:56px;border-radius:var(--luma-radius-control); }
+    :host([fullscreen]) .content { padding:20px; }
     .title,.subtitle{overflow-wrap:anywhere}
     header>span{min-width:0}
     .close{cursor:pointer}
@@ -216,12 +224,13 @@ export class LumaBottomSheet extends LitElement {
     this.dragY=0;this.dragging=false;this.contentDragCandidate=false;
     if(this.open){
       if(this.dialog&&!this.dialog.open)this.dialog.showModal();
+      if(this.fullscreen){this.visible=true;return;}
       // Commit the off-screen position before starting the enter transition.
       this.dialog?.getBoundingClientRect();
       this.openFrame=requestAnimationFrame(()=>{this.visible=this.open});
     }else{
       this.visible=false;
-      const delay=matchMedia('(prefers-reduced-motion: reduce)').matches?0:340;
+      const delay=this.fullscreen?0:matchMedia('(prefers-reduced-motion: reduce)').matches?0:340;
       this.closeTimer=window.setTimeout(()=>{if(!this.open){this.dialog?.close();this.dispatchEvent(new CustomEvent('sheet-closed'));}},delay);
     }
   }
@@ -247,6 +256,7 @@ export class LumaBottomSheet extends LitElement {
   }
   private contentTouchStart(event:TouchEvent){
     this.contentDragCandidate=false;
+    if(this.fullscreen)return;
     if(event.touches.length!==1)return;
     // Preserve native controls and scrolling inside nested cards. A downward
     // gesture may dismiss only when every scroller under the finger is at top.

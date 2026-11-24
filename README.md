@@ -1739,3 +1739,59 @@ Horizontal controls use an unrotated native range input: `input` only previews b
 This layout addresses Shelly Wall Display firmware intercepting vertical drags: both the custom vertical fader and a rotated native range were cancelled on the tested XL, while an unrotated horizontal native range completed normally. Committing cancellation or sending continuously while moving is deliberately not used as a workaround.
 
 Storybook → **Cards / Wall Panel / Horizontal**. Run `scripts/check-horizontal-fader-browser.mjs` with the same browser environment variables as the other wall-panel checks. It verifies touch/mouse release-only commands, delayed feedback, cancellation, keyboard, unavailable state and responsive layouts with mock lights only.
+
+### Wall display touch controls (v0.70.0)
+
+Opt in with `touch_controls: true` on `custom:luma-wall-panel-card` together with
+`light_orientation: horizontal`. This places a large, labelled power button before
+each brightness range. Details and the power button's long press open a full-screen
+Luma controller instead of HA More Info. Its shared dialog shell has no animations,
+blur, or swipe-to-dismiss in this mode; close and Escape dismiss it.
+
+Light details expose only supported controls: brightness, Kelvin white temperature,
+and hue/saturation for color-capable lights. Sliders send on native release, never
+on movement or cancellation. Light and cover controls make no polling or history requests. The controller
+is mounted only while open and follows state updates for the selected entity.
+
+For individual shutters, supply `cover_entities: [{entity: cover.example, name: Example}]`
+alongside the existing `cover` group. The cover title opens the controller; a shortcut
+with `entity` set to that cover and `tap_action: {action: more-info}` opens it too.
+Supported controls are open/stop/close, position, and tilt position. Stop remains
+available while another request is in flight. Unavailable devices disable commands.
+
+Standalone faders accept `touch_controls: true` for the enlarged power control.
+Their default detail behavior remains HA More Info; `details: event` emits
+`luma-control-details` for a host controller, while `details: none` hides details.
+
+Storybook: **Cards / Wall Panel / Touch Controls**. Mock-only browser regression:
+`scripts/check-wall-touch-controls.mjs` (same browser environment variables as above).
+Available since Luma v0.70.0.
+
+The wall controller also supports TV, fan and humidifier detail groups. Configure
+`detail_groups: [{entities: [...]}]`; each entry needs `entity` and optionally `name`.
+A shortcut with that entity and `tap_action: {action: more-info}` opens its group.
+Media entries can specify `remote_entity` (Android TV key commands), `apps` (named
+runtime `tap_action` bindings), and `metrics` (explicit sensor entities and labels).
+Fan/humidifier entries can supply `metrics` and optional `mode_labels` overrides.
+
+TV controls expose supported power, playback, volume and input features; absolute
+volume is omitted when unsupported. The optional remote adds a large direction pad,
+Back/Home/Menu keys. No artwork downloads, playback timers or animations are used.
+Air controls use the advertised modes, fan percentage step, and humidity bounds.
+Missing sensor readings remain unknown; unavailable devices disable commands.
+
+Mock browser test: `scripts/check-wall-device-controls.mjs`. Preview captures:
+`scripts/preview-wall-touch.mjs` (same browser environment variables).
+
+
+The wall header metrics also open the full-screen detail controller when touch controls
+are enabled. Numeric sensors show their current value and an SVG history chart with
+6/24-hour selection, true recorded min/max, and a manual Refresh button. One minimal
+history request is made on opening, sensor/window change, or explicit refresh; live
+state updates do not refetch the chart. Closing ignores in-flight responses. There
+is no history polling, chart package, animation, or query while closed. The snapshot
+end time is displayed. Unknown history stays disconnected, no pre-recording values
+are invented, and rendered geometry has a fixed point budget.
+
+Tests: `scripts/check-wall-history.mjs` (included in npm check) and
+`scripts/check-wall-sensor-browser.mjs` (mock history only).

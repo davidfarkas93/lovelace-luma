@@ -1,4 +1,9 @@
 const iconGlyphs: Record<string, string> = {
+  "mdi:chevron-up": "↑", "mdi:chevron-down": "↓", "mdi:chevron-left": "←", "mdi:chevron-right": "→",
+  "mdi:arrow-u-left-top": "↶", "mdi:home": "⌂", "mdi:menu": "☰", "mdi:play": "▶", "mdi:pause": "Ⅱ",
+  "mdi:skip-previous": "|◀", "mdi:skip-next": "▶|", "mdi:volume-minus": "−", "mdi:volume-plus": "+", "mdi:volume-off": "⊘",
+  "mdi:power": "⏻",
+  "mdi:close": "×",
   "mdi:flash": "⚡",
   "mdi:solar-power": "☀",
   "mdi:home-lightning-bolt": "⌂",

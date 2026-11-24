@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const compile=(file,require)=>{const exports={};vm.runInNewContext(ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require,Date});return exports;};
+const history=compile('../src/history.ts');const {wallHistory}=compile('../src/wall-history.ts',()=>history);
+const start=Date.parse('2026-11-24T00:00:00Z'),end=start+86400000;
+const rows=[{s:'0',lu:start/1000},{s:'23',lu:start/1000+3600},{s:'unavailable',lu:start/1000+7200},{s:'24',lu:start/1000+14400}];
+const d=wallHistory({'sensor.x':rows},'sensor.x',{start,end});assert.equal(d.min,0);assert.equal(d.max,24);assert.equal(d.paths.length,2,'unknown creates a gap');assert(!d.paths.join('').includes('NaN'));
+assert.equal(wallHistory({},'sensor.x',{start,end}).paths.length,0);
+const many=Array.from({length:100000},(_,i)=>({s:String(Math.sin(i)),lu:(start+(end-start)*i/100000)/1000}));
+const compact=wallHistory({'sensor.x':many},'sensor.x',{start,end});assert(compact.paths.join('').split(' ').length<=580);assert(compact.max>.99&&compact.min<-.99,'downsample retains true extrema');
+const noSeed=wallHistory({'sensor.x':[{s:'20',lu:(start+43200000)/1000}]},'sensor.x',{start,end});assert(noSeed.paths[0].startsWith('M500.00'),'no invented history before first record');
+console.log('PASS wall history: compact timestamps, real zero, empty data, unknown gaps, bounded geometry, extrema, missing seed.');

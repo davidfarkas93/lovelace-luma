@@ -7,7 +7,7 @@ import { HandleDrag } from "../handle-drag";
 import { lumaTokens, lumaInteractionStyles } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal"; interaction?: "native" | "handle" }
+export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal"; interaction?: "native" | "handle"; touch_controls?: boolean; details?: "default" | "event" | "none" }
 
 /** A tall touch target, with one service call per completed gesture. */
 @customElement("luma-light-fader-card")
@@ -72,6 +72,13 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     .handle-track { touch-action: auto; }
     .drag-handle { position: absolute; top: 0; bottom: 0; left: calc((100% - 44px) * var(--level,0)); width: 44px; box-sizing: border-box; border: 3px solid var(--tone); border-radius: var(--luma-radius-control); background: color-mix(in srgb,var(--tone) 35%,var(--luma-surface)); cursor: grab; }
     .drag-handle:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -5px; }
+    .horizontal.touch-controls { display:grid;grid-template-columns:76px minmax(0,1fr);grid-template-rows:auto minmax(56px,1fr) auto;column-gap:14px; }
+    .touch-controls .top,.touch-controls .subtitle,.touch-controls .note { grid-column:1/-1; }
+    .touch-controls .subtitle:empty { display:none; }
+    .touch-controls > .power { grid-column:1;grid-row:2;min-height:64px;max-height:90px;margin-top:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px; }
+    .touch-controls .track { grid-column:2;grid-row:2; }
+    .touch-controls .details { min-width:56px;min-height:48px; }
+    .touch-controls .name { margin-left:0; }
     .error { color: var(--error-color); }
   `];
 
@@ -299,7 +306,10 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
       else { this.draft = undefined; this.paint(); }
     }, 0);
   }
-  private info() { if (this.hass && this.config) void runAction(this, this.hass, { action: "more-info" }, this.config.entity); }
+  private info() {
+    if(this.config?.details === "none")return;
+    if(this.config?.details === "event") { this.dispatchEvent(new CustomEvent("luma-control-details",{detail:{entity:this.config.entity,name:this.config.name},bubbles:true,composed:true}));return; }
+    if (this.hass && this.config) void runAction(this, this.hass, { action: "more-info" }, this.config.entity); }
   private async toggle(event: MouseEvent) {
     if (!this.press.allowsClick(event) || this.busy || !this.available || !this.hass || !this.config) return;
     this.cancelGesture(); this.clearPending(); this.sending = true; this.busy = true; this.error = false; this.unconfirmed = false;
@@ -312,12 +322,15 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     const name = this.config.name || entityName(this.entity, this.config.entity);
     const disabled = !this.available || !this.dimmable;
     const horizontal = this.config.orientation === "horizontal";
-    return html`<div class="card ${this.entity?.state === "on" ? "on" : ""} ${horizontal ? "horizontal" : ""}">
-      <div class="top"><button class="power" aria-label=${name} aria-pressed=${this.entity?.state === "on"} ?disabled=${!this.available || this.busy}
-        @pointerdown=${(e: PointerEvent) => this.press.start(e, () => this.info())} @click=${this.toggle}><ha-icon icon=${this.config.icon || "mdi:lightbulb-outline"}></ha-icon></button>
+    const touch = horizontal && this.config.touch_controls;
+    const power = html`<button class="power" aria-label=${`${name}: ${localized(this.hass,"On / off","Be / ki")}`} aria-pressed=${this.entity?.state === "on"} ?disabled=${!this.available || this.busy}
+      @pointerdown=${(e:PointerEvent)=>this.press.start(e,()=>this.info())} @click=${this.toggle}><ha-icon icon=${touch?"mdi:power":this.config.icon || "mdi:lightbulb-outline"}></ha-icon>${touch?html`<span>${this.entity?.state === "on"?localized(this.hass,"On","Be"):localized(this.hass,"Off","Ki")}</span>`:nothing}</button>`;
+    return html`<div class="card ${this.entity?.state === "on" ? "on" : ""} ${horizontal ? "horizontal" : ""} ${touch ? "touch-controls" : ""}">
+      <div class="top">${touch?nothing:power}
         ${horizontal ? html`<div class="name">${name}</div><span class="value"></span>` : nothing}
-        <button class="details" aria-label=${localized(this.hass, "Details", "Részletek")} @click=${this.info}><ha-icon icon="mdi:dots-horizontal"></ha-icon></button></div>
+        ${this.config.details === "none" ? nothing : html`<button class="details" aria-label=${localized(this.hass, "Details", "Részletek")} @click=${this.info}><ha-icon icon="mdi:dots-horizontal"></ha-icon></button>`}</div>
       ${horizontal ? nothing : html`<div class="name">${name}</div>`}<div class="subtitle">${this.config.subtitle || ""}</div>
+      ${touch?power:nothing}
       ${horizontal && this.config.interaction === "handle" ? html`<div class="track handle-track" aria-disabled=${String(disabled)}><div class="fill"></div>
         <div class="drag-handle" role="slider" tabindex=${disabled ? -1 : 0} aria-label=${name} aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-disabled=${String(disabled)} @keydown=${this.key}></div>
       </div>` : horizontal ? html`<div class="track" aria-disabled=${String(disabled)}><div class="fill"></div>

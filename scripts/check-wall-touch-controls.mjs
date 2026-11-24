@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.LUMA_PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.LUMA_CHROME?{executablePath:process.env.LUMA_CHROME}:{})});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto((process.env.LUMA_STORYBOOK_URL||'http://127.0.0.1:6006')+'/iframe.html?id=cards-wall-panel--touch-controls&viewMode=story&globals=locale:hu');
+ const panel=page.locator('luma-wall-panel-card');await panel.locator('input').first().waitFor();
+ await panel.evaluate(el=>{window.calls=[];el.hass.callService=async(...args)=>window.calls.push(args)});
+ const fader=panel.locator('luma-light-fader-card').first();
+ const power=await fader.locator('.power').boundingBox(),slider=await fader.locator('input').boundingBox();
+ assert(power.width>=64&&power.height>=56);assert(power.x+power.width<=slider.x,'power precedes range');
+ await fader.locator('.power').click();assert.equal(await page.evaluate(()=>window.calls[0][1]),'toggle');
+ await fader.locator('.details').click();
+ const modal=panel.locator('luma-wall-controls'),sheet=modal.locator('luma-bottom-sheet');await sheet.locator('dialog[open]').waitFor();
+ assert.equal(await page.evaluate(()=>window.calls.length),1,'Opening sends nothing');
+ assert.equal(await sheet.locator('.sheet').evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
+ for(const [width,height] of [[1280,800],[768,1024],[390,844]]){
+  await page.setViewportSize({width,height});await page.waitForTimeout(60);
+  const box=await sheet.locator('.sheet').boundingBox();assert.equal(box.x,0);assert.equal(box.y,0);assert.equal(box.width,width);assert.equal(box.height,height);
+  assert(await modal.locator('.layout').evaluate(el=>el.scrollWidth<=el.clientWidth),'no horizontal overflow');
+  await page.screenshot({path:`/private/tmp/luma-touch-details-${width}.png`});
+ }
+ await page.setViewportSize({width:1280,height:800});
+ const temperature=modal.locator('luma-touch-range').first(),input=temperature.locator('input');
+ await input.dispatchEvent('pointerdown',{pointerId:1});
+ await input.evaluate(el=>{el.value='3500';el.dispatchEvent(new Event('input',{bubbles:true}))});
+ assert.equal(await page.evaluate(()=>window.calls.length),1);
+ await input.dispatchEvent('change');await page.waitForTimeout(50);
+ assert.deepEqual(await page.evaluate(()=>window.calls[1]),['light','turn_on',{color_temp_kelvin:3500},{entity_id:'light.sofa'}]);
+ assert.equal(await input.inputValue(),'3500','pending value stays visible');
+ await input.dispatchEvent('pointerdown',{pointerId:2});await input.evaluate(el=>{el.value='2500';el.dispatchEvent(new Event('input',{bubbles:true}))});
+ await input.dispatchEvent('pointercancel',{pointerId:2});await input.dispatchEvent('change');assert.equal(await page.evaluate(()=>window.calls.length),2,'cancel never commits');
+ await modal.locator('nav button').nth(2).click();
+ await page.screenshot({path:'/private/tmp/luma-touch-color.png'});
+ const hue=modal.locator('luma-touch-range input').nth(1);
+ const r=await hue.boundingBox(),cdp=await page.context().newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:r.x+r.width*.25,y:r.y+32}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:r.x+r.width*.7,y:r.y+80}]});
+ assert.equal(await page.evaluate(()=>window.calls.length),2,'diagonal real touch sends nothing before release');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(60);
+ assert.equal(await page.evaluate(()=>window.calls.length),3,'diagonal release sends exactly once');
+ assert.equal(await page.evaluate(()=>window.calls.at(-1)[3].entity_id),'light.island');
+ await modal.locator('nav button').nth(3).click();assert.equal(await modal.locator('luma-touch-range').count(),0,'brightness-only hides color');
+ assert.equal(await modal.locator('input').inputValue(),'0','entity switch resets draft');
+ await page.keyboard.press('Escape');await modal.waitFor({state:'detached'});
+ await panel.locator('.cover-info').click();await sheet.locator('dialog[open]').waitFor();
+ await page.screenshot({path:'/private/tmp/luma-touch-cover.png'});
+ const cover=modal.locator('luma-touch-range input');await cover.fill('35');await cover.dispatchEvent('change');await page.waitForTimeout(50);
+ assert.deepEqual(await page.evaluate(()=>window.calls.at(-1)),['cover','set_cover_position',{position:35},{entity_id:'cover.room'}]);
+ await modal.locator('.actions button').nth(1).click();assert.equal(await page.evaluate(()=>window.calls.at(-1)[1]),'stop_cover');
+ await panel.evaluate(el=>{el.hass={...el.hass,states:{...el.hass.states,'cover.room':{...el.hass.states['cover.room'],state:'unavailable'}}}});await page.waitForTimeout(50);
+ assert(await cover.isDisabled());assert(await modal.locator('.actions button').first().isDisabled());
+ await sheet.locator('.close').click();await modal.waitFor({state:'detached'});
+ await page.screenshot({path:'/private/tmp/luma-touch-panel.png'});
+ assert.deepEqual(errors,[]);console.log('PASS: touch power, modal full-screen/no animation, responsive layouts, release-only Kelvin, cancellation, pending value, capability gating, entity switch, Escape/close, cover position/stop, availability.');
+}finally{await browser.close()}
