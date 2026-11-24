@@ -18,6 +18,8 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
   private draft?: number;
   private nativeActive = false;
   private nativeCancelled = false;
+  private nativeCommitted = false;
+  private nativeInitial = 0;
   private nativeEndTimer?: ReturnType<typeof setTimeout>;
   @state() private pending?: { value: number; sequence: number };
   @state() private unconfirmed = false;
@@ -242,25 +244,37 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
       if (this.isConnected) void this.sendNext();
     }
   }
-  private nativeStart() { clearTimeout(this.nativeEndTimer); this.nativeCancelled = false; this.nativeActive = true; }
+  private nativeStart(event: Event) {
+    clearTimeout(this.nativeEndTimer);
+    if (!this.nativeActive) this.nativeInitial = Number((event.currentTarget as HTMLInputElement).value);
+    this.nativeCancelled = false; this.nativeCommitted = false; this.nativeActive = true;
+  }
   private nativeInput(event: Event) {
     if (!this.available || !this.dimmable || this.nativeCancelled) return;
+    this.nativeCommitted = false;
     this.draft = Number((event.currentTarget as HTMLInputElement).value);
     if (!this.frame) this.frame = requestAnimationFrame(() => { this.frame = 0; this.paint(); });
   }
   private nativeChange(event: Event) {
-    if (this.nativeCancelled || !this.available || !this.dimmable) return;
+    if (this.nativeCancelled || this.nativeCommitted || !this.available || !this.dimmable) return;
     this.nativeActive = false;
+    this.nativeCommitted = true;
     clearTimeout(this.nativeEndTimer);
-    this.commit(Number((event.currentTarget as HTMLInputElement).value));
+    this.commit(this.draft ?? Number((event.currentTarget as HTMLInputElement).value));
   }
   private nativeCancel() { this.nativeCancelled = true; this.cancelGesture(); }
   private nativeEnd() {
-    this.nativeActive = false;
-    // Native change runs with release. Clear a draft when dragging back to the
-    // starting value produces no change event; no service is needed in that case.
+    // Keep the native value protected until release is resolved. Some WebViews
+    // deliver change later (or omit it); painting HA state here would erase input.
     clearTimeout(this.nativeEndTimer);
-    this.nativeEndTimer = setTimeout(() => { if (!this.nativeActive) { this.draft = undefined; this.paint(); } }, 0);
+    this.nativeEndTimer = setTimeout(() => {
+      this.nativeActive = false;
+      if (this.nativeCancelled || this.nativeCommitted) return;
+      this.nativeCommitted = true;
+      const value = this.draft;
+      if (value !== undefined && value !== this.nativeInitial) this.commit(value);
+      else { this.draft = undefined; this.paint(); }
+    }, 0);
   }
   private info() { if (this.hass && this.config) void runAction(this, this.hass, { action: "more-info" }, this.config.entity); }
   private async toggle(event: MouseEvent) {
