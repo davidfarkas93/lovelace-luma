@@ -3,10 +3,11 @@ import { customElement, eventOptions, property, state } from "lit/decorators.js"
 import { entityName, runAction } from "../helpers";
 import { localized } from "../localize";
 import { HoldGesture } from "../hold-gesture";
+import { HandleDrag } from "../handle-drag";
 import { lumaTokens, lumaInteractionStyles } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal" }
+export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal"; interaction?: "native" | "handle" }
 
 /** A tall touch target, with one service call per completed gesture. */
 @customElement("luma-light-fader-card")
@@ -33,6 +34,8 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
   private frame = 0;
   private keyTimer?: ReturnType<typeof setTimeout>;
   private press = new HoldGesture();
+  private handleDrag?: HandleDrag;
+  private handleElement?: HTMLElement;
 
   static styles = [lumaTokens, lumaInteractionStyles, css`
     :host { display: flex; min-width: 0; min-height: 220px; height: 100%; --tone: var(--warning-color, #e9b875); }
@@ -66,6 +69,9 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
     input[type="range"]::-moz-range-thumb { width: 26px; height: 90%; border: 3px solid var(--tone); border-radius: var(--luma-radius-control); background: var(--luma-surface); }
     input[type="range"]:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -3px; }
+    .handle-track { touch-action: auto; }
+    .drag-handle { position: absolute; top: 0; bottom: 0; left: calc((100% - 44px) * var(--level,0)); width: 44px; box-sizing: border-box; border: 3px solid var(--tone); border-radius: var(--luma-radius-control); background: color-mix(in srgb,var(--tone) 35%,var(--luma-surface)); cursor: grab; }
+    .drag-handle:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -5px; }
     .error { color: var(--error-color); }
   `];
 
@@ -92,9 +98,23 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
   }
   protected updated() {
     if (!this.available) { this.cancelGesture(); this.clearPending(); this.queued = undefined; }
+    this.setupHandle();
     this.reconcile(); this.paint();
   }
-  disconnectedCallback() { this.reset(); this.press.cancel(); super.disconnectedCallback(); }
+  connectedCallback() { super.connectedCallback(); this.requestUpdate(); }
+  disconnectedCallback() { this.handleDrag?.destroy(); this.handleDrag = undefined; this.handleElement = undefined; this.reset(); this.press.cancel(); super.disconnectedCallback(); }
+  private setupHandle() {
+    const handle = this.renderRoot.querySelector<HTMLElement>(".drag-handle") || undefined;
+    if (handle === this.handleElement) return;
+    this.handleDrag?.destroy(); this.handleDrag = undefined; this.handleElement = handle;
+    if (handle) this.handleDrag = new HandleDrag(handle, {
+      enabled: () => this.available && this.dimmable,
+      value: () => this.draft ?? this.pending?.value ?? this.level,
+      move: value => { this.draft = value; if (!this.frame) this.frame = requestAnimationFrame(() => { this.frame = 0; this.paint(); }); },
+      end: value => this.commit(value),
+      cancel: () => { this.draft = undefined; this.paint(); },
+    });
+  }
   private clearPending() {
     clearTimeout(this.acknowledgeTimer); this.acknowledgeTimer = undefined;
     clearTimeout(this.settleTimer); this.settleTimer = undefined;
@@ -108,6 +128,7 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     cancelAnimationFrame(this.frame); this.frame = 0;
   }
   private cancelGesture() {
+    this.handleDrag?.cancel();
     this.endGesture(); this.nativeActive = false; clearTimeout(this.nativeEndTimer);
     clearTimeout(this.keyTimer); this.keyTimer = undefined; this.draft = undefined;
     this.paint();
@@ -136,6 +157,8 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
     const known = this.draft !== undefined || this.pending !== undefined || this.entity?.state === "off" || typeof this.entity?.attributes.brightness === "number" && Number.isFinite(this.entity.attributes.brightness);
     const label = !this.available ? "—" : !this.dimmable ? (this.entity?.state === "on" ? localized(this.hass,"On","Be") : localized(this.hass,"Off","Ki")) : known ? `${value}%` : "—";
     track.setAttribute("aria-valuetext", label);
+    const handle = track.querySelector(".drag-handle");
+    handle?.setAttribute("aria-valuenow", String(value)); handle?.setAttribute("aria-valuetext", label);
     const input = track.querySelector<HTMLInputElement>("input");
     if (input && !this.nativeActive) input.value = String(value);
     const output = this.renderRoot.querySelector(".value");
@@ -295,7 +318,9 @@ export class LumaLightFaderCard extends LitElement implements LovelaceCard {
         ${horizontal ? html`<div class="name">${name}</div><span class="value"></span>` : nothing}
         <button class="details" aria-label=${localized(this.hass, "Details", "Részletek")} @click=${this.info}><ha-icon icon="mdi:dots-horizontal"></ha-icon></button></div>
       ${horizontal ? nothing : html`<div class="name">${name}</div>`}<div class="subtitle">${this.config.subtitle || ""}</div>
-      ${horizontal ? html`<div class="track" aria-disabled=${String(disabled)}><div class="fill"></div>
+      ${horizontal && this.config.interaction === "handle" ? html`<div class="track handle-track" aria-disabled=${String(disabled)}><div class="fill"></div>
+        <div class="drag-handle" role="slider" tabindex=${disabled ? -1 : 0} aria-label=${name} aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-disabled=${String(disabled)} @keydown=${this.key}></div>
+      </div>` : horizontal ? html`<div class="track" aria-disabled=${String(disabled)}><div class="fill"></div>
         <input type="range" min="0" max="100" step="1" aria-label=${name} aria-orientation="horizontal" ?disabled=${disabled}
           @pointerdown=${this.nativeStart} @touchstart=${this.nativeStart} @keydown=${this.nativeStart}
           @input=${this.nativeInput} @change=${this.nativeChange}

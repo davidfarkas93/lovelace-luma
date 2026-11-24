@@ -1732,6 +1732,8 @@ Configure the corresponding actions in **Home Assistant automations**, so the bu
 
 Set `light_orientation: horizontal` on `custom:luma-wall-panel-card` for two columns of wide light controls (one column on phones). The physical-button legend remains on its configured side. Standalone `custom:luma-light-fader-card` accepts `orientation: horizontal`; the default stays vertical for existing configurations.
 
+For horizontal faders, opt-in `interaction: handle` uses a handle-only touch/mouse gesture recognizer modeled on Home Assistant's circular light control. On touch screens, hold the handle briefly (50 ms) before dragging; horizontal movement adjusts brightness while vertical movement is ignored, including outside the card. Only a completed release sends a command; cancellation and multi-touch send nothing. Keyboard controls remain available on the handle. Native range interaction remains the default. This experimental option requires verification on the target embedded browser; use it on an individual light entry or standalone fader before wider adoption.
+
 Horizontal controls use an unrotated native range input: `input` only previews brightness, and `change` sends one command when the drag is released. Pointer/touch cancellation never commits. Native keyboard changes are supported. Pending requests retain the selected value through delayed HA feedback using the same serialized command queue as vertical faders.
 
 This layout addresses Shelly Wall Display firmware intercepting vertical drags: both the custom vertical fader and a rotated native range were cancelled on the tested XL, while an unrotated horizontal native range completed normally. Committing cancellation or sending continuously while moving is deliberately not used as a workaround.

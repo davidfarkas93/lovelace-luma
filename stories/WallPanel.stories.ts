@@ -43,6 +43,7 @@ export const Landscape: Story = { render: () => renderCard("custom:luma-wall-pan
 export const Portrait: Story = { render: () => renderCard("custom:luma-wall-panel-card", config, definitions, 768) };
 export const Unavailable: Story = { render: () => renderCard("custom:luma-wall-panel-card", config, { ...definitions, "light.sofa": { state: "unavailable" }, "light.spots": { state: "unknown" }, "cover.room": { state: "unavailable" } }, 1280) };
 export const LightFader: Story = { render: () => renderCard("custom:luma-light-fader-card", lights[0], definitions, 280) };
+export const HandleFader: Story = { render: () => renderCard("custom:luma-light-fader-card", { ...lights[3], orientation: "horizontal", interaction: "handle", subtitle: "Fogd meg a fogantyút, majd húzd" }, definitions, 560) };
 export const NonDimmable: Story = { render: () => renderCard("custom:luma-light-fader-card", lights[0], { "light.sofa": { state: "on", attributes: { supported_color_modes: ["onoff"] } } }, 280) };
 
 // Standalone, interactive demo. These IDs and service calls never reach Home Assistant.

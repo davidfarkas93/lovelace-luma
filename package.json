@@ -1,6 +1,6 @@
 {
   "name": "lovelace-luma",
-  "version": "0.68.1",
+  "version": "0.69.0",
   "description": "A vibrant, context-aware dashboard suite for Home Assistant.",
   "license": "MIT",
   "author": "David Farkas",
@@ -17,12 +17,14 @@
     "docs": "storybook dev -p 6006"
   },
   "dependencies": {
+    "@egjs/hammerjs": "^2.0.17",
     "lit": "^3.3.1"
   },
   "devDependencies": {
     "@storybook/addon-a11y": "^10.5.10",
     "@storybook/addon-docs": "^10.5.10",
     "@storybook/web-components-vite": "^10.5.10",
+    "@types/hammerjs": "^2.0.46",
     "storybook": "^10.5.10",
     "typescript": "^5.9.2",
     "vite": "^7.1.2"
