@@ -1,4 +1,5 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
+import { IdleDismiss } from '../idle-dismiss';
 import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, state } from 'lit/decorators.js';
 import { entityName, entityState, runAction } from '../helpers';
@@ -11,7 +12,7 @@ import './luma-wall-sensor';
 import '../cards/luma-light-fader-card';
 
 export interface WallControlEntity {
-  entity:string; name?:string; remote_entity?:string;
+  entity:string; name?:string; show_color?:boolean; remote_entity?:string;
   apps?:{name:string; icon?:string; tap_action:LumaAction}[];
   metrics?:{entity:string; name?:string}[];
   mode_labels?:Record<string,string>;
@@ -22,6 +23,10 @@ export class LumaWallControls extends LitElement {
   @property({attribute:false}) hass?:HomeAssistant;
   @property({attribute:false}) items:WallControlEntity[]=[];
   @property() entity='';
+  @property({type:Number}) idleSeconds=0;
+  private idle?:IdleDismiss;
+  connectedCallback(){super.connectedCallback();this.idle=new IdleDismiss(this,()=>this.idleSeconds,()=>this.dispatchEvent(new CustomEvent('controls-close')));}
+  protected updated(changed:PropertyValues<this>){if(changed.has('idleSeconds'))this.idle?.reset();}
   @state() private busy=false;
   @state() private error=false;
   @state() private sent=false;
@@ -58,7 +63,7 @@ export class LumaWallControls extends LitElement {
     const hs=this.hass?.states[this.entity]?.attributes.hs_color;
     if(Array.isArray(hs)&&(changed.has('hass')||changed.has('entity'))&&!this.busy&&(Date.now()>this.colorPendingUntil||(Math.abs(Number(hs[0])-this.hue)<1&&Math.abs(Number(hs[1])-this.saturation)<1))){this.hue=Number(hs[0]);this.saturation=Number(hs[1]);this.colorPendingUntil=0;}
   }
-  disconnectedCallback(){this.serial++;super.disconnectedCallback()}
+  disconnectedCallback(){this.idle?.destroy();this.idle=undefined;this.serial++;super.disconnectedCallback()}
   private async send(service:string,data:Record<string,unknown>={},entity=this.entity){
     const e=this.hass?.states[entity];
     if(!this.hass||this.busy||!e||e.attributes.restored||['unknown','unavailable'].includes(e.state))return;
@@ -116,7 +121,7 @@ export class LumaWallControls extends LitElement {
     if(!this.hass)return nothing;
     const e=this.hass.states[this.entity],a=e?.attributes||{},light=this.entity.startsWith('light.'),cover=this.entity.startsWith('cover.'),media=this.entity.startsWith('media_player.'),sensor=this.entity.startsWith('sensor.'),name=this.items.find(i=>i.entity===this.entity)?.name||entityName(e,this.entity);
     const unavailable=!e||!!a.restored||['unknown','unavailable'].includes(e.state),disabled=unavailable||this.busy;
-    const modes=Array.isArray(a.supported_color_modes)?a.supported_color_modes:[],color=modes.some(m=>['hs','xy','rgb','rgbw','rgbww'].includes(String(m))),features=Number(a.supported_features||0);
+    const modes=Array.isArray(a.supported_color_modes)?a.supported_color_modes:[],color=this.items.find(i=>i.entity===this.entity)?.show_color!==false&&modes.some(m=>['hs','xy','rgb','rgbw','rgbww'].includes(String(m))),features=Number(a.supported_features||0);
     const num=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)?v:undefined;
     const t=(en:string,hu:string)=>localized(this.hass,en,hu);
     return html`<luma-bottom-sheet .open=${true} .fullscreen=${true} .heading=${name} .subtitle=${light?t('Light controls','Világítás'):cover?t('Shutter controls','Redőnyök'):media?t('Remote control','Távirányító'):sensor?t('History','Előzmények'):t('Air care','Levegő')} .icon=${light?'mdi:lightbulb-outline':cover?'mdi:window-shutter':media?'mdi:television':sensor?'mdi:chart-line':'mdi:air-purifier'} .closeLabel=${t('Close','Bezárás')} @sheet-dismiss=${()=>this.dispatchEvent(new CustomEvent('controls-close'))}>

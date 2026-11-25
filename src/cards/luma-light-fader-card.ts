@@ -7,7 +7,7 @@ import { HandleDrag } from "../handle-drag";
 import { lumaTokens, lumaInteractionStyles } from "../styles";
 import type { HomeAssistant, LovelaceCard } from "../types";
 
-export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal"; interaction?: "native" | "handle"; touch_controls?: boolean; details?: "default" | "event" | "none" }
+export interface LightFaderConfig { type?: string; entity: string; name?: string; subtitle?: string; icon?: string; orientation?: "vertical" | "horizontal"; interaction?: "native" | "handle"; touch_controls?: boolean; show_color?: boolean; details?: "default" | "event" | "none" }
 
 /** A tall touch target, with one service call per completed gesture. */
 @customElement("luma-light-fader-card")

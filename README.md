@@ -1795,3 +1795,20 @@ are invented, and rendered geometry has a fixed point budget.
 
 Tests: `scripts/check-wall-history.mjs` (included in npm check) and
 `scripts/check-wall-sensor-browser.mjs` (mock history only).
+
+Wall detail views accept `details_idle_timeout` on `luma-wall-panel-card`, in seconds
+(`0` or omitted disables automatic closing). For example, `details_idle_timeout: 30`
+returns to the main panel after 30 seconds without interaction. Touch, pointer,
+keyboard, and control changes restart the timer; holding a gesture pauses it until
+release or cancellation. HA state updates do not extend the timeout. Tracking is
+passive, with one timeout and no polling, and is removed when the view closes.
+
+Set `show_color: false` on an entry in `lights` (or a light detail-group entry) to
+hide hue/saturation while keeping brightness and advertised color temperature.
+This is useful for white-spectrum bulbs that advertise XY to map color commands
+to their nearest achievable white temperature. The default remains capability-based;
+this presentation override does not alter the device or HA capabilities.
+
+Storybook: **Cards / Wall Panel / Idle Details** demonstrates a 30-second timeout
+and a white-spectrum kitchen light that advertises XY. Mock regression:
+`scripts/check-wall-idle-browser.mjs`.

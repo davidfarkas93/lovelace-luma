@@ -52,10 +52,10 @@ export const HandleFader: Story = { render: () => renderCard("custom:luma-light-
 export const NonDimmable: Story = { render: () => renderCard("custom:luma-light-fader-card", lights[0], { "light.sofa": { state: "on", attributes: { supported_color_modes: ["onoff"] } } }, 280) };
 
 // Standalone, interactive demo. These IDs and service calls never reach Home Assistant.
-function interactiveDemo(dark = false, hardware = false, horizontal = false, touch = false) {
+function interactiveDemo(dark = false, hardware = false, horizontal = false, touch = false, idle = false) {
     const buttons = config.scenes.map((s,i) => ({ entity: `event.button_${i+1}`, name: s.name, icon: s.icon, event_type: "single_push" }));
     const card = document.createElement("luma-wall-panel-card") as LumaWallPanelCard;
-    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true, ...(touch?{touch_controls:true,lights:lights.slice(0,5),cover_entities:coverItems,detail_groups:[
+    card.setConfig({ type: "custom:luma-wall-panel-card", ...config, fullscreen: true, ...(touch?{touch_controls:true,details_idle_timeout:idle?30:0,lights:lights.slice(0,5).map(l=>idle&&l.entity==='light.island'?{...l,show_color:false}:l),cover_entities:coverItems,detail_groups:[
       {entities:[{entity:'media_player.tv',name:'Nappali TV',remote_entity:'remote.tv',apps:['YouTube','Netflix','Spotify','Wholphin'].map(name=>({name,tap_action:{action:'perform-action',perform_action:'script.demo_tv_app',data:{app:name}}}))}]},
       {entities:[{entity:'fan.air',name:'Légtisztító',metrics:[{entity:'sensor.pm25',name:'PM2.5'},{entity:'sensor.humidity',name:'Páratartalom'}]},{entity:'humidifier.air',name:'Párásító',metrics:[{entity:'sensor.humidity',name:'Páratartalom'}]}]}
     ],shortcuts:config.shortcuts.map(s=>s.name==="Redőnyök"?{...s,entity:"cover.room",tap_action:{action:"more-info"}}:s)}:{}), ...(horizontal ? { light_orientation: "horizontal" } : {}), ...(hardware ? { physical_buttons: { side: "right", buttons } } : {}) } as Parameters<LumaWallPanelCard["setConfig"]>[0]);
@@ -147,3 +147,9 @@ export const PhysicalButtons: Story = { parameters: { layout: "fullscreen" }, re
 export const Horizontal: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true, true, true) };
 
 export const TouchControls: Story = { parameters: { layout: "fullscreen" }, render: () => interactiveDemo(true, true, true, true) };
+
+// White-spectrum devices may advertise XY for mapping group commands to white.
+export const IdleDetails: Story = {
+  parameters: { layout: "fullscreen" },
+  render: () => interactiveDemo(true,true,true,true,true),
+};

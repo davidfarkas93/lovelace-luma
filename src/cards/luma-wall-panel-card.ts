@@ -17,7 +17,7 @@ interface Config {
   type: string; name?: string; lights: LightFaderConfig[]; metrics?: Metric[];
   scenes?: Item[]; shortcuts?: Item[]; cover?: { entity: string; name?: string };
   fullscreen?: boolean; viewport_offset?: number;
-  touch_controls?: boolean; cover_entities?: WallControlEntity[];
+  touch_controls?: boolean; details_idle_timeout?: number; cover_entities?: WallControlEntity[];
   detail_groups?: {entities:WallControlEntity[]}[];
   light_orientation?: "vertical" | "horizontal";
   physical_buttons?: { side?: "left" | "right"; buttons: PhysicalButton[] };
@@ -99,6 +99,7 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
     }
   `];
   setConfig(config: Config) {
+    if (config?.details_idle_timeout !== undefined && (!Number.isFinite(config.details_idle_timeout) || config.details_idle_timeout < 0)) throw Error("details_idle_timeout must be a non-negative number of seconds.");
     if (!config?.lights?.length || config.lights.length > 6 || config.lights.some(l => !l.entity?.startsWith("light."))) throw Error("Luma wall panel requires 1–6 light entities.");
     if (new Set(config.lights.map(l => l.entity)).size !== config.lights.length) throw Error("Light entities must be unique.");
     if (config.cover && !config.cover.entity.startsWith("cover.")) throw Error("cover.entity must be a cover.");
@@ -172,6 +173,6 @@ export class LumaWallPanelCard extends LitElement implements LovelaceCard {
       <div class="bottom">${c.cover ? html`<div class="cover"><button class="cover-info" @click=${() => this.info(c.cover!.entity)}>${c.cover.name || localized(this.hass,"Shutters","Redőnyök")}<small>${entityState(this.hass,cover)}</small></button>
         ${([["open_cover","mdi:arrow-up",1,"Open","Fel"],["stop_cover","mdi:stop",8,"Stop","Állj"],["close_cover","mdi:arrow-down",2,"Close","Le"]] as const).map(([service,icon,flag,en,hu]) => html`<button class="cover-action" aria-label=${localized(this.hass,en,hu)} ?disabled=${!!this.busy || !this.available(c.cover?.entity) || !(coverFeatures & flag)} @click=${() => this.action(service,{action:"perform-action",perform_action:`cover.${service}`,target:{entity_id:c.cover!.entity}},c.cover!.entity)}><ha-icon icon=${icon}></ha-icon></button>`)}</div>` : nothing}
         <div class="shortcuts">${this.items(c.shortcuts || [], "shortcut")}</div></div>
-    </div>${this.detail?html`<luma-wall-controls .hass=${this.hass} .entity=${this.detail.entity} .items=${this.detail.items} @controls-close=${()=>{this.detail=undefined}}></luma-wall-controls>`:nothing}`;
+    </div>${this.detail?html`<luma-wall-controls .idleSeconds=${c.details_idle_timeout || 0} .hass=${this.hass} .entity=${this.detail.entity} .items=${this.detail.items} @controls-close=${()=>{this.detail=undefined}}></luma-wall-controls>`:nothing}`;
   }
 }
